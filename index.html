@@ -1,4 +1,21 @@
 <!DOCTYPE html>
+<!-- ===================================================================
+     RHYTHM VOID — game build
+
+     For portal submissions, copy this file as index.html at the root of
+     the platform ZIP.
+
+     It is fully self-contained: no external assets, no build step, no
+     network calls. Every icon is a data URI and the PWA manifest is
+     generated as a Blob at runtime, so the ZIP needs nothing but this
+     single file. The manifest derives its start_url from location, so
+     the game works from a site root or from a subdirectory.
+
+     One thing to check per portal: SHARE_URL below points at
+     https://playrhythmvoid.com/play/ and is what gets pasted into shared
+     results. If a portal requires links to stay on their domain, change
+     that one constant.
+     =================================================================== -->
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -1039,7 +1056,7 @@
         <button class="btn ghost" id="copyResultBtn">Copy Result</button>
         <button class="btn ghost" id="overMenuBtn">Menu</button>
       </div>
-      <a class="feedback-link" id="feedbackLink" href="mailto:neonorbitfeedback@gmail.com?subject=Rhythm%20Void%20Playtest%20Feedback">Send Feedback</a>
+      <a class="feedback-link" id="feedbackLink" href="mailto:playrhythmvoid@gmail.com?subject=Rhythm%20Void%20Public%20Beta%20Feedback">Send Public Beta Feedback</a>
     </div>
   </div>
 
@@ -1089,10 +1106,16 @@
   (function injectManifest() {
     try {
       const icon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' fill='%23050510' rx='38'/%3E%3Ccircle cx='90' cy='90' r='58' fill='none' stroke='%2300f5ff' stroke-width='7'/%3E%3Ccircle cx='90' cy='90' r='32' fill='none' stroke='%23ff2bd6' stroke-width='5'/%3E%3Ccircle cx='90' cy='90' r='12' fill='%237dff68'/%3E%3C/svg%3E";
+      // The manifest is delivered as a Blob, so relative members like '.'
+      // resolve against the blob: URL rather than the page — ambiguous, and
+      // it matters now the game lives in /play/ rather than at a site root.
+      // Derive the real directory instead, so "Add to Home screen" installs
+      // pointing at /play/ and scopes the app to it.
+      const here = location.origin + location.pathname.replace(/[^/]*$/, '');
       const manifest = {
         name: 'Rhythm Void', short_name: 'Rhythm Void',
         description: 'A rhythm arcade game where every tap keeps you alive.',
-        start_url: '.', display: 'standalone', orientation: 'portrait',
+        start_url: here, scope: here, display: 'standalone', orientation: 'portrait',
         background_color: '#050510', theme_color: '#050510',
         icons: [{ src: icon, sizes: '180x180', type: 'image/svg+xml', purpose: 'any' }]
       };
@@ -4742,10 +4765,16 @@
     el.innerHTML = tags.map(t => '<span class="bb">' + t + '</span>').join('');
     el.classList.remove('hidden');
   }
-  // TODO: Update GAME_URL once the Rhythm Void game repo or custom domain is
-  // live. Kept on the old Neon-Orbit-Playtest URL for now so shared links and
-  // the landing page's Play Free buttons keep working.
-  const SHARE_URL = 'https://dhayes96.github.io/Neon-Orbit-Playtest/';
+  // The branded play URL. This is what goes into every shared result, so it
+  // must be the absolute public address — a relative path would be meaningless
+  // once it is pasted into a chat or a tweet.
+  //
+  // NOTE: this must match the host your site actually settles on. If your
+  // GitHub Pages CNAME is www.playrhythmvoid.com, change this to the www form
+  // so shared links skip a redirect hop. localStorage is per-origin, so the
+  // apex and www hosts hold SEPARATE saves — one host must redirect to the
+  // other, which GitHub Pages does automatically once CNAME is set.
+  const SHARE_URL = 'https://playrhythmvoid.com/play/';
   const SECRET_LABEL = { abyss: 'the Abyss', planet: 'Contact', architect: 'Ascension' };
 
   // Share text is built from a RunRecord so normal and secret runs read the
