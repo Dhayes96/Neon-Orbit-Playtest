@@ -5,11 +5,17 @@
      For portal submissions, copy this file as index.html at the root of
      the platform ZIP.
 
-     It is fully self-contained: no external assets, no build step, no
-     network calls. Every icon is a data URI and the PWA manifest is
-     generated as a Blob at runtime, so the ZIP needs nothing but this
-     single file. The manifest derives its start_url from location, so
-     the game works from a site root or from a subdirectory.
+     It is otherwise fully self-contained: no external assets, no build
+     step. Every icon is a data URI and the PWA manifest is generated as a
+     Blob at runtime, so the ZIP needs nothing but this single file. The
+     manifest derives its start_url from location, so the game works from
+     a site root or from a subdirectory.
+
+     ONE EXCEPTION for portal builds: the Google tag below is the only
+     external request this file makes. Many portals forbid third-party
+     analytics, and offline players will not reach it. Delete the Google
+     tag block from <head> for portal ZIPs — nothing else depends on it
+     and gameplay is unaffected.
 
      One thing to check per portal: SHARE_URL below points at
      https://playrhythmvoid.com/play/ and is what gets pasted into shared
@@ -18,6 +24,16 @@
      =================================================================== -->
 <html lang="en">
 <head>
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-RLSPQWTDPK"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-RLSPQWTDPK');
+</script>
+
   <meta charset="UTF-8" />
   <!-- viewport-fit=cover for iPhone notch safe areas; user-scalable=no + maximum-scale to block pinch zoom -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
