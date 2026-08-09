@@ -507,6 +507,39 @@
     }
     .feedback-link:hover, .feedback-link:focus-visible { opacity: 0.7; text-decoration: underline; }
 
+    /* ---- Beat Mapper (dev tool) ---- */
+    .mapper-panel {
+      width: min(94vw, 460px); margin: auto; padding: 18px;
+      background: rgba(8,8,20,0.96); border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 18px; box-shadow: 0 0 40px rgba(0,245,255,0.18);
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .mapper-head { display: flex; align-items: center; justify-content: space-between; }
+    .mapper-title { font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; font-size: 12px; color: var(--c1); }
+    .mapper-x { background: none; border: 0; color: var(--white); opacity: 0.6; font-size: 18px; cursor: pointer; }
+    .mapper-clock { font-size: 34px; font-weight: 900; line-height: 1; text-align: center; color: var(--white); }
+    .mapper-clock small { font-size: 13px; opacity: 0.5; margin-left: 3px; }
+    .mapper-meta, .mapper-hitline {
+      text-align: center; font-size: 11px; letter-spacing: 0.14em;
+      text-transform: uppercase; opacity: 0.55;
+    }
+    .mapper-hitline { color: var(--c3); opacity: 0.9; }
+    .mapper-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+    .mapper-btn {
+      flex: 1 1 auto; min-width: 78px; padding: 10px 12px; border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06);
+      color: var(--white); font-weight: 800; font-size: 11px; letter-spacing: 0.1em;
+      text-transform: uppercase; cursor: pointer; font-family: inherit;
+    }
+    .mapper-btn.primary { background: linear-gradient(90deg, var(--c1), var(--c2)); color: #050510; border: 0; }
+    .mapper-btn.rec { background: linear-gradient(90deg, #ff3864, var(--c2)); color: #fff; border: 0; }
+    .mapper-json {
+      width: 100%; height: 110px; resize: vertical; border-radius: 12px; padding: 10px;
+      background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.12);
+      color: var(--white); font-family: ui-monospace, Menlo, monospace; font-size: 11px;
+    }
+    .mapper-help { font-size: 11px; line-height: 1.45; opacity: 0.45; }
+
     /* Helper text under a settings slider */
     .slider-help {
       margin-top: 6px; font-size: 11px; line-height: 1.4;
@@ -1006,10 +1039,22 @@
           <div class="slider-head"><span>Music Volume</span><span id="musicVolLabel">68%</span></div>
           <input type="range" min="0" max="100" step="1" value="68" id="musicVolSlider" class="neon-slider" aria-label="Music volume">
         </div>
+        <div class="setting-title" style="margin-top:14px">Tap Sound</div>
+        <div class="seg" id="tapVoiceSeg">
+          <button data-tv="kick">Kick</button>
+          <button data-tv="rim">Rim</button>
+          <button data-tv="hat">Hat</button>
+          <button data-tv="pluck">Pluck</button>
+          <button data-tv="off">Off</button>
+        </div>
+        <div class="slider-row">
+          <div class="slider-head"><span>Tap Volume</span><span id="tapVolLabel">100%</span></div>
+          <input type="range" min="0" max="150" step="5" value="100" id="tapVolSlider" class="neon-slider" aria-label="Tap sound volume">
+        </div>
         <div class="slider-row">
           <div class="slider-head"><span>Audio Offset</span><span id="audioOffsetLabel">0 ms</span></div>
           <input type="range" min="-200" max="200" step="10" value="0" id="audioOffsetSlider" class="neon-slider" aria-label="Audio offset in milliseconds">
-          <div class="slider-help">Adjust if hits feel early or late compared to the music.</div>
+          <div class="slider-help">Adjust if the taps feel early or late compared to the music.</div>
         </div>
         <label class="toggle-row"><span>Hit sounds</span><input type="checkbox" class="toggle" id="sfxToggle"></label>
         <label class="toggle-row"><span>Vibration</span><input type="checkbox" class="toggle" id="hapticToggle"></label>
@@ -1112,7 +1157,7 @@
 
   // ================= 0. META (version / debug / analytics / PWA) =================
 
-  const VERSION = 'v0.1.1';
+  const VERSION = 'v0.2.1';
 
   /* ===================================================================
      v0.1.1 ANONYMOUS TELEMETRY
@@ -1695,7 +1740,7 @@
     doomCleared: false,
     planetCleared: false,
     architectCleared: false,
-    settings: { music: true, musicVolume: 68, sfx: true, haptics: true, tapMode: 'target', musicVibe: 'cyberBounce', autoMatchVibe: true, environmentDetail: 'full', audioOffsetMs: 0 }
+    settings: { music: true, musicVolume: 68, sfx: true, haptics: true, tapMode: 'target', musicVibe: 'cyberBounce', autoMatchVibe: true, environmentDetail: 'full', audioOffsetMs: 0, tapVoice: 'rim', tapVolume: 100 }
   });
 
   const ABILITY_IDS = ['none', 'hexSaw', 'triLaser', 'prismGuard', 'eclipseRealm'];
@@ -1799,6 +1844,11 @@
       let _ao = Math.round(Number(s.settings.audioOffsetMs) / 10) * 10;
       if (!isFinite(_ao)) _ao = 0;
       s.settings.audioOffsetMs = Math.max(-200, Math.min(200, _ao));
+      // v0.2.1 tap voice + volume
+      if (['kick','rim','hat','pluck','off'].indexOf(s.settings.tapVoice) === -1) s.settings.tapVoice = 'rim';
+      let _tv = Math.round(Number(s.settings.tapVolume));
+      if (!isFinite(_tv)) _tv = 100;
+      s.settings.tapVolume = Math.max(0, Math.min(150, _tv));
       // v2.4: Tap Modes simplified to target/anywhere. Old 'hybrid' → 'target'.
       if (s.settings.tapMode === 'hybrid' || !['target', 'anywhere'].includes(s.settings.tapMode)) s.settings.tapMode = 'target';
       // Rebrand migration: write the adopted save under the new key once.
@@ -2704,6 +2754,464 @@
     const sub = Math.min(0.999, since / Math.max(0.0001, stepDur));
     return (((music.step % 4) + sub) / 4) % 1;
   }
+
+  /* ===================================================================
+     v0.2.0 RHYTHM CONDUCTOR
+
+     WHY THIS EXISTS — the actual cause of "taps feel off beat":
+
+     The game already had two beat grids that shared a BPM but never shared
+     a PHASE.
+
+       • The music sequencer runs on the audio clock: music.nextStepTime
+         marks the next 16th-note step, music.step counts them.
+       • The note timeline runs on gameplay time: nextBeatTime marks the
+         next pattern start, and patterns place notes at beat offsets.
+
+     Same tempo, so it felt rhythmic — but the two grids were never phase
+     locked, and nextBeatTime is re-anchored to whatever moment happens to
+     be current on every run start, level-up, target move, boss entry and
+     realm entry. Each of those landed the note grid on an arbitrary phase
+     against the music. Rings arrived at the right rate, on the wrong part
+     of the bar. That is precisely "happening over the music instead of
+     with it".
+
+     The old realignMusic() tried to fix this by moving the MUSIC onto the
+     note grid, which caused audible stutter and was disabled. This does
+     the opposite and moves the NOTES onto the music grid — the music is
+     never re-anchored, so there is nothing to stutter.
+
+     The conductor reads the live sequencer rather than a table of fixed
+     BPMs: tempo here is dynamic (difficulty start BPM plus per-stage
+     bpmAdd, clamped to maxBpm), so any hardcoded profile would desync the
+     moment the stage changed. Beats-per-bar (4) and swing come from the
+     phase profile the sequencer is already using.
+     =================================================================== */
+  const Conductor = {
+    // The sequencer is the source of truth; if it is not running we report
+    // "not ready" and every caller falls back to its old behaviour.
+    ready() {
+      return !!(audioCtx && audioCtx.state === 'running' && music.on &&
+                music.active && music.nextStepTime > 0);
+    },
+    beatDur()  { return 60 / Math.max(1, bpm); },        // quarter note, seconds
+    stepDur()  { return (60 / Math.max(1, bpm)) / 4; },  // 16th note, seconds
+    beatsPerBar() { return 4; },
+    swing() {
+      const prof = (music.active && music.active.prof) || null;
+      return (prof && prof.swing) || 0;
+    },
+
+    /* Gameplay time and the audio clock advance together (clockNow() is
+       audio-locked as of v0.1.1) but have different origins. This is the
+       constant between them. */
+    clockOffset() { return audioCtx.currentTime - (clockNow() - startTime); },
+    audioToGame(a) { return a - this.clockOffset(); },
+    gameToAudio(g) { return g + this.clockOffset(); },
+
+    // Position within the song, in gameplay seconds.
+    getSongTime() { return clockNow() - startTime; },
+
+    // Absolute 16th-step index at a given gameplay time (fractional).
+    stepAt(gameTime) {
+      const t = (gameTime === undefined) ? this.getSongTime() : gameTime;
+      return music.step + (this.gameToAudio(t) - music.nextStepTime) / this.stepDur();
+    },
+    getCurrentBeat() { return Math.floor(this.stepAt() / 4); },
+
+    /* Snap a gameplay time onto the music's grid.
+         div 1 = quarter, 2 = eighth, 4 = sixteenth
+       Snaps to the NEAREST boundary rather than always forward, so quantizing
+       never silently pushes the whole timeline up to a beat later. */
+    quantize(gameTime, div) {
+      if (!this.ready()) return gameTime;
+      const per = 4 / Math.max(1, div || 1);          // steps per subdivision
+      const s = this.stepAt(gameTime);
+      const snapped = Math.round(s / per) * per;
+      const audio = music.nextStepTime + (snapped - music.step) * this.stepDur();
+      return this.audioToGame(audio);
+    },
+
+    // Next quarter-note boundary at or after `from`, in gameplay time.
+    getNextBeatTime(from) {
+      if (!this.ready()) return (from === undefined ? this.getSongTime() : from);
+      const t = (from === undefined) ? this.getSongTime() : from;
+      const s = this.stepAt(t);
+      const snapped = Math.ceil(s / 4) * 4;
+      return this.audioToGame(music.nextStepTime + (snapped - music.step) * this.stepDur());
+    },
+    // Next boundary of an arbitrary subdivision, in gameplay time.
+    getSubdivisionTime(from, div) {
+      if (!this.ready()) return (from === undefined ? this.getSongTime() : from);
+      const per = 4 / Math.max(1, div || 1);
+      const t = (from === undefined) ? this.getSongTime() : from;
+      const snapped = Math.ceil(this.stepAt(t) / per) * per;
+      return this.audioToGame(music.nextStepTime + (snapped - music.step) * this.stepDur());
+    },
+    getTimeUntilBeat() {
+      if (!this.ready()) return 0;
+      return Math.max(0, this.getNextBeatTime() - this.getSongTime());
+    },
+    // True when we are within `tol` seconds of a quarter-note boundary.
+    isOnBeatWindow(tol) {
+      if (!this.ready()) return false;
+      const frac = this.stepAt() / 4;
+      const d = Math.abs(frac - Math.round(frac)) * this.beatDur();
+      return d <= (tol === undefined ? 0.05 : tol);
+    },
+    // 0..1 across the current beat. Downbeat detection for visuals.
+    beatPhase() { return musicBeatPhase(); },
+    barPhase() {
+      if (!this.ready()) return musicBeatPhase();
+      const s = this.stepAt();
+      return ((s % 16) + 16) % 16 / 16;
+    }
+  };
+
+  /* ===================================================================
+     v0.2.0 MUSICAL TAP SFX
+
+     The old hit sounds were fixed sine/triangle pitches (880/1320, 660,
+     440 Hz). Against a track that transposes per phase they were often a
+     semitone or two out, which reads as "the taps are separate from the
+     music" even when the timing is right.
+
+     These are percussion voices instead: a short noise transient plus a
+     body pitched to the CURRENT chord root, so a hit sounds like a clap
+     or rim layered into the track rather than a beep over it.
+
+     They play the instant the player taps — nothing here is delayed or
+     quantized. Input latency is untouched; only the timbre changed.
+     =================================================================== */
+
+  // MIDI root of the chord currently sounding, so accents land in key.
+  function liveChordRoot() {
+    try {
+      const ph = music.active && music.active.phase;
+      if (!ph || !ph.prog) return 45;
+      const slot = music.bar % ph.prog.length;
+      return ph.prog[slot] + ((music.active.transpose) || 0);
+    } catch { return 45; }
+  }
+
+  let _noiseBuf = null;
+  function noiseBuffer() {
+    if (_noiseBuf || !audioCtx) return _noiseBuf;
+    const len = Math.floor(audioCtx.sampleRate * 0.2);
+    _noiseBuf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    const d = _noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    return _noiseBuf;
+  }
+
+  /* A percussive transient: filtered noise burst + optional pitched body.
+     Kept deliberately short and quiet — it should sit inside the mix, not
+     on top of it. */
+  function percTap(opts) {
+    if (!audioCtx || !save.settings.sfx) return;
+    const o = opts || {};
+    try {
+      const t = audioCtx.currentTime;
+      const buf = noiseBuffer();
+      if (buf && (o.noise || 0) > 0) {
+        const src = audioCtx.createBufferSource();
+        src.buffer = buf;
+        const bp = audioCtx.createBiquadFilter();
+        bp.type = o.noiseType || 'bandpass';
+        bp.frequency.setValueAtTime(o.noiseHz || 2200, t);
+        bp.Q.setValueAtTime(o.noiseQ || 1.1, t);
+        const g = audioCtx.createGain();
+        const dur = o.noiseDur || 0.045;
+        g.gain.setValueAtTime(o.noise, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+        src.connect(bp).connect(g).connect(sfxGain);
+        src.start(t);
+        src.stop(t + dur + 0.02);
+      }
+      if ((o.body || 0) > 0) {
+        const osc = audioCtx.createOscillator();
+        const g2 = audioCtx.createGain();
+        osc.type = o.type || 'triangle';
+        const f = o.hz || 220;
+        osc.frequency.setValueAtTime(f * (o.sweep || 1), t);
+        osc.frequency.exponentialRampToValueAtTime(Math.max(30, f), t + (o.sweepTime || 0.03));
+        const dur2 = o.bodyDur || 0.07;
+        g2.gain.setValueAtTime(0.0001, t);
+        g2.gain.exponentialRampToValueAtTime(o.body, t + 0.004);
+        g2.gain.exponentialRampToValueAtTime(0.0001, t + dur2);
+        osc.connect(g2).connect(sfxGain);
+        osc.start(t);
+        osc.stop(t + dur2 + 0.02);
+      }
+    } catch {}
+  }
+
+  /* ===================================================================
+     v0.2.1 TAP VOICES
+
+     Five short percussive voices, all pitched off the LIVE chord root so
+     nothing can land out of key, and all under ~90ms so nothing smears
+     into the next note. Gains are deliberately well below the music bus:
+     a tap should read as a percussion layer inside the track, never on
+     top of it.
+
+     Every voice fires the instant the player taps. Nothing here is
+     delayed, quantized or scheduled ahead — input latency is untouched.
+     The only beat-awareness is a small gain lift when a Perfect lands
+     within 45ms of the beat, which rewards accuracy without altering
+     when the sound is heard.
+     =================================================================== */
+  const TAP_VOICES = ['kick', 'rim', 'hat', 'pluck', 'off'];
+  const TAP_VOICE_LABEL = { kick: 'Neon Kick', rim: 'Rim Click', hat: 'Hat Tick', pluck: 'Synth Pluck', off: 'Off' };
+
+  const TapVoice = {
+    id() {
+      const v = save.settings && save.settings.tapVoice;
+      return TAP_VOICES.indexOf(v) !== -1 ? v : 'rim';
+    },
+    vol() {
+      const v = save.settings && save.settings.tapVolume;
+      return (v === undefined || v === null) ? 1 : Math.max(0, Math.min(1.5, v / 100));
+    },
+    /* grade: 'perfect' | 'good' | 'ok' | 'miss' */
+    play(grade) {
+      const id = this.id();
+      if (id === 'off' || !audioCtx || !save.settings.sfx) return;
+      const root = liveChordRoot();
+      const onBeat = (grade === 'perfect') && Conductor.isOnBeatWindow(0.045);
+      // Softer for lesser grades, so accuracy is audible.
+      const lvl = (grade === 'perfect' ? (onBeat ? 1.12 : 1)
+                 : grade === 'good' ? 0.72 : grade === 'ok' ? 0.5 : 0.8) * this.vol();
+
+      if (grade === 'miss') {
+        // Muted, unpitched, low — sits under the track instead of clashing.
+        percTap({ noise: 0.045 * lvl, noiseType: 'lowpass', noiseHz: 400, noiseQ: 0.7,
+                  noiseDur: 0.09, body: 0.04 * lvl, hz: 78, type: 'sine',
+                  bodyDur: 0.12, sweep: 1.7, sweepTime: 0.07 });
+        return;
+      }
+
+      if (id === 'kick') {
+        // Soft neon punch: pitched thump an octave below the root.
+        percTap({ noise: 0.018 * lvl, noiseType: 'lowpass', noiseHz: 900, noiseDur: 0.02,
+                  body: 0.085 * lvl, hz: midiHz(root - 12), type: 'sine',
+                  bodyDur: 0.085, sweep: 2.2, sweepTime: 0.035 });
+      } else if (id === 'rim') {
+        // Tight rimshot/clap: short bandpassed transient with a little body.
+        percTap({ noise: 0.055 * lvl, noiseHz: 2600, noiseQ: 1.5, noiseDur: 0.032,
+                  body: 0.03 * lvl, hz: midiHz(root + 24), type: 'triangle', bodyDur: 0.045 });
+      } else if (id === 'hat') {
+        // Closed hat tick: bright, very short, no pitch content.
+        percTap({ noise: 0.05 * lvl, noiseType: 'highpass', noiseHz: 7200, noiseQ: 0.8,
+                  noiseDur: 0.022, body: 0 });
+      } else if (id === 'pluck') {
+        // Clean synth pluck on the fifth: melodic but still percussive.
+        percTap({ noise: 0.012 * lvl, noiseHz: 3400, noiseDur: 0.015,
+                  body: 0.055 * lvl, hz: midiHz(root + 19), type: 'triangle', bodyDur: 0.075 });
+      }
+
+      // Perfect adds a quiet in-key ping two octaves up — the reward accent.
+      if (grade === 'perfect' && id !== 'hat') {
+        tone(midiHz(root + 31), 0.06, 'sine', 0.024 * lvl, 0.012);
+      }
+    }
+  };
+
+  function sfxPerfect() { TapVoice.play('perfect'); }
+  function sfxGood()    { TapVoice.play('good'); }
+  function sfxOkHit()   { TapVoice.play('ok'); }
+  function sfxMiss()    { TapVoice.play('miss'); }
+
+  function _sfxPerfectLegacy() {
+    const root = liveChordRoot();
+    const onBeat = Conductor.isOnBeatWindow(0.045);
+    percTap({ noise: onBeat ? 0.075 : 0.06, noiseHz: 3200, noiseQ: 0.9, noiseDur: 0.04,
+              body: 0.05, hz: midiHz(root + 24), type: 'triangle', bodyDur: 0.06,
+              sweep: 1.0 });
+    if (audioCtx && save.settings.sfx) {
+      // melodic ping: fifth above the root, two octaves up
+      tone(midiHz(root + 31), 0.07, 'sine', onBeat ? 0.030 : 0.022, 0.012);
+    }
+  }
+  function _sfxGoodLegacy() {
+    const root = liveChordRoot();
+    percTap({ noise: 0.035, noiseHz: 2400, noiseQ: 1.0, noiseDur: 0.035,
+              body: 0.035, hz: midiHz(root + 19), type: 'triangle', bodyDur: 0.055 });
+  }
+  function _sfxOkLegacy() {
+    percTap({ noise: 0.028, noiseHz: 1500, noiseQ: 1.4, noiseDur: 0.03,
+              body: 0.022, hz: midiHz(liveChordRoot() + 12), type: 'sine', bodyDur: 0.05 });
+  }
+  function _sfxMissLegacy() {
+    percTap({ noise: 0.05, noiseType: 'lowpass', noiseHz: 420, noiseQ: 0.7, noiseDur: 0.09,
+              body: 0.045, hz: 82, type: 'sine', bodyDur: 0.12, sweep: 1.6, sweepTime: 0.06 });
+  }
+
+  /* ===================================================================
+     v0.2.1 MUSICAL ACCENT MAP  — "rings on the hot parts"
+
+     v0.2.0 locked rings to the beat GRID, which fixed phase drift but left
+     every ring on a generic metronome pulse. A quarter note is not always
+     a moment you want to hit: on a halftime phase beat 3 is empty, and the
+     satisfying moments are the kick and the clap, not the count.
+
+     This game generates its own music, so it already knows exactly where
+     its drums land — every phase carries literal 16-step kick[] and clap[]
+     arrays. No onset detection or hand-charting is needed: we read the
+     drum pattern straight out of the phase that is currently playing and
+     place rings on those steps.
+
+     Weights (higher = a better moment to ask for a tap):
+       kick + clap together .... 5   the biggest hits in the bar
+       clap / snare ............ 4   the backbeat, the most natural tap
+       kick .................... 3   the pulse you feel in your chest
+       downbeat ................ +2  bonus, step 0 of the bar
+       bass onset .............. 2   melodic accent when no drum is present
+       open hat ................ 2   a deliberate accent in these patterns
+       bare 16th ............... 0   never chosen unless density demands it
+
+     Because this is derived live from music.active.phase, it follows every
+     phase change, vibe change, boss track and secret realm automatically,
+     and it costs one small array built once per phase.
+     =================================================================== */
+  let _accentCache = { key: null, w: null };
+
+  function accentWeights() {
+    const res = music.active;
+    const ph = res && res.phase;
+    if (!ph) return null;
+    const key = (music.phaseIndex || 0) + ':' + (ph.name || '') + ':' + (bossActive ? 'b' : 'n');
+    if (_accentCache.key === key && _accentCache.w) return _accentCache.w;
+
+    const w = new Array(16).fill(0);
+    for (let s = 0; s < 16; s++) {
+      const k = (ph.kick && ph.kick[s]) ? 1 : 0;
+      const c = (ph.clap && ph.clap[s]) ? 1 : 0;
+      if (k && c) w[s] = 5;
+      else if (c) w[s] = 4;
+      else if (k) w[s] = 3;
+      if (ph.bass && ph.bass.indexOf(s) !== -1) w[s] = Math.max(w[s], 2);
+      if (ph.openHat && ph.openHat.indexOf(s) !== -1) w[s] = Math.max(w[s], 2);
+      if (s === 0) w[s] += 2;                       // downbeat is always strong
+      if (bossActive && s % 2 === 0) w[s] = Math.max(w[s], 2); // boss sub pulse
+    }
+    _accentCache = { key, w };
+    return w;
+  }
+
+  /* The set of 16th-steps worth hitting, strongest first, thresholded by
+     how dense the current stage wants to be. Early stages take only the
+     biggest hits; later stages accept weaker accents, which is what makes
+     harder stages feel like busier MUSIC rather than just faster. */
+  function accentSteps(minWeight) {
+    const w = accentWeights();
+    if (!w) return null;
+    const out = [];
+    for (let s = 0; s < 16; s++) if (w[s] >= minWeight) out.push(s);
+    return out.length ? out : null;
+  }
+
+  // Stage -> how weak an accent we are willing to place a ring on.
+  function accentThreshold(st) {
+    if (st <= 2) return 4;    // clap/downbeat only: unmistakable, easy to feel
+    if (st <= 5) return 3;    // + kicks
+    if (st <= 10) return 2;   // + bass and open-hat accents
+    return 2;
+  }
+
+  /* Snap a desired gameplay time to the nearest ACCENTED 16th step of the
+     live track, searching a window of half a beat either way. Returns null
+     if nothing suitable is near, so the caller can keep its own timing. */
+  function snapToAccent(gameTime, minWeight) {
+    if (!Conductor.ready()) return null;
+    const steps = accentSteps(minWeight);
+    if (!steps) return null;
+    const stepDur = Conductor.stepDur();
+    const s = Conductor.stepAt(gameTime);          // fractional absolute step
+    let best = null, bestD = Infinity;
+    // search the two bars around the target
+    const base = Math.floor(s / 16) * 16;
+    for (let bar = -1; bar <= 1; bar++) {
+      for (let i = 0; i < steps.length; i++) {
+        const abs = base + bar * 16 + steps[i];
+        const d = Math.abs(abs - s);
+        if (d < bestD) { bestD = d; best = abs; }
+      }
+    }
+    if (best === null || bestD > 2.01) return null;   // > half a beat away
+    return Conductor.audioToGame(
+      music.nextStepTime + (best - music.step) * stepDur);
+  }
+
+  /* ===================================================================
+     v0.2.1 BEAT MAP (manual chart override)
+
+     The accent map above is automatic and covers every phase. This is the
+     manual escape hatch: record a chart by tapping along, export it, paste
+     it back, and it overrides accent snapping for the phase it belongs to.
+
+     Times are stored SONG-RELATIVE (seconds from when the phase's loop
+     started), and are looped modulo the map length — so a chart recorded
+     over one pass of a 8-bar loop keeps working for a whole run.
+
+     tapTimes are HIT moments, not spawn moments. Spawn lead is applied by
+     the note system exactly as it is for generated notes.
+     =================================================================== */
+  const BeatMap = {
+    data: null,         // { track, bpm, offsetMs, loopSec, tapTimes[] }
+    enabled: false,
+
+    active() { return !!(this.enabled && this.data && this.data.tapTimes && this.data.tapTimes.length); },
+
+    load(json) {
+      try {
+        const d = (typeof json === 'string') ? JSON.parse(json) : json;
+        if (!d || !Array.isArray(d.tapTimes) || !d.tapTimes.length) return 'No tapTimes in that JSON.';
+        const times = d.tapTimes.map(Number).filter(x => isFinite(x) && x >= 0).sort((a, b) => a - b);
+        if (!times.length) return 'tapTimes contained no usable numbers.';
+        this.data = {
+          track: d.track || 'unknown',
+          bpm: Number(d.bpm) || bpm,
+          offsetMs: Number(d.offsetMs) || 0,
+          loopSec: Number(d.loopSec) || (times[times.length - 1] + (times[0] || 0.5)),
+          tapTimes: times
+        };
+        this.enabled = true;
+        return null;
+      } catch (e) { return 'That is not valid JSON.'; }
+    },
+    clear() { this.data = null; this.enabled = false; },
+
+    /* Nearest charted hit to a desired gameplay time, looped over the map.
+       Returns null when nothing is within half a second, so the caller
+       keeps its own timing rather than yanking a note a long way. */
+    nearestHit(gameTime) {
+      if (!this.active()) return null;
+      const d = this.data;
+      const loop = Math.max(0.25, d.loopSec);
+      const off = (d.offsetMs || 0) / 1000;
+      const rel = ((gameTime - off) % loop + loop) % loop;
+      const cycle = Math.floor((gameTime - off) / loop);
+      let best = null, bestD = Infinity;
+      for (let c = -1; c <= 1; c++) {
+        for (let i = 0; i < d.tapTimes.length; i++) {
+          const t = off + (cycle + c) * loop + d.tapTimes[i];
+          const dd = Math.abs(t - gameTime);
+          if (dd < bestD) { bestD = dd; best = t; }
+        }
+      }
+      return (bestD > 0.5) ? null : best;
+    },
+
+    exportJSON() {
+      const d = this.data || { track: 'unknown', bpm, offsetMs: 0, loopSec: 0, tapTimes: [] };
+      return JSON.stringify({
+        track: d.track, bpm: Math.round(d.bpm), offsetMs: d.offsetMs || 0,
+        loopSec: Number((d.loopSec || 0).toFixed(3)),
+        tapTimes: d.tapTimes.map(t => Number(t.toFixed(3)))
+      }, null, 2);
+    }
+  };
 
   function musicPhaseIndexForStage(st) {
     // Realms that opt in evolve their track faster (intro → main → tension →
@@ -3857,6 +4365,16 @@
     $('sfxToggle').checked = save.settings.sfx;
     $('hapticToggle').checked = save.settings.haptics;
     const vol = clampVol(save.settings.musicVolume);
+    // tap voice segmented control
+    document.querySelectorAll('#tapVoiceSeg button').forEach(b => {
+      b.classList.toggle('on', b.dataset.tv === TapVoice.id());
+    });
+    const tvs = $('tapVolSlider');
+    if (tvs) {
+      tvs.value = (save.settings.tapVolume === undefined ? 100 : save.settings.tapVolume);
+      const tvl = $('tapVolLabel');
+      if (tvl) tvl.textContent = tvs.value + '%';
+    }
     const ao = $('audioOffsetSlider');
     if (ao) {
       ao.value = save.settings.audioOffsetMs || 0;
@@ -3968,7 +4486,153 @@
     } catch {}
   }
 
+  /* ===================================================================
+     BEAT MAPPER CONTROLLER (dev tool)
+     Opens with Shift+B or ?mapper=1. Starts the menu music from a clean
+     loop point, records song-relative tap times, exports/imports JSON.
+     =================================================================== */
+  const Mapper = {
+    open: false, recording: false, t0: 0, taps: [], raf: 0,
+
+    show() {
+      const el = $('mapperOverlay'); if (!el) return;
+      el.style.display = 'flex';
+      this.open = true;
+      this.tick();
+      $('mapperMeta').textContent = 'bpm ' + Math.round(bpm) + ' · ready';
+    },
+    hide() {
+      const el = $('mapperOverlay'); if (!el) return;
+      el.style.display = 'none';
+      this.open = false; this.recording = false;
+      cancelAnimationFrame(this.raf);
+      $('mapperRec').textContent = 'Start';
+      $('mapperRec').classList.remove('rec');
+    },
+    songTime() {
+      // Song-relative seconds since recording began.
+      return this.recording ? Math.max(0, clockNow() - this.t0) : 0;
+    },
+    start() {
+      try { ensureAudio(); } catch {}
+      // Play the menu track so there is something to tap against.
+      try { if (!music.on) { save.settings.music = true; } startMenuMusic(); } catch {}
+      this.taps = [];
+      this.recording = true;
+      this.t0 = clockNow();
+      $('mapperRec').textContent = 'Stop';
+      $('mapperRec').classList.add('rec');
+      $('mapperMeta').textContent = 'recording · bpm ' + Math.round(bpm);
+      this.refresh();
+    },
+    stop() {
+      this.recording = false;
+      $('mapperRec').textContent = 'Start';
+      $('mapperRec').classList.remove('rec');
+      $('mapperMeta').textContent = 'stopped · ' + this.taps.length + ' taps';
+    },
+    tap() {
+      if (!this.recording) return;
+      this.taps.push(this.songTime());
+      // audible confirmation, using the player's chosen tap voice
+      try { TapVoice.play('perfect'); } catch {}
+      this.refresh();
+    },
+    clear() {
+      this.taps = []; this.recording = false;
+      $('mapperRec').textContent = 'Start';
+      $('mapperRec').classList.remove('rec');
+      $('mapperJson').value = '';
+      $('mapperMeta').textContent = 'cleared';
+      this.refresh();
+    },
+    refresh() {
+      const n = this.taps.length;
+      let extra = '';
+      if (n > 1) {
+        const span = this.taps[n - 1] - this.taps[0];
+        const avg = span / (n - 1);
+        if (avg > 0.05) extra = ' · ≈' + Math.round(60 / avg) + ' bpm';
+      }
+      $('mapperHits').textContent = n + ' tap' + (n === 1 ? '' : 's') + ' recorded' + extra;
+    },
+    exportMap() {
+      if (!this.taps.length) { $('mapperJson').value = '// nothing recorded yet'; return; }
+      const last = this.taps[this.taps.length - 1];
+      const json = JSON.stringify({
+        track: (music.active && music.active.phase && music.active.phase.name) || 'menu',
+        bpm: Math.round(bpm),
+        offsetMs: 0,
+        loopSec: Number((last + (this.taps[0] || 0.5)).toFixed(3)),
+        tapTimes: this.taps.map(t => Number(t.toFixed(3)))
+      }, null, 2);
+      $('mapperJson').value = json;
+      try { navigator.clipboard && navigator.clipboard.writeText(json); } catch {}
+      $('mapperMeta').textContent = 'exported · copied to clipboard';
+    },
+    importMap() {
+      const err = BeatMap.load($('mapperJson').value);
+      $('mapperMeta').textContent = err ? ('import failed: ' + err)
+        : ('imported ' + BeatMap.data.tapTimes.length + ' hits');
+      if (!err) { this.taps = BeatMap.data.tapTimes.slice(); this.refresh(); }
+    },
+    apply() {
+      if (!BeatMap.data && this.taps.length) {
+        this.exportMap(); BeatMap.load($('mapperJson').value);
+      }
+      if (BeatMap.active()) {
+        $('mapperMeta').textContent = 'map ACTIVE — rings will use it';
+      } else {
+        $('mapperMeta').textContent = 'no map loaded';
+      }
+    },
+    tick() {
+      if (!this.open) return;
+      const el = $('mapperTime');
+      if (el) el.textContent = this.songTime().toFixed(3);
+      this.raf = requestAnimationFrame(() => this.tick());
+    }
+  };
+
+  // Beat Mapper controls. Wired defensively so a missing node can never
+  // throw during boot on a build where the overlay was stripped.
+  (function wireMapper() {
+    const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
+    on('mapperClose', 'click', () => Mapper.hide());
+    on('mapperRec', 'click', () => Mapper.recording ? Mapper.stop() : Mapper.start());
+    on('mapperClear', 'click', () => Mapper.clear());
+    on('mapperExport', 'click', () => Mapper.exportMap());
+    on('mapperImport', 'click', () => Mapper.importMap());
+    on('mapperApply', 'click', () => Mapper.apply());
+    const panel = document.querySelector('.mapper-panel');
+    if (panel) panel.addEventListener('pointerdown', (e) => {
+      // tapping the panel body records; buttons and the textarea do not
+      if (e.target.closest('button, textarea')) return;
+      Mapper.tap();
+    });
+    try {
+      if (/[?&]mapper=1/.test(location.search)) setTimeout(() => Mapper.show(), 400);
+    } catch {}
+  })();
+
   function fmtOffset(ms) { return (ms > 0 ? '+' : '') + ms + ' ms'; }
+
+  document.querySelectorAll('#tapVoiceSeg button').forEach(b => {
+    b.addEventListener('click', () => {
+      save.settings.tapVoice = b.dataset.tv;
+      document.querySelectorAll('#tapVoiceSeg button').forEach(x => x.classList.toggle('on', x === b));
+      persist();
+      try { ensureAudio(); TapVoice.play('perfect'); } catch {}   // preview
+    });
+  });
+  $('tapVolSlider').addEventListener('input', (e) => {
+    save.settings.tapVolume = Math.max(0, Math.min(150, Number(e.target.value) || 0));
+    const l = $('tapVolLabel'); if (l) l.textContent = save.settings.tapVolume + '%';
+    persist();
+  });
+  $('tapVolSlider').addEventListener('change', () => {
+    try { ensureAudio(); TapVoice.play('perfect'); } catch {}     // preview on release
+  });
 
   $('audioOffsetSlider').addEventListener('input', (e) => {
     const ms = Math.max(-200, Math.min(200, Math.round(Number(e.target.value) / 10) * 10));
@@ -5637,6 +6301,7 @@
 
     const willMilestone = comboTier < COMBO_MILESTONES.length && combo >= COMBO_MILESTONES[comboTier].combo;
     if (!willMilestone) showToast('PERFECT', color, sub || '');
+    sfxPerfect();
     checkComboMilestones();
     registerHit();
 
@@ -5983,13 +6648,59 @@
 
     while (nextBeatTime < t + leadTime + 0.6) {
       const beat = 60 / bpm;
+
+      /* v0.2.0 — lock the pattern start to the music's beat grid.
+
+         nextBeatTime gets re-anchored to an arbitrary moment on run start,
+         level-up, target move, boss entry and realm entry. Snapping here
+         means every pattern begins on a real quarter note of the actual
+         track, whatever happened before it. Because pattern spans advance
+         by whole beats at the same BPM the sequencer uses, this is a no-op
+         on following iterations — it self-corrects once and then costs
+         nothing. Snapping to the NEAREST beat (not forward) keeps the
+         correction under half a beat, so no audible gap appears.
+
+         Notes then land on the grid the music is actually playing, which
+         is what makes a Perfect feel like it lands WITH the kick. */
+      if (Conductor.ready()) {
+        const snapped = Conductor.quantize(nextBeatTime, 1);
+        // Never snap backwards past the point where a note could still be
+        // spawned with enough lead time to be readable.
+        if (snapped >= t + 0.05) nextBeatTime = snapped;
+      }
+
       const pat = chooseRhythmPattern(stage, runWasDaily ? 'arcade' : save.difficulty, combo, music.phaseIndex);
       // minimum readable spacing = a bit more than the OK window
       const minGap = Math.max(MIN_NOTE_GAP, windows().ok * 1.7);
 
       let prevTime = -Infinity;
       for (let i = 0; i < pat.offsets.length; i++) {
-        const noteT = nextBeatTime + pat.offsets[i] * beat;
+        let noteT = nextBeatTime + pat.offsets[i] * beat;
+
+        /* v0.2.1 — pull the note onto a real musical accent.
+
+           The pattern decides HOW MANY notes and roughly where; the track
+           decides exactly WHEN. Snapping to the nearest kick/clap/bass hit
+           within half a beat means a ring lands on something you can hear,
+           instead of on an empty count. A manual beat map, when loaded,
+           overrides this entirely. */
+        if (BeatMap.active()) {
+          const bm = BeatMap.nearestHit(noteT);
+          if (bm !== null) noteT = bm;
+        } else {
+          const acc = snapToAccent(noteT, accentThreshold(stage));
+          if (acc !== null) noteT = acc;
+        }
+
+        /* If the active track swings its 16ths, the notes must swing with it
+           or the offbeats sit fractionally ahead of the hats. */
+        const sw = Conductor.swing();
+        if (sw && Conductor.ready()) {
+          const sixteenth = (pat.offsets[i] * 4) % 4;
+          if (Math.abs(sixteenth - 2) < 0.01) noteT += (beat / 4) * sw;
+        }
+        // Snapping can move a note earlier than the previous one; ordering
+        // matters for the gap test, so compare against the running max.
         if (noteT - prevTime < minGap) continue; // drop notes that would crowd
         spawnNote(noteT, beatIndex);
         prevTime = noteT;
@@ -6163,7 +6874,7 @@
       score = Math.max(0, score - 20);
       scoreEl.textContent = score;
       showToast('MISS', '#ff3864');
-      tone(110, 0.1, 'sawtooth', 0.035);
+      sfxMiss();
       buzz(40);
       shake = Math.max(shake, 7);
       if (energy <= 0) endGame();
@@ -6208,8 +6919,7 @@
       perfects += 1;
       if (runStats) runStats.perfects++;
       energy = Math.min(100, energy + 2.2);
-      tone(880, 0.045, 'triangle', 0.045);
-      tone(1320, 0.04, 'sine', 0.025, 0.03);
+      sfxPerfect();
       buzz(fever ? [15, 20, 15] : 12);
       createBurst(bestNote.tx, bestNote.ty, color, fever ? 55 : 40, fever ? 1.5 : 1.25);
       shockwaves.push({ x: bestNote.tx, y: bestNote.ty, r: targetR, alpha: 0.9, speed: 760, width: 6, color });
@@ -6218,7 +6928,7 @@
       points = 150; text = 'GOOD';
       if (runStats) runStats.goods++;
       energy = Math.min(100, energy + 1.2);
-      tone(660, 0.045, 'triangle', 0.04);
+      sfxGood();
       buzz(8);
       createBurst(bestNote.tx, bestNote.ty, color, 20, 0.9);
       if (bossActive) { damageBoss(BOSS_DMG.good); bossPerfectStreak = 0; }
@@ -6226,7 +6936,7 @@
       points = 75; text = 'OK';
       if (runStats) runStats.oks++;
       energy = Math.max(0, energy - 1.5);
-      tone(440, 0.05, 'triangle', 0.03);
+      sfxOkHit();
       createBurst(bestNote.tx, bestNote.ty, color, 12, 0.7);
       if (bossActive) { damageBoss(BOSS_DMG.ok); bossPerfectStreak = 0; }      // OK: 0.5
     }
@@ -6313,6 +7023,18 @@
   // ignored so one physical hold never machine-guns taps.
   let spaceDown = false;
   window.addEventListener('keydown', (e) => {
+    /* Beat Mapper (dev): Shift+B toggles it, Space records a tap while it is
+       open. Checked before gameplay so it can never eat a real tap. */
+    if (e.code === 'KeyB' && e.shiftKey && !e.repeat) {
+      e.preventDefault();
+      Mapper.open ? Mapper.hide() : Mapper.show();
+      return;
+    }
+    if (Mapper.open) {
+      if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) Mapper.tap(); return; }
+      if (e.code === 'Escape') { e.preventDefault(); Mapper.hide(); return; }
+      return;                       // mapper swallows keys while open
+    }
     if (e.code === 'Space' || e.code === 'Enter') {
       if (state === 'playing' || state === 'bossBattle') {
         e.preventDefault();
@@ -6637,7 +7359,13 @@
     }
 
     ctx.save();
-    ctx.globalAlpha = (fever ? 0.3 : pv.grid) + bgPulse * 0.1;
+    /* v0.2.0: the arena grid lifts very slightly on each downbeat, driven by
+       the live sequencer rather than elapsed time. Capped at +0.05 alpha so it
+       reads as the room breathing with the track, never as a flash — and it
+       is skipped entirely on the 'off' detail profile. */
+    const downbeat = (Conductor.ready() && save.settings.environmentDetail !== 'off')
+      ? Math.pow(1 - Conductor.barPhase(), 8) * 0.05 : 0;
+    ctx.globalAlpha = (fever ? 0.3 : pv.grid) + bgPulse * 0.1 + downbeat;
     ctx.strokeStyle = theme.grid;
     ctx.lineWidth = 1;
     const grid = 46;
@@ -7654,9 +8382,22 @@
     }
   }
 
+  /* v0.2.0 — a small breath on the target, driven by the live sequencer
+     phase rather than elapsed time, so it rises with the actual kick.
+     Deliberately tiny (a few percent of radius): it should be felt more
+     than seen, and it must not add clutter. Combo Fever breathes a little
+     harder because that is when the track is at its most driving. */
+  function beatBreath() {
+    if (!Conductor.ready()) return 0;
+    const ph = Conductor.beatPhase();                 // 0..1 across the beat
+    const decay = Math.pow(1 - ph, 2.6);              // sharp attack, quick fall
+    const onDownbeat = Conductor.barPhase() < 0.0625; // first 16th of the bar
+    return decay * (fever ? 0.055 : 0.035) * (onDownbeat ? 1.35 : 1);
+  }
+
   function drawTarget(t) {
     const spin = t * (0.55 + bpm / 220) * (fever ? 1.8 : 1);
-    const p = pulse;
+    const p = pulse + beatBreath();
     const x = tgt.x, y = tgt.y;
 
     // Faint hit-zone ring so players see where taps count (when accuracy is on).
@@ -8142,5 +8883,37 @@
   showScreen('menu');
   loop();
   </script>
+<!-- ===================================================================
+     BEAT MAPPER — developer tool, v0.2.1
+     Hidden by default. Open with Shift+B from the menu, or add ?mapper=1
+     to the URL. Never reachable by a normal player and never shown on a
+     touch-only device unless deliberately opened.
+     =================================================================== -->
+<div class="overlay" id="mapperOverlay" style="display:none">
+  <div class="mapper-panel">
+    <div class="mapper-head">
+      <span class="mapper-title">Beat Mapper</span>
+      <button class="mapper-x" id="mapperClose" aria-label="Close">✕</button>
+    </div>
+    <div class="mapper-clock"><span id="mapperTime">0.000</span><small>s</small></div>
+    <div class="mapper-meta" id="mapperMeta">idle</div>
+    <div class="mapper-hitline" id="mapperHits">0 taps recorded</div>
+    <div class="mapper-btns">
+      <button class="mapper-btn primary" id="mapperRec">Start</button>
+      <button class="mapper-btn" id="mapperClear">Clear</button>
+      <button class="mapper-btn" id="mapperExport">Export</button>
+      <button class="mapper-btn" id="mapperImport">Import</button>
+      <button class="mapper-btn" id="mapperApply">Use map</button>
+    </div>
+    <textarea class="mapper-json" id="mapperJson" spellcheck="false"
+      placeholder="Exported JSON appears here. Paste a map and press Import."></textarea>
+    <div class="mapper-help">
+      Press <b>Start</b>, then tap anywhere in this panel or press <b>Space</b> on
+      each beat you want a ring to land on. Times are recorded relative to the
+      music loop. <b>Export</b> copies the chart out, <b>Import</b> reads one back
+      in, <b>Use map</b> makes the game schedule rings from it.
+    </div>
+  </div>
+</div>
 </body>
 </html>
