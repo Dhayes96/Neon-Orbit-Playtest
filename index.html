@@ -1064,6 +1064,7 @@
         </div>
         <div class="setting-title" style="margin-top:14px">Tap Sound</div>
         <div class="seg" id="tapVoiceSeg">
+          <button data-tv="classic">Classic</button>
           <button data-tv="kick">Kick</button>
           <button data-tv="rim">Rim</button>
           <button data-tv="hat">Hat</button>
@@ -1155,6 +1156,45 @@
     </div>
   </div>
 
+<!-- ===================================================================
+     BEAT MAPPER — developer tool, v0.2.1
+     Hidden by default. Open with Shift+B from the menu, or add ?mapper=1
+     to the URL. Never reachable by a normal player and never shown on a
+     touch-only device unless deliberately opened.
+     =================================================================== -->
+<div class="overlay" id="mapperOverlay" style="display:none">
+  <div class="mapper-panel">
+    <div class="mapper-head">
+      <span class="mapper-title">Beat Mapper</span>
+      <button class="mapper-x" id="mapperClose" aria-label="Close">✕</button>
+    </div>
+    <div class="mapper-clock"><span id="mapperTime">0.000</span><small>s</small></div>
+    <div class="mapper-meta" id="mapperMeta">idle</div>
+    <div class="mapper-hitline" id="mapperHits">0 taps recorded</div>
+    <div class="mapper-pad" id="mapperPad">
+      Tap here on every beat
+      <small>Press Start first · Space also works on desktop</small>
+    </div>
+    <div class="mapper-btns">
+      <button class="mapper-btn primary" id="mapperRec">Start</button>
+      <button class="mapper-btn" id="mapperClear">Clear</button>
+      <button class="mapper-btn" id="mapperExport">Export</button>
+      <button class="mapper-btn" id="mapperImport">Import</button>
+      <button class="mapper-btn" id="mapperApply">Use map</button>
+    </div>
+    <textarea class="mapper-json" id="mapperJson" spellcheck="false"
+      autocomplete="off" autocapitalize="off" autocorrect="off"
+      placeholder="Exported JSON appears here. Paste a map and press Import."></textarea>
+    <div class="mapper-help" id="mapperCopyHint" style="display:none;color:var(--c3);opacity:0.85"></div>
+    <div class="mapper-help">
+      Press <b>Start</b>, then tap anywhere in this panel or press <b>Space</b> on
+      each beat you want a ring to land on. Times are recorded relative to the
+      music loop. <b>Export</b> copies the chart out, <b>Import</b> reads one back
+      in, <b>Use map</b> makes the game schedule rings from it.
+    </div>
+  </div>
+</div>
+
   <script>
   'use strict';
   /* ============================================================
@@ -1180,7 +1220,7 @@
 
   // ================= 0. META (version / debug / analytics / PWA) =================
 
-  const VERSION = 'v0.2.1';
+  const VERSION = 'v0.2.2';
 
   /* ===================================================================
      v0.1.1 ANONYMOUS TELEMETRY
@@ -1763,7 +1803,7 @@
     doomCleared: false,
     planetCleared: false,
     architectCleared: false,
-    settings: { music: true, musicVolume: 68, sfx: true, haptics: true, tapMode: 'target', musicVibe: 'cyberBounce', autoMatchVibe: true, environmentDetail: 'full', audioOffsetMs: 0, tapVoice: 'rim', tapVolume: 100 }
+    settings: { music: true, musicVolume: 68, sfx: true, haptics: true, tapMode: 'target', musicVibe: 'cyberBounce', autoMatchVibe: true, environmentDetail: 'full', audioOffsetMs: 0, tapVoice: 'classic', tapVolume: 100 }
   });
 
   const ABILITY_IDS = ['none', 'hexSaw', 'triLaser', 'prismGuard', 'eclipseRealm'];
@@ -1868,7 +1908,10 @@
       if (!isFinite(_ao)) _ao = 0;
       s.settings.audioOffsetMs = Math.max(-200, Math.min(200, _ao));
       // v0.2.1 tap voice + volume
-      if (['kick','rim','hat','pluck','off'].indexOf(s.settings.tapVoice) === -1) s.settings.tapVoice = 'rim';
+      // v0.2.2: 'classic' is the default again. Saves written by v0.2.1 that
+      // still say 'rim' are left alone — that was a deliberate choice by the
+      // player; only unset/invalid values fall back to classic.
+      if (['classic','kick','rim','hat','pluck','off'].indexOf(s.settings.tapVoice) === -1) s.settings.tapVoice = 'classic';
       let _tv = Math.round(Number(s.settings.tapVolume));
       if (!isFinite(_tv)) _tv = 100;
       s.settings.tapVolume = Math.max(0, Math.min(150, _tv));
@@ -2984,13 +3027,16 @@
      within 45ms of the beat, which rewards accuracy without altering
      when the sound is heard.
      =================================================================== */
-  const TAP_VOICES = ['kick', 'rim', 'hat', 'pluck', 'off'];
-  const TAP_VOICE_LABEL = { kick: 'Neon Kick', rim: 'Rim Click', hat: 'Hat Tick', pluck: 'Synth Pluck', off: 'Off' };
+  const TAP_VOICES = ['classic', 'kick', 'rim', 'hat', 'pluck', 'off'];
+  const TAP_VOICE_LABEL = {
+    classic: 'Classic', kick: 'Neon Kick', rim: 'Rim Click',
+    hat: 'Hat Tick', pluck: 'Synth Pluck', off: 'Off'
+  };
 
   const TapVoice = {
     id() {
       const v = save.settings && save.settings.tapVoice;
-      return TAP_VOICES.indexOf(v) !== -1 ? v : 'rim';
+      return TAP_VOICES.indexOf(v) !== -1 ? v : 'classic';
     },
     vol() {
       const v = save.settings && save.settings.tapVolume;
@@ -3005,6 +3051,19 @@
       // Softer for lesser grades, so accuracy is audible.
       const lvl = (grade === 'perfect' ? (onBeat ? 1.12 : 1)
                  : grade === 'good' ? 0.72 : grade === 'ok' ? 0.5 : 0.8) * this.vol();
+
+      /* CLASSIC — the original beta hit sounds, unchanged. Fixed pitches,
+         not derived from the chord, exactly as they were before the v0.2.0
+         and v0.2.1 tap-sound work. Tap Volume still scales them. */
+      if (id === 'classic') {
+        const v = this.vol();
+        if (grade === 'perfect')   { tone(880, 0.045, 'triangle', 0.045 * v);
+                                     tone(1320, 0.04, 'sine', 0.025 * v, 0.03); }
+        else if (grade === 'good') { tone(660, 0.045, 'triangle', 0.04 * v); }
+        else if (grade === 'ok')   { tone(440, 0.05, 'triangle', 0.03 * v); }
+        else                       { tone(110, 0.1, 'sawtooth', 0.035 * v); }
+        return;
+      }
 
       if (grade === 'miss') {
         // Muted, unpitched, low — sits under the track instead of clashing.
@@ -4660,7 +4719,16 @@
   // Beat Mapper controls. Wired defensively so a missing node can never
   // throw during boot on a build where the overlay was stripped.
   (function wireMapper() {
-    const on = (id, ev, fn) => { const el = $(id); if (el) el.addEventListener(ev, fn); };
+    /* A missing node here used to be swallowed silently, which is exactly how
+       the Start button ended up doing nothing: the overlay markup sat after
+       this script, so every $() returned null and every handler was skipped
+       without a word. The markup now lives with the other overlays, and this
+       warns loudly if that ever regresses. */
+    const on = (id, ev, fn) => {
+      const el = $(id);
+      if (!el) { console.warn('[mapper] missing #' + id + ' - button will not work'); return; }
+      el.addEventListener(ev, fn);
+    };
     on('mapperClose', 'click', () => Mapper.hide());
     on('mapperRec', 'click', () => Mapper.recording ? Mapper.stop() : Mapper.start());
     on('mapperClear', 'click', () => Mapper.clear());
@@ -8979,43 +9047,5 @@
   showScreen('menu');
   loop();
   </script>
-<!-- ===================================================================
-     BEAT MAPPER — developer tool, v0.2.1
-     Hidden by default. Open with Shift+B from the menu, or add ?mapper=1
-     to the URL. Never reachable by a normal player and never shown on a
-     touch-only device unless deliberately opened.
-     =================================================================== -->
-<div class="overlay" id="mapperOverlay" style="display:none">
-  <div class="mapper-panel">
-    <div class="mapper-head">
-      <span class="mapper-title">Beat Mapper</span>
-      <button class="mapper-x" id="mapperClose" aria-label="Close">✕</button>
-    </div>
-    <div class="mapper-clock"><span id="mapperTime">0.000</span><small>s</small></div>
-    <div class="mapper-meta" id="mapperMeta">idle</div>
-    <div class="mapper-hitline" id="mapperHits">0 taps recorded</div>
-    <div class="mapper-pad" id="mapperPad">
-      Tap here on every beat
-      <small>Press Start first · Space also works on desktop</small>
-    </div>
-    <div class="mapper-btns">
-      <button class="mapper-btn primary" id="mapperRec">Start</button>
-      <button class="mapper-btn" id="mapperClear">Clear</button>
-      <button class="mapper-btn" id="mapperExport">Export</button>
-      <button class="mapper-btn" id="mapperImport">Import</button>
-      <button class="mapper-btn" id="mapperApply">Use map</button>
-    </div>
-    <textarea class="mapper-json" id="mapperJson" spellcheck="false"
-      autocomplete="off" autocapitalize="off" autocorrect="off"
-      placeholder="Exported JSON appears here. Paste a map and press Import."></textarea>
-    <div class="mapper-help" id="mapperCopyHint" style="display:none;color:var(--c3);opacity:0.85"></div>
-    <div class="mapper-help">
-      Press <b>Start</b>, then tap anywhere in this panel or press <b>Space</b> on
-      each beat you want a ring to land on. Times are recorded relative to the
-      music loop. <b>Export</b> copies the chart out, <b>Import</b> reads one back
-      in, <b>Use map</b> makes the game schedule rings from it.
-    </div>
-  </div>
-</div>
 </body>
 </html>
