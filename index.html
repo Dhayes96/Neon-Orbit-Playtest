@@ -526,11 +526,34 @@
     .mapper-hitline { color: var(--c3); opacity: 0.9; }
     .mapper-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
     .mapper-btn {
-      flex: 1 1 auto; min-width: 78px; padding: 10px 12px; border-radius: 999px;
+      /* >=48px tall and >=96px wide: comfortably above the 44px touch-target
+         minimum on iOS, and wide enough to hit without zooming. */
+      flex: 1 1 30%; min-width: 96px; min-height: 48px; padding: 12px 14px;
+      border-radius: 999px;
       border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.06);
-      color: var(--white); font-weight: 800; font-size: 11px; letter-spacing: 0.1em;
+      color: var(--white); font-weight: 800; font-size: 12px; letter-spacing: 0.08em;
       text-transform: uppercase; cursor: pointer; font-family: inherit;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
     }
+    .mapper-btn:active { transform: scale(0.97); }
+
+    /* Big, obvious tap pad. Tapping the panel background works too, but a
+       dedicated target is discoverable and avoids mis-taps on the help text. */
+    .mapper-pad {
+      min-height: 120px; border-radius: 16px; display: grid; place-items: center;
+      text-align: center; padding: 16px; cursor: pointer; user-select: none;
+      border: 2px dashed rgba(0,245,255,0.35); background: rgba(0,245,255,0.05);
+      color: var(--white); font-weight: 900; font-size: 13px;
+      letter-spacing: 0.16em; text-transform: uppercase;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+      transition: background 0.08s ease, border-color 0.08s ease, transform 0.08s ease;
+    }
+    .mapper-pad small {
+      display: block; margin-top: 8px; font-size: 11px; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: none; opacity: 0.5;
+    }
+    .mapper-pad.armed { border-color: var(--c3); background: rgba(125,255,104,0.07); }
+    .mapper-pad.flash { background: rgba(0,245,255,0.22); transform: scale(0.99); }
     .mapper-btn.primary { background: linear-gradient(90deg, var(--c1), var(--c2)); color: #050510; border: 0; }
     .mapper-btn.rec { background: linear-gradient(90deg, #ff3864, var(--c2)); color: #fff; border: 0; }
     .mapper-json {
@@ -4496,10 +4519,13 @@
 
     show() {
       const el = $('mapperOverlay'); if (!el) return;
-      el.style.display = 'flex';
+      // .overlay centres with `display:grid`; forcing flex here broke the
+      // panel's centring on narrow screens.
+      el.style.display = 'grid';
       this.open = true;
       this.tick();
-      $('mapperMeta').textContent = 'bpm ' + Math.round(bpm) + ' · ready';
+      const m = $('mapperMeta');
+      if (m) m.textContent = 'bpm ' + Math.round(bpm) + ' · ready';
     },
     hide() {
       const el = $('mapperOverlay'); if (!el) return;
@@ -4523,6 +4549,8 @@
       $('mapperRec').textContent = 'Stop';
       $('mapperRec').classList.add('rec');
       $('mapperMeta').textContent = 'recording · bpm ' + Math.round(bpm);
+      const pad = $('mapperPad');
+      if (pad) { pad.classList.add('armed'); pad.firstChild.textContent = 'Tap on every beat'; }
       this.refresh();
     },
     stop() {
@@ -4530,12 +4558,21 @@
       $('mapperRec').textContent = 'Start';
       $('mapperRec').classList.remove('rec');
       $('mapperMeta').textContent = 'stopped · ' + this.taps.length + ' taps';
+      const pad = $('mapperPad');
+      if (pad) { pad.classList.remove('armed'); pad.firstChild.textContent = 'Tap here on every beat'; }
     },
     tap() {
       if (!this.recording) return;
       this.taps.push(this.songTime());
-      // audible confirmation, using the player's chosen tap voice
+      // audible + visual + haptic confirmation: on a phone the sound alone is
+      // easy to miss while concentrating on the beat.
       try { TapVoice.play('perfect'); } catch {}
+      try { if (navigator.vibrate) navigator.vibrate(8); } catch {}
+      const pad = $('mapperPad');
+      if (pad) {
+        pad.classList.add('flash');
+        setTimeout(() => pad.classList.remove('flash'), 70);
+      }
       this.refresh();
     },
     clear() {
@@ -4566,9 +4603,35 @@
         loopSec: Number((last + (this.taps[0] || 0.5)).toFixed(3)),
         tapTimes: this.taps.map(t => Number(t.toFixed(3)))
       }, null, 2);
-      $('mapperJson').value = json;
-      try { navigator.clipboard && navigator.clipboard.writeText(json); } catch {}
-      $('mapperMeta').textContent = 'exported · copied to clipboard';
+      const box = $('mapperJson');
+      box.value = json;
+
+      /* clipboard.writeText returns a PROMISE — a try/catch around it cannot
+         catch an async rejection, which is exactly what happens on iOS when
+         the page is not a secure context or the gesture has expired. Handle
+         both paths explicitly and always leave the JSON selectable so it can
+         be copied by hand. */
+      const manual = () => {
+        const hint = $('mapperCopyHint');
+        if (hint) {
+          hint.style.display = 'block';
+          hint.textContent = 'Copy failed — the JSON is selected below, use Copy from the text box.';
+        }
+        try { box.focus(); box.setSelectionRange(0, box.value.length); } catch {}
+        $('mapperMeta').textContent = 'exported · copy manually';
+      };
+      const done = () => {
+        const hint = $('mapperCopyHint');
+        if (hint) { hint.style.display = 'block'; hint.textContent = 'Copied to clipboard.'; }
+        $('mapperMeta').textContent = 'exported · copied';
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+          navigator.clipboard.writeText(json).then(done).catch(manual);
+        } else {
+          manual();
+        }
+      } catch { manual(); }
     },
     importMap() {
       const err = BeatMap.load($('mapperJson').value);
@@ -4604,14 +4667,47 @@
     on('mapperExport', 'click', () => Mapper.exportMap());
     on('mapperImport', 'click', () => Mapper.importMap());
     on('mapperApply', 'click', () => Mapper.apply());
+    /* Tap recording. pointerdown fires before the synthetic click on touch,
+       so it is the lowest-latency signal available — important when the
+       whole point is recording WHEN a beat lands. Buttons and the textarea
+       are excluded so they behave normally. */
+    let lastPadTap = 0;
+    const record = (e) => {
+      if (e.target.closest('button, textarea, input')) return;
+      // Touch devices can emit pointerdown + touchstart for one tap; collapse
+      // anything inside 40ms so a single finger never records two hits.
+      const now = performance.now();
+      if (now - lastPadTap < 40) return;
+      lastPadTap = now;
+      if (e.cancelable) e.preventDefault();
+      Mapper.tap();
+    };
+    const pad = $('mapperPad');
+    if (pad) pad.addEventListener('pointerdown', record);
     const panel = document.querySelector('.mapper-panel');
     if (panel) panel.addEventListener('pointerdown', (e) => {
-      // tapping the panel body records; buttons and the textarea do not
-      if (e.target.closest('button, textarea')) return;
-      Mapper.tap();
+      if (e.target.closest('#mapperPad')) return;   // pad handles its own
+      record(e);
     });
+
+    /* ?mapper=1 auto-open. Shift+B is useless on a phone, so the URL flag is
+       the mobile entry point and has to be reliable: the game boots
+       asynchronously, so we wait for the overlay to actually exist rather
+       than guessing a delay. Gives up after ~6s. */
     try {
-      if (/[?&]mapper=1/.test(location.search)) setTimeout(() => Mapper.show(), 400);
+      if (/[?&]mapper=1/.test(location.search)) {
+        let tries = 0;
+        const openWhenReady = () => {
+          if (Mapper.open) return;
+          if ($('mapperOverlay') && typeof Mapper.show === 'function') { Mapper.show(); return; }
+          if (++tries < 60) setTimeout(openWhenReady, 100);
+        };
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          setTimeout(openWhenReady, 150);
+        } else {
+          window.addEventListener('DOMContentLoaded', () => setTimeout(openWhenReady, 150));
+        }
+      }
     } catch {}
   })();
 
@@ -8898,6 +8994,10 @@
     <div class="mapper-clock"><span id="mapperTime">0.000</span><small>s</small></div>
     <div class="mapper-meta" id="mapperMeta">idle</div>
     <div class="mapper-hitline" id="mapperHits">0 taps recorded</div>
+    <div class="mapper-pad" id="mapperPad">
+      Tap here on every beat
+      <small>Press Start first · Space also works on desktop</small>
+    </div>
     <div class="mapper-btns">
       <button class="mapper-btn primary" id="mapperRec">Start</button>
       <button class="mapper-btn" id="mapperClear">Clear</button>
@@ -8906,7 +9006,9 @@
       <button class="mapper-btn" id="mapperApply">Use map</button>
     </div>
     <textarea class="mapper-json" id="mapperJson" spellcheck="false"
+      autocomplete="off" autocapitalize="off" autocorrect="off"
       placeholder="Exported JSON appears here. Paste a map and press Import."></textarea>
+    <div class="mapper-help" id="mapperCopyHint" style="display:none;color:var(--c3);opacity:0.85"></div>
     <div class="mapper-help">
       Press <b>Start</b>, then tap anywhere in this panel or press <b>Space</b> on
       each beat you want a ring to land on. Times are recorded relative to the
