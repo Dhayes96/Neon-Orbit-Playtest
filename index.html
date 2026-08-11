@@ -556,6 +556,30 @@
     .mapper-pad.flash { background: rgba(0,245,255,0.22); transform: scale(0.99); }
     .mapper-btn.primary { background: linear-gradient(90deg, var(--c1), var(--c2)); color: #050510; border: 0; }
     .mapper-btn.rec { background: linear-gradient(90deg, #ff3864, var(--c2)); color: #fff; border: 0; }
+    .mapper-lbl {
+      font-size: 11px; font-weight: 800; letter-spacing: 0.16em;
+      text-transform: uppercase; opacity: 0.55;
+    }
+    .mapper-select {
+      width: 100%; min-height: 48px; padding: 12px 14px; border-radius: 14px;
+      background: rgba(0,0,0,0.45); color: var(--white); font-family: inherit;
+      font-size: 15px; font-weight: 700; border: 1px solid rgba(255,255,255,0.2);
+      touch-action: manipulation;
+    }
+    .mapper-boss {
+      display: flex; align-items: center; gap: 10px; min-height: 44px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+    }
+    .mapper-boss input { width: 22px; height: 22px; }
+    /* 16-step bar: current position plus which steps carry drums */
+    .mapper-steps { display: flex; gap: 3px; justify-content: center; }
+    .mapper-steps i {
+      flex: 1 1 0; height: 16px; border-radius: 3px; display: block;
+      background: rgba(255,255,255,0.09);
+    }
+    .mapper-steps i.kick { background: rgba(0,245,255,0.55); }
+    .mapper-steps i.clap { background: rgba(255,43,214,0.65); }
+    .mapper-steps i.cur  { outline: 2px solid var(--c3); outline-offset: 1px; }
     .mapper-json {
       width: 100%; height: 110px; resize: vertical; border-radius: 12px; padding: 10px;
       background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.12);
@@ -1168,8 +1192,15 @@
       <span class="mapper-title">Beat Mapper</span>
       <button class="mapper-x" id="mapperClose" aria-label="Close">✕</button>
     </div>
+    <label class="mapper-lbl" for="mapperPhase">Music Phase</label>
+    <select class="mapper-select" id="mapperPhase"></select>
+    <label class="mapper-boss"><input type="checkbox" id="mapperBoss"> Boss mix</label>
+
     <div class="mapper-clock"><span id="mapperTime">0.000</span><small>s</small></div>
     <div class="mapper-meta" id="mapperMeta">idle</div>
+    <div class="mapper-meta" id="mapperInfo">—</div>
+    <div class="mapper-meta" id="mapperBeat">stopped</div>
+    <div class="mapper-steps" id="mapperSteps"></div>
     <div class="mapper-hitline" id="mapperHits">0 taps recorded</div>
     <div class="mapper-pad" id="mapperPad">
       Tap here on every beat
@@ -1177,6 +1208,7 @@
     </div>
     <div class="mapper-btns">
       <button class="mapper-btn primary" id="mapperRec">Start</button>
+      <button class="mapper-btn" id="mapperStop">Stop</button>
       <button class="mapper-btn" id="mapperClear">Clear</button>
       <button class="mapper-btn" id="mapperExport">Export</button>
       <button class="mapper-btn" id="mapperImport">Import</button>
@@ -1220,7 +1252,7 @@
 
   // ================= 0. META (version / debug / analytics / PWA) =================
 
-  const VERSION = 'v0.2.2';
+  const VERSION = 'v0.2.3';
 
   /* ===================================================================
      v0.1.1 ANONYMOUS TELEMETRY
@@ -3239,11 +3271,30 @@
      tapTimes are HIT moments, not spawn moments. Spawn lead is applied by
      the note system exactly as it is for generated notes.
      =================================================================== */
+  /* Identity of the music currently sounding, used to match a manual chart
+     to the right track. Mirrors Mapper.phaseKey() so a map exported from the
+     mapper lines up with what gameplay reports. */
+  function currentPhaseKey() {
+    if (_mapperPhase) return _mapperPhase.vibeKey + ':' + _mapperPhase.idx + (bossActive ? ':boss' : '');
+    const vk = (save.settings && save.settings.musicVibe) || 'cyberBounce';
+    return vk + ':' + (music.phaseIndex || 0) + (bossActive ? ':boss' : '');
+  }
+
   const BeatMap = {
     data: null,         // { track, bpm, offsetMs, loopSec, tapTimes[] }
     enabled: false,
 
-    active() { return !!(this.enabled && this.data && this.data.tapTimes && this.data.tapTimes.length); },
+    active() { return this.activeFor(currentPhaseKey()); },
+
+    /* A chart made for Neon Drive must not govern boss or realm music, so a
+       loaded map only applies to the phase it was recorded against. Maps
+       exported before phase keys existed carry no `phase` and are treated as
+       universal, so older charts keep working. */
+    activeFor(key) {
+      if (!(this.enabled && this.data && this.data.tapTimes && this.data.tapTimes.length)) return false;
+      if (!this.data.phase) return true;          // legacy map: applies anywhere
+      return this.data.phase === key;
+    },
 
     load(json) {
       try {
@@ -3252,7 +3303,8 @@
         const times = d.tapTimes.map(Number).filter(x => isFinite(x) && x >= 0).sort((a, b) => a - b);
         if (!times.length) return 'tapTimes contained no usable numbers.';
         this.data = {
-          track: d.track || 'unknown',
+          phase: d.phase || null,
+          track: d.track || d.phase || 'unknown',
           bpm: Number(d.bpm) || bpm,
           offsetMs: Number(d.offsetMs) || 0,
           loopSec: Number(d.loopSec) || (times[times.length - 1] + (times[0] || 0.5)),
@@ -3288,6 +3340,7 @@
     exportJSON() {
       const d = this.data || { track: 'unknown', bpm, offsetMs: 0, loopSec: 0, tapTimes: [] };
       return JSON.stringify({
+        phase: d.phase || null,
         track: d.track, bpm: Math.round(d.bpm), offsetMs: d.offsetMs || 0,
         loopSec: Number((d.loopSec || 0).toFixed(3)),
         tapTimes: d.tapTimes.map(t => Number(t.toFixed(3)))
@@ -3295,7 +3348,35 @@
     }
   };
 
+  /* v0.2.3 — Beat Mapper phase override.
+     When the mapper is driving playback this forces the sequencer onto a
+     chosen phase instead of deriving one from `stage`. It is only ever set
+     while the mapper overlay is open and is cleared when it closes, so
+     normal gameplay never sees it. Everything downstream (drums, bass,
+     hats, chords, the accent map) reads from music.active as usual, which
+     is what makes the mapper hear exactly what players hear. */
+  let _mapperPhase = null;   // { vibeKey, idx } or null
+
+  function mapperPhaseList() {
+    const out = [];
+    Object.keys(MUSIC_VIBES).forEach(vk => {
+      const v = MUSIC_VIBES[vk];
+      const phases = (v && v.phases) || MUSIC_PHASES;
+      phases.forEach((p, i) => {
+        out.push({ vibeKey: vk, idx: i, vibeName: (v && v.name) || vk, phaseName: p.name || ('Phase ' + (i + 1)) });
+      });
+    });
+    return out;
+  }
+  function mapperResolvePhase() {
+    if (!_mapperPhase) return null;
+    const v = MUSIC_VIBES[_mapperPhase.vibeKey];
+    const phases = (v && v.phases) || MUSIC_PHASES;
+    return phases[_mapperPhase.idx] || phases[0] || MUSIC_PHASES[0];
+  }
+
   function musicPhaseIndexForStage(st) {
+    if (_mapperPhase) return _mapperPhase.idx;
     // Realms that opt in evolve their track faster (intro → main → tension →
     // boss warning → finale). The Abyss deliberately does NOT: it keeps the
     // original 5-stage pacing it was written and tuned with.
@@ -3313,6 +3394,10 @@
   // rotate progression). The vibe decides the song; the phase index decides
   // which of its 5 variations plays; the cycle evolves it past stage 25.
   function musicPhaseForStage(st) {
+    if (_mapperPhase) {
+      const p = mapperResolvePhase();
+      if (p) return { phase: p, transpose: 0, rotate: 0, cycle: 0 };
+    }
     const vibe = currentVibe();
     const idx = musicPhaseIndexForStage(st);
     const base = (vibe.phases && vibe.phases[idx]) || MUSIC_PHASES[idx];
@@ -4574,7 +4659,55 @@
      loop point, records song-relative tap times, exports/imports JSON.
      =================================================================== */
   const Mapper = {
-    open: false, recording: false, t0: 0, taps: [], raf: 0,
+    open: false, recording: false, paused: false, pausedAt: 0,
+    t0: 0, taps: [], raf: 0,
+    vibeKey: 'cyberBounce', phaseIdx: 0, boss: false,
+    savedStage: 1, savedVibe: null,
+
+    phaseLabel() {
+      const p = mapperResolvePhase();
+      return (p && p.name ? p.name : 'phase ' + this.phaseIdx) + (this.boss ? ' + boss' : '');
+    },
+    loopSec() {
+      // 16 steps = one bar; phases here are written as 4-bar loops.
+      return (60 / Math.max(1, bpm)) * 4 * 4;
+    },
+    // Which system will schedule rings for the phase currently selected.
+    sourceLabel() {
+      if (BeatMap.activeFor(this.phaseKey())) return 'Manual Map';
+      if (accentSteps(accentThreshold(1))) return 'Auto Accent Map';
+      return 'BPM Fallback';
+    },
+    phaseKey() { return this.vibeKey + ':' + this.phaseIdx + (this.boss ? ':boss' : ''); },
+
+    // Build the <select> from the engine's own tables, so it can never drift
+    // out of step with the tracks the game actually ships.
+    buildPicker() {
+      const sel = $('mapperPhase');
+      if (!sel || sel.dataset.built) return;
+      const list = mapperPhaseList();
+      sel.innerHTML = '';
+      list.forEach(item => {
+        const o = document.createElement('option');
+        o.value = item.vibeKey + '|' + item.idx;
+        o.textContent = item.vibeName + ' · ' + item.phaseName;
+        sel.appendChild(o);
+      });
+      sel.dataset.built = '1';
+      sel.value = this.vibeKey + '|' + this.phaseIdx;
+    },
+    selectPhase(value) {
+      const parts = String(value).split('|');
+      this.vibeKey = parts[0];
+      this.phaseIdx = Number(parts[1]) || 0;
+      // Changing phase stops playback and resets the clock, as specified.
+      this.stop();
+      this.taps = [];
+      _mapperPhase = { vibeKey: this.vibeKey, idx: this.phaseIdx };
+      _accentCache = { key: null, w: null };
+      this.refresh();
+      $('mapperMeta').textContent = this.phaseLabel() + ' · ready';
+    },
 
     show() {
       const el = $('mapperOverlay'); if (!el) return;
@@ -4582,28 +4715,67 @@
       // panel's centring on narrow screens.
       el.style.display = 'grid';
       this.open = true;
+      this.savedStage = stage;
+      this.buildPicker();
+      _mapperPhase = { vibeKey: this.vibeKey, idx: this.phaseIdx };
+      _accentCache = { key: null, w: null };
       this.tick();
+      this.refresh();
       const m = $('mapperMeta');
-      if (m) m.textContent = 'bpm ' + Math.round(bpm) + ' · ready';
+      if (m) m.textContent = this.phaseLabel() + ' · ready';
     },
     hide() {
       const el = $('mapperOverlay'); if (!el) return;
       el.style.display = 'none';
-      this.open = false; this.recording = false;
+      this.open = false; this.recording = false; this.paused = false;
       cancelAnimationFrame(this.raf);
+      // Hand the music engine back to gameplay exactly as it was.
+      try {
+        stopMusic(0.1);
+        _mapperPhase = null;
+        bossMusicMod = null;
+        bossMusicMix = 0;
+        _accentCache = { key: null, w: null };
+      } catch {}
       $('mapperRec').textContent = 'Start';
       $('mapperRec').classList.remove('rec');
     },
     songTime() {
-      // Song-relative seconds since recording began.
-      return this.recording ? Math.max(0, clockNow() - this.t0) : 0;
+      if (!this.recording) return 0;
+      if (this.paused) return Math.max(0, this.pausedAt || 0);
+      return Math.max(0, clockNow() - this.t0);
     },
+    /* Starts the SELECTED procedural phase through the real music engine.
+       The old build called startMenuMusic(), which is the ambient menu pad
+       with no drums — that is why only background music was audible. This
+       uses startMusic(), the same path gameplay uses, so kick, clap, bass,
+       hats and chord stabs all play exactly as a player would hear them. */
     start() {
-      try { ensureAudio(); } catch {}
-      // Play the menu track so there is something to tap against.
-      try { if (!music.on) { save.settings.music = true; } startMenuMusic(); } catch {}
+      try {
+        ensureAudio();
+        // iOS suspends the context until a gesture; this IS a gesture.
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+      } catch {}
+      save.settings.music = true;
+      try {
+        stopMenuMusic();                 // silence the ambient pad first
+      } catch {}
+      try {
+        _mapperPhase = { vibeKey: this.vibeKey, idx: this.phaseIdx };
+        _accentCache = { key: null, w: null };   // phase changed: rebuild accents
+        applyBossMusic(false);
+        bossMusicMix = this.boss ? 1 : 0;
+        if (this.boss) {
+          // Approximate a boss takeover so the heavier mix can be charted.
+          bossMusicMod = { kick: 1.3, tense: 0.6, metal: 0.5, sub: 0.95,
+                           stab: true, eerie: false, heavy: true, scratch: false, guitar: false };
+        }
+        startTime = clockNow();          // song position 0
+        startMusic(0, true);             // immediate: begin right now
+      } catch (e) { try { console.warn('[mapper] start failed', e); } catch {} }
       this.taps = [];
       this.recording = true;
+      this.paused = false;
       this.t0 = clockNow();
       $('mapperRec').textContent = 'Stop';
       $('mapperRec').classList.add('rec');
@@ -4612,8 +4784,39 @@
       if (pad) { pad.classList.add('armed'); pad.firstChild.textContent = 'Tap on every beat'; }
       this.refresh();
     },
+    // Pause: music and the mapping timer both freeze; taps are kept.
+    pause() {
+      if (!this.recording || this.paused) return;
+      this.paused = true;
+      this.pausedAt = clockNow() - this.t0;
+      try { stopMusic(0.05); } catch {}
+      $('mapperRec').textContent = 'Resume';
+      $('mapperRec').classList.remove('rec');
+      $('mapperMeta').textContent = 'paused · ' + this.taps.length + ' taps';
+      const pad = $('mapperPad');
+      if (pad) pad.classList.remove('armed');
+    },
+    resume() {
+      try {
+        ensureAudio();
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        startTime = clockNow() - (this.pausedAt || 0);
+        startMusic(0, true);
+      } catch {}
+      this.paused = false;
+      this.t0 = clockNow() - (this.pausedAt || 0);
+      $('mapperRec').textContent = 'Pause';
+      $('mapperRec').classList.add('rec');
+      $('mapperMeta').textContent = 'recording · ' + this.phaseLabel();
+      const pad = $('mapperPad');
+      if (pad) pad.classList.add('armed');
+    },
+    // Stop / Reset: silence, and put the track position back to 0.
     stop() {
       this.recording = false;
+      this.paused = false;
+      this.pausedAt = 0;
+      try { stopMusic(0.08); } catch {}
       $('mapperRec').textContent = 'Start';
       $('mapperRec').classList.remove('rec');
       $('mapperMeta').textContent = 'stopped · ' + this.taps.length + ' taps';
@@ -4650,16 +4853,41 @@
         const avg = span / (n - 1);
         if (avg > 0.05) extra = ' · ≈' + Math.round(60 / avg) + ' bpm';
       }
-      $('mapperHits').textContent = n + ' tap' + (n === 1 ? '' : 's') + ' recorded' + extra;
+      const hits = $('mapperHits');
+      if (hits) hits.textContent = n + ' tap' + (n === 1 ? '' : 's') + ' recorded' + extra;
+      const info = $('mapperInfo');
+      if (info) {
+        info.textContent = Math.round(bpm) + ' bpm · loop ' + this.loopSec().toFixed(2) +
+                           's · ' + this.sourceLabel();
+      }
+    },
+
+    /* Live 16-step indicator: shows where the sequencer is in the bar and
+       marks which steps carry a kick or a clap, so it is obvious which
+       moments are worth charting. */
+    drawSteps() {
+      const el = $('mapperSteps');
+      if (!el) return;
+      const res = music.active, ph = res && res.phase;
+      if (!ph || !music.on) { el.textContent = ''; return; }
+      const cur = Conductor.ready() ? ((Math.floor(Conductor.stepAt()) % 16) + 16) % 16 : -1;
+      let html = '';
+      for (let s = 0; s < 16; s++) {
+        const k = ph.kick && ph.kick[s], c = ph.clap && ph.clap[s];
+        const cls = 'ms' + (s === cur ? ' cur' : '') + (c ? ' clap' : (k ? ' kick' : ''));
+        html += '<i class="' + cls + '"></i>';
+      }
+      el.innerHTML = html;
     },
     exportMap() {
       if (!this.taps.length) { $('mapperJson').value = '// nothing recorded yet'; return; }
       const last = this.taps[this.taps.length - 1];
       const json = JSON.stringify({
-        track: (music.active && music.active.phase && music.active.phase.name) || 'menu',
+        phase: this.phaseKey(),
+        track: this.phaseLabel(),
         bpm: Math.round(bpm),
         offsetMs: 0,
-        loopSec: Number((last + (this.taps[0] || 0.5)).toFixed(3)),
+        loopSec: Number(this.loopSec().toFixed(3)),
         tapTimes: this.taps.map(t => Number(t.toFixed(3)))
       }, null, 2);
       const box = $('mapperJson');
@@ -4712,6 +4940,14 @@
       if (!this.open) return;
       const el = $('mapperTime');
       if (el) el.textContent = this.songTime().toFixed(3);
+      const b = $('mapperBeat');
+      if (b) {
+        b.textContent = (Conductor.ready() && music.on)
+          ? ('beat ' + (Math.floor(Conductor.stepAt() / 4) % 4 + 1) + '/4 · step ' +
+             ((Math.floor(Conductor.stepAt()) % 16 + 16) % 16))
+          : 'stopped';
+      }
+      this.drawSteps();
       this.raf = requestAnimationFrame(() => this.tick());
     }
   };
@@ -4730,8 +4966,22 @@
       el.addEventListener(ev, fn);
     };
     on('mapperClose', 'click', () => Mapper.hide());
-    on('mapperRec', 'click', () => Mapper.recording ? Mapper.stop() : Mapper.start());
+    on('mapperRec', 'click', () => {
+      if (!Mapper.recording) Mapper.start();
+      else if (Mapper.paused) Mapper.resume();
+      else Mapper.pause();
+    });
+    on('mapperStop', 'click', () => Mapper.stop());
     on('mapperClear', 'click', () => Mapper.clear());
+    const sel = $('mapperPhase');
+    if (sel) sel.addEventListener('change', (e) => Mapper.selectPhase(e.target.value));
+    const bx = $('mapperBoss');
+    if (bx) bx.addEventListener('change', (e) => {
+      Mapper.boss = !!e.target.checked;
+      Mapper.stop();
+      Mapper.refresh();
+      $('mapperMeta').textContent = Mapper.phaseLabel() + ' · ready';
+    });
     on('mapperExport', 'click', () => Mapper.exportMap());
     on('mapperImport', 'click', () => Mapper.importMap());
     on('mapperApply', 'click', () => Mapper.apply());
