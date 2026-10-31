@@ -6201,6 +6201,12 @@
     beginLevelPause();
   }
 
+  // RV-01: the BPM for the current stage. Tempo changes are discrete and only
+  // happen while the field is empty (level banner, boss entry/exit).
+  function stageBpmTarget() {
+    return Math.min(diff.maxBpm, diff.startBpm + stageParams(stage).bpmAdd * diff.bpmRamp);
+  }
+
   // Pause gameplay ~1s to announce the new level, then resume cleanly.
   function beginLevelPause() {
     const nowT = clockNow() - startTime;
@@ -6212,9 +6218,10 @@
     // no lingering ring can be "missed" across the pause.
     notes = [];
     moveArmed = false;
+    bpm = stageBpmTarget();   // RV-01 (option B): tempo steps under the LEVEL banner
 
     // Fill + show the announcement.
-    const targetBpm = Math.round(Math.min(diff.maxBpm, diff.startBpm + stageParams(stage).bpmAdd * diff.bpmRamp));
+    const targetBpm = Math.round(stageBpmTarget());
     luLevelEl.textContent = 'LEVEL ' + stage;
     const mech = stageMechanicHint(stage);
     luMechEl.textContent = mech;
@@ -6238,6 +6245,7 @@
     state = 'playing';
     // Resume the timeline just ahead of "now" so the first new note gets a
     // full approach and lands cleanly on the beat grid; realign the music.
+    bpm = stageBpmTarget();   // RV-01: exact tempo before any note is planned
     nextBeatTime = nowT + leadTime + 0.2;
     realignMusic(nextBeatTime);
   }
@@ -6369,6 +6377,7 @@
     state = 'bossBattle';
     moveArmed = false;            // ensure note-spawning is never frozen
     hitsSinceMove = 0;
+    bpm = stageBpmTarget();       // RV-01: exact tempo before any note is planned
     nextBeatTime = nowT + leadTime + 0.2;
     bossFightStart = nowT;       // for the debug duration log
     // note: music clock runs free; do not realign (keeps it seamless)
@@ -6586,6 +6595,7 @@
     nextMoveAt = p.move > 0 ? p.move + 1 : Infinity;
     hitsSinceMove = 0; moveArmed = false;
     notes = [];
+    bpm = stageBpmTarget();   // RV-01: exact tempo before any note is planned
     nextBeatTime = nowT + leadTime + 0.2;
     // update stage fill
     const cur = stageHitsNeeded(stage, diff), nxt = stageHitsNeeded(stage + 1, diff);
@@ -7562,10 +7572,10 @@
       if (t >= bossDefeatUntil) endBossEncounter(t);
     } else if (state === 'playing' || state === 'bossBattle') {
       const inBoss = (state === 'bossBattle');
-      // BPM eases toward the current stage target
+      // RV-01: no per-frame easing. Tempo is set discretely while the field is
+      // empty; this is only a safety net and is normally already equal.
       const p = stageParams(stage);
-      const bpmTarget = Math.min(diff.maxBpm, diff.startBpm + p.bpmAdd * diff.bpmRamp);
-      bpm += (bpmTarget - bpm) * Math.min(1, dt * 0.5);
+      bpm = stageBpmTarget();
 
       updateAbility(dt, t);
       // ECLIPSE REALM: the field freezes. Rings hold position by sliding their
