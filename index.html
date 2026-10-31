@@ -2895,10 +2895,8 @@
     beatDur()  { return 60 / Math.max(1, bpm); },        // quarter note, seconds
     stepDur()  { return (60 / Math.max(1, bpm)) / 4; },  // 16th note, seconds
     beatsPerBar() { return 4; },
-    swing() {
-      const prof = (music.active && music.active.prof) || null;
-      return (prof && prof.swing) || 0;
-    },
+    // RV-02: same source as personalityProfile().swing, which the sequencer uses.
+    swing() { return currentVibeChar().swing || 0; },
 
     /* Gameplay time and the audio clock advance together (clockNow() is
        audio-locked as of v0.1.1) but have different origins. This is the
@@ -7119,9 +7117,9 @@
         /* If the active track swings its 16ths, the notes must swing with it
            or the offbeats sit fractionally ahead of the hats. */
         const sw = Conductor.swing();
-        if (sw && Conductor.ready()) {
-          const sixteenth = (pat.offsets[i] * 4) % 4;
-          if (Math.abs(sixteenth - 2) < 0.01) noteT += (beat / 4) * sw;
+        if (sw && Conductor.ready() && !BeatMap.active()) {     // charts already contain their swing
+          const landed = ((Math.round(Conductor.stepAt(noteT)) % 4) + 4) % 4;
+          if (landed === 2) noteT += Conductor.stepDur() * sw;
         }
         // Snapping can move a note earlier than the previous one; ordering
         // matters for the gap test, so compare against the running max.
