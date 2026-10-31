@@ -7094,7 +7094,8 @@
         const snapped = Conductor.quantize(nextBeatTime, 1);
         // Never snap backwards past the point where a note could still be
         // spawned with enough lead time to be readable.
-        if (snapped >= t + 0.05) nextBeatTime = snapped;
+        // RV-13: every ring, including the first, gets its full approach.
+        nextBeatTime = (snapped < t + leadTime) ? Conductor.getNextBeatTime(t + leadTime) : snapped;
       }
 
       const pat = chooseRhythmPattern(stage, runWasDaily ? 'arcade' : save.difficulty, combo, music.phaseIndex);
