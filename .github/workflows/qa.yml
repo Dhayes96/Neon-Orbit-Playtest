@@ -1,0 +1,81 @@
+# Rhythm Void regression harness (Phase 1, T0). Harness lives in qa/.
+name: Rhythm Void QA
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 9 * * *'        # nightly long timing/stress run (09:17 UTC)
+  workflow_dispatch:
+
+concurrency:
+  group: qa-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GAME_DIR: ${{ github.workspace }}   # index.html lives at the repo root
+
+jobs:
+  fast:
+    name: static + smoke (PR gate, ~2 min)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults: { run: { working-directory: qa } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: qa/package-lock.json }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium firefox webkit
+      - name: Static invariants
+        run: npm run test:static
+      - name: Virtual audio device (PulseAudio null sink, so Firefox's AudioContext can run)
+        if: ${{ !cancelled() }}
+        run: |
+          sudo apt-get install -y --no-install-recommends pulseaudio
+          pulseaudio -D --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=qa_null
+          pactl set-default-sink qa_null
+      - name: Smoke (Chromium desktop + Pixel 7 emulation + Firefox + WebKit)
+        if: ${{ !cancelled() }}   # run even while the Phase 2 static guards are still red
+        run: npx playwright test tests/smoke.spec.js tests/mobile.spec.js --project=desktop-chrome --project=mobile-pixel7 --project=firefox-smoke --project=webkit-smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: fast-results, path: qa/results, retention-days: 14 }
+
+  timing:
+    name: timing + stress (nightly / manual)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults: { run: { working-directory: qa } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: qa/package-lock.json }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Timing suite (grid alignment, BPM ramp, ear-bot, clock, visibility, frames)
+        run: npm run test:timing
+      - name: CPU-throttle stress
+        run: npm run test:stress
+        continue-on-error: true      # report-only until the scheduler fix lands
+      - name: Summarise metrics into the job summary
+        if: always()
+        run: |
+          node -e "const fs=require('fs');for(const f of fs.readdirSync('results').filter(f=>f.endsWith('.json')&&f!=='report.json')){const r=JSON.parse(fs.readFileSync('results/'+f));console.log('### '+f+'\n\`\`\`json\n'+JSON.stringify(r,(k,v)=>/(Sample|sample|allGaps|bpmTrace)/.test(k)?undefined:v,1).slice(0,3000)+'\n\`\`\`')}" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: timing-results, path: qa/results, retention-days: 30 }
+
+  lighthouse:
+    name: Lighthouse CI (load perf budget)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm i -g @lhci/cli@0.14.x
+      - run: lhci autorun --collect.staticDistDir=. --assert.preset=lighthouse:no-pwa --assert.assertions.categories:performance=warn --upload.target=temporary-public-storage

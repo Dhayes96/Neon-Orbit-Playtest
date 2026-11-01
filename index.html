@@ -2847,6 +2847,8 @@
     if (!music.on || !audioCtx || !music.active) {
       return ((performance.now() / 1000) * 1.6) % 1; // no audio yet: frame clock is fine here
     }
+    // RV-04: follow the audible step, not the scheduler's lookahead position.
+    if (Conductor.ready()) { const s = Conductor.stepAt(); return (((s / 4) % 1) + 1) % 1; }
     const stepDur = (60 / Math.max(1, bpm)) / 4;
     const since = Math.max(0, audioCtx.currentTime - (music.nextStepTime - stepDur));
     const sub = Math.min(0.999, since / Math.max(0.0001, stepDur));
@@ -2895,10 +2897,8 @@
     beatDur()  { return 60 / Math.max(1, bpm); },        // quarter note, seconds
     stepDur()  { return (60 / Math.max(1, bpm)) / 4; },  // 16th note, seconds
     beatsPerBar() { return 4; },
-    swing() {
-      const prof = (music.active && music.active.prof) || null;
-      return (prof && prof.swing) || 0;
-    },
+    // RV-02: same source as personalityProfile().swing, which the sequencer uses.
+    swing() { return currentVibeChar().swing || 0; },
 
     /* Gameplay time and the audio clock advance together (clockNow() is
        audio-locked as of v0.1.1) but have different origins. This is the
@@ -3249,7 +3249,8 @@
       for (let i = 0; i < steps.length; i++) {
         const abs = base + bar * 16 + steps[i];
         const d = Math.abs(abs - s);
-        if (d < bestD) { bestD = d; best = abs; }
+        // deterministic tie-break: on an exact tie the earlier step wins
+        if (d < bestD - 1e-6 || (Math.abs(d - bestD) <= 1e-6 && abs < best)) { bestD = d; best = abs; }
       }
     }
     if (best === null || bestD > 2.01) return null;   // > half a beat away
@@ -5330,6 +5331,9 @@
   let comboTier = 0;           // highest COMBO_MILESTONES index reached this run
 
   let notes = [], particles = [], sparks = [], shockwaves = [];
+  // RV-08: time of the last note scheduleNotes() spawned, so the min-gap check
+  // carries across pattern boundaries. Reset wherever the field is cleared.
+  let lastScheduledHitT = -Infinity;
   let score = 0, combo = 0, maxCombo = 0, perfects = 0;
   let energy = 100, bpm = 74, nextBeatTime = 0, beatIndex = 0, leadTime = 1.4;
   let pulse = 0, shake = 0;
@@ -5663,7 +5667,7 @@
     state = 'playing';
     startTime = clockNow();
     lastNow = startTime;
-    notes = []; particles = []; sparks = []; shockwaves = [];
+    notes = []; lastScheduledHitT = -Infinity; particles = []; sparks = []; shockwaves = [];
     score = 0; combo = 0; maxCombo = 0; perfects = 0;
     comboTier = 0; levelPauseUntil = 0; bgPulse = 0; lastPatternName = '';
     runStats = freshRunStats();
@@ -6201,6 +6205,12 @@
     beginLevelPause();
   }
 
+  // RV-01: the BPM for the current stage. Tempo changes are discrete and only
+  // happen while the field is empty (level banner, boss entry/exit).
+  function stageBpmTarget() {
+    return Math.min(diff.maxBpm, diff.startBpm + stageParams(stage).bpmAdd * diff.bpmRamp);
+  }
+
   // Pause gameplay ~1s to announce the new level, then resume cleanly.
   function beginLevelPause() {
     const nowT = clockNow() - startTime;
@@ -6210,11 +6220,12 @@
 
     // Clear any in-flight notes so the player resumes on a fresh pattern —
     // no lingering ring can be "missed" across the pause.
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
     moveArmed = false;
+    bpm = stageBpmTarget();   // RV-01 (option B): tempo steps under the LEVEL banner
 
     // Fill + show the announcement.
-    const targetBpm = Math.round(Math.min(diff.maxBpm, diff.startBpm + stageParams(stage).bpmAdd * diff.bpmRamp));
+    const targetBpm = Math.round(stageBpmTarget());
     luLevelEl.textContent = 'LEVEL ' + stage;
     const mech = stageMechanicHint(stage);
     luMechEl.textContent = mech;
@@ -6238,6 +6249,7 @@
     state = 'playing';
     // Resume the timeline just ahead of "now" so the first new note gets a
     // full approach and lands cleanly on the beat grid; realign the music.
+    bpm = stageBpmTarget();   // RV-01: exact tempo before any note is planned
     nextBeatTime = nowT + leadTime + 0.2;
     realignMusic(nextBeatTime);
   }
@@ -6304,7 +6316,7 @@
     const nowT = clockNow() - startTime;
     state = 'bossIntro';
     bossIntroUntil = nowT + 1.5;   // ~1.5s intro
-    notes = [];                    // clear field for a clean entrance
+    notes = []; lastScheduledHitT = -Infinity;                    // clear field for a clean entrance
     moveArmed = false;
 
     // boss music arrangement (crossfade over the SAME vibe — no restart)
@@ -6344,7 +6356,7 @@
     const nowT = clockNow() - startTime;
     state = 'bossIntro';
     bossIntroUntil = nowT + 1.8;
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
     moveArmed = false;
 
     applyBossMusic(true);
@@ -6369,6 +6381,7 @@
     state = 'bossBattle';
     moveArmed = false;            // ensure note-spawning is never frozen
     hitsSinceMove = 0;
+    bpm = stageBpmTarget();       // RV-01: exact tempo before any note is planned
     nextBeatTime = nowT + leadTime + 0.2;
     bossFightStart = nowT;       // for the debug duration log
     // note: music clock runs free; do not realign (keeps it seamless)
@@ -6440,7 +6453,7 @@
     const nowT = clockNow() - startTime;
     if (DEBUG) { const elapsedSeconds = (nowT - bossFightStart).toFixed(1); console.log('[boss duration]', def.name, elapsedSeconds); }
     bossDefeatUntil = nowT + 1.7;
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
 
     // energy reward (Eclipse Sovereign restores to full)
     energy = Math.min(100, def.energyReward >= 999 ? 100 : energy + def.energyReward);
@@ -6585,7 +6598,8 @@
     leadTime = Math.max(0.92, p.lead);
     nextMoveAt = p.move > 0 ? p.move + 1 : Infinity;
     hitsSinceMove = 0; moveArmed = false;
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
+    bpm = stageBpmTarget();   // RV-01: exact tempo before any note is planned
     nextBeatTime = nowT + leadTime + 0.2;
     // update stage fill
     const cur = stageHitsNeeded(stage, diff), nxt = stageHitsNeeded(stage + 1, diff);
@@ -6810,7 +6824,7 @@
   function enterRealm() {
     // No circles exist inside the realm — the field is swept clean on entry.
     // These are silent removals: no score, no combo, no misses.
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
     realmMusicOn = true;
     realmSnap = 0;
     bgPulse = 1;
@@ -6820,7 +6834,7 @@
     // Re-anchor the beat clock so rings resume cleanly instead of dumping a
     // backlog the instant reality snaps back.
     const nowT = clockNow() - startTime;
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
     nextBeatTime = nowT + leadTime + 0.35;
     realmMusicOn = false;
     realmSnap = 1;                                  // reality-snap effect
@@ -7080,14 +7094,15 @@
         const snapped = Conductor.quantize(nextBeatTime, 1);
         // Never snap backwards past the point where a note could still be
         // spawned with enough lead time to be readable.
-        if (snapped >= t + 0.05) nextBeatTime = snapped;
+        // RV-13: every ring, including the first, gets its full approach.
+        nextBeatTime = (snapped < t + leadTime) ? Conductor.getNextBeatTime(t + leadTime) : snapped;
       }
 
       const pat = chooseRhythmPattern(stage, runWasDaily ? 'arcade' : save.difficulty, combo, music.phaseIndex);
       // minimum readable spacing = a bit more than the OK window
       const minGap = Math.max(MIN_NOTE_GAP, windows().ok * 1.7);
 
-      let prevTime = -Infinity;
+      let prevTime = lastScheduledHitT;
       for (let i = 0; i < pat.offsets.length; i++) {
         let noteT = nextBeatTime + pat.offsets[i] * beat;
 
@@ -7109,15 +7124,16 @@
         /* If the active track swings its 16ths, the notes must swing with it
            or the offbeats sit fractionally ahead of the hats. */
         const sw = Conductor.swing();
-        if (sw && Conductor.ready()) {
-          const sixteenth = (pat.offsets[i] * 4) % 4;
-          if (Math.abs(sixteenth - 2) < 0.01) noteT += (beat / 4) * sw;
+        if (sw && Conductor.ready() && !BeatMap.active()) {     // charts already contain their swing
+          const landed = ((Math.round(Conductor.stepAt(noteT)) % 4) + 4) % 4;
+          if (landed === 2) noteT += Conductor.stepDur() * sw;
         }
         // Snapping can move a note earlier than the previous one; ordering
         // matters for the gap test, so compare against the running max.
         if (noteT - prevTime < minGap) continue; // drop notes that would crowd
         spawnNote(noteT, beatIndex);
         prevTime = noteT;
+        lastScheduledHitT = noteT;
         beatIndex++;
       }
       // Advance to the next pattern. Burst patterns leave built-in rest via span.
@@ -7562,10 +7578,10 @@
       if (t >= bossDefeatUntil) endBossEncounter(t);
     } else if (state === 'playing' || state === 'bossBattle') {
       const inBoss = (state === 'bossBattle');
-      // BPM eases toward the current stage target
+      // RV-01: no per-frame easing. Tempo is set discretely while the field is
+      // empty; this is only a safety net and is normally already equal.
       const p = stageParams(stage);
-      const bpmTarget = Math.min(diff.maxBpm, diff.startBpm + p.bpmAdd * diff.bpmRamp);
-      bpm += (bpmTarget - bpm) * Math.min(1, dt * 0.5);
+      bpm = stageBpmTarget();
 
       updateAbility(dt, t);
       // ECLIPSE REALM: the field freezes. Rings hold position by sliding their
