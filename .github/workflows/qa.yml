@@ -31,6 +31,7 @@ jobs:
       - name: Static invariants
         run: npm run test:static
       - name: Virtual audio device (PulseAudio null sink, so Firefox's AudioContext can run)
+        if: ${{ !cancelled() }}
         run: |
           sudo apt-get install -y --no-install-recommends pulseaudio
           pulseaudio -D --exit-idle-time=-1
