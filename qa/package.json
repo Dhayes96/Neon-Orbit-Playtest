@@ -1,0 +1,21 @@
+{
+  "name": "rhythm-void-qa-prototype",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test:static": "node --test tests/static.test.js",
+    "test:smoke": "playwright test tests/smoke.spec.js tests/mobile.spec.js --project=desktop-chrome --project=mobile-pixel7",
+    "test:timing": "playwright test tests/timing.spec.js --project=desktop-chrome",
+    "test:stress": "playwright test --project=stress-chrome",
+    "test:all": "playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  },
+  "private": true
+}
