@@ -30,9 +30,9 @@ Playwright reports "expected to fail, but passed", which turns CI red until the 
 ## Informational, non-blocking
 
 - **Lighthouse CI** (`lighthouse` job, `continue-on-error: true`). Reports are still generated every run and kept as the private `lighthouse-reports` Actions artifact (30 days), so performance reporting is preserved. Its strict `lighthouse:no-pwa`
-  preset fails on the single-file build (unminified inline JS/CSS, unused JS, viewport). Note: it
-  still uploads reports to Lighthouse's temporary **public** storage; whether to keep that is
-  Dennel's call.
+  preset fails on the single-file build (unminified inline JS/CSS, unused JS, viewport). Reports are
+  written to the runner's filesystem only (`--upload.target=filesystem`); nothing is published to
+  Lighthouse's public storage (Dennel, 2026-11-01).
 - **perf: frame-time budget** (`tests/timing.spec.js`, nightly). The test is headless-only, as its
   title says ("headless = smoke only"). On a 2-core sandbox it sits at p95 33.4 ms on base and on
   every Phase 1 branch, because frames snap to vsync multiples. Treat it as a trend signal, not
