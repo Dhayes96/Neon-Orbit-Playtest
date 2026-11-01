@@ -30,6 +30,13 @@ jobs:
       - run: npx playwright install --with-deps chromium firefox webkit
       - name: Static invariants
         run: npm run test:static
+      - name: Virtual audio device (PulseAudio null sink, so Firefox's AudioContext can run)
+        if: ${{ !cancelled() }}
+        run: |
+          sudo apt-get install -y --no-install-recommends pulseaudio
+          pulseaudio -D --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=qa_null
+          pactl set-default-sink qa_null
       - name: Smoke (Chromium desktop + Pixel 7 emulation + Firefox + WebKit)
         if: ${{ !cancelled() }}   # run even while the Phase 2 static guards are still red
         run: npx playwright test tests/smoke.spec.js tests/mobile.spec.js --project=desktop-chrome --project=mobile-pixel7 --project=firefox-smoke --project=webkit-smoke

@@ -29,6 +29,7 @@ test('start run: real click starts audio + sequencer + note spawning, 10s with n
   writeResult('smoke-run', { r, errors });
   expect(r.wrapped.step).toBeGreaterThan(30);    // ~49 16th-steps in 10s @74 BPM: probes really intercept internal calls
   expect(r.wrapped.note).toBeGreaterThan(3);
-  expect(r.state).toBe('playing');
+  // the 10 s snapshot can land on the ~1 s LEVEL banner, which is still a live run
+  expect(['playing', 'levelup']).toContain(r.state);
   expect(errors, errors.join('\n')).toEqual([]);
 });
