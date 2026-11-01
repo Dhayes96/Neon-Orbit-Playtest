@@ -80,3 +80,7 @@ jobs:
         with: { node-version: 22 }
       - run: npm i -g @lhci/cli@0.14.x
       - run: lhci autorun --collect.staticDistDir=. --assert.preset=lighthouse:no-pwa --assert.assertions.categories:performance=warn --upload.target=temporary-public-storage
+      - name: Keep the Lighthouse reports (private Actions artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: lighthouse-reports, path: .lighthouseci, include-hidden-files: true, retention-days: 30 }

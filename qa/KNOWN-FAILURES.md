@@ -17,7 +17,7 @@ Playwright reports "expected to fail, but passed", which turns CI red until the 
 
 ## Informational, non-blocking
 
-- **Lighthouse CI** (`lighthouse` job, `continue-on-error: true`). Its strict `lighthouse:no-pwa`
+- **Lighthouse CI** (`lighthouse` job, `continue-on-error: true`). Reports are still generated every run and kept as the private `lighthouse-reports` Actions artifact (30 days), so performance reporting is preserved. Its strict `lighthouse:no-pwa`
   preset fails on the single-file build (unminified inline JS/CSS, unused JS, viewport). Note: it
   still uploads reports to Lighthouse's temporary **public** storage; whether to keep that is
   Dennel's call.
