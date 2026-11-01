@@ -226,11 +226,13 @@ async function freezeAudioClock(page) {
     Object.defineProperty(audioCtx, 'currentTime', { configurable: true, get: () => window.__frozenAt });
   });
 }
-async function thawAudioClock(page, { backwardsBy = 0 } = {}) {
-  await page.evaluate((back) => {
-    const offset = window.__realCT() - window.__frozenAt + back;   // continue from the frozen value (or earlier)
+async function thawAudioClock(page, { restartAt = null } = {}) {
+  await page.evaluate((restart) => {
+    // continue from the frozen value, or (iOS after a lock) restart the timeline near `restart`
+    const from = restart === null ? window.__frozenAt : restart;
+    const offset = window.__realCT() - from;
     Object.defineProperty(audioCtx, 'currentTime', { configurable: true, get: () => window.__realCT() - offset });
-  }, backwardsBy);
+  }, restartAt);
 }
 
 test('T6 iOS Siri: audio clock stops while the context still says running → auto-pause, no misses', async ({ page }) => {
@@ -280,7 +282,7 @@ test('T6 iOS screen lock: after waking, the clock is stuck until Resume kicks it
   const thaw = setTimeout(() => {}, 0);
   const watcher = page.evaluate(() => new Promise((res) => { (function w() { if (window.__kicked > 0) return res(true); setTimeout(w, 20); })(); }));
   const clicked = page.click('#pauseResumeBtn', { timeout: 5000 });
-  await watcher; await thawAudioClock(page, { backwardsBy: 30 });   // iOS may also restart the timeline
+  await watcher; await thawAudioClock(page, { restartAt: 0.2 });   // iOS may also restart the timeline near 0
   await clicked; clearTimeout(thaw);
   await page.waitForFunction(() => state !== 'paused', null, { timeout: 10000 });
   const r0 = await snap(page);

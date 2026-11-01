@@ -7624,11 +7624,11 @@
   // (Siri, and after the screen is locked and woken). The state never changes, so
   // watch the clock itself: report a stall when currentTime hasn't moved for 350 ms,
   // or when a frame gap shows the audio advanced far less than the wall clock.
-  let _acLastT = -1, _acLastMove = 0;
+  let _acLastT = null, _acLastMove = 0;
   function audioClockStalled() {
-    if (!audioCtx || audioCtx.state !== 'running') { _acLastT = -1; return false; }
+    if (!audioCtx || audioCtx.state !== 'running') { _acLastT = null; return false; }
     const a = audioCtx.currentTime, p = performance.now();
-    if (_acLastT < 0) { _acLastT = a; _acLastMove = p; return false; }
+    if (_acLastT === null) { _acLastT = a; _acLastMove = p; return false; }
     if (a !== _acLastT) {
       const wallMs = p - _acLastMove, audMs = (a - _acLastT) * 1000;
       _acLastT = a; _acLastMove = p;
@@ -7653,7 +7653,7 @@
     return new Promise((resolve) => {
       if (!audioCtx) return resolve(false);
       const t0 = performance.now();
-      let lastA = -1, lastMove = t0, moves = 0, cycles = 0;
+      let lastA = null, lastMove = t0, moves = 0, cycles = 0;
       (function poll() {
         if (!audioCtx) return resolve(false);
         const now = performance.now();
@@ -7661,7 +7661,7 @@
           try { audioCtx.resume(); } catch {}
         } else {
           const a = audioCtx.currentTime;
-          if (lastA >= 0 && a > lastA) { if (++moves >= 2) return resolve(true); lastMove = now; }
+          if (lastA !== null && a > lastA) { if (++moves >= 2) return resolve(true); lastMove = now; }
           lastA = a;
           if (now - lastMove > 500 && cycles < 2) {
             cycles++; lastMove = now;
@@ -7767,7 +7767,7 @@
       if (music.nextStepTime > at + 1) music.nextStepTime = at;
       else reanchorMusicGrid(music, at);
     }
-    _acLastT = -1;                      // restart the stall tracker
+    _acLastT = null;                    // restart the stall tracker
     setMusicPaused(false);
     resyncRunAfterInterruption(now - startTime);
     try { tone(990, 0.06, 'sine', 0.035); } catch {}
