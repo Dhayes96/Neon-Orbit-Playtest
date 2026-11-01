@@ -7622,20 +7622,29 @@
   };
   // iOS Safari can leave the context saying 'running' while its clock has stopped
   // (Siri, and after the screen is locked and woken). The state never changes, so
-  // watch the clock itself: report a stall when currentTime hasn't moved for 350 ms,
-  // or when a frame gap shows the audio advanced far less than the wall clock.
-  let _acLastT = null, _acLastMove = 0;
+  // watch the clock itself: report a stall when currentTime hasn't moved for 1 s,
+  // or when a frame gap over 1 s shows the audio advanced < 30% of the wall clock.
+  // Conservative on purpose: some outputs (virtual/BT/low-power sinks) advance the
+  // clock in bursts, and a false pause mid-run is worse than a 1 s detection delay.
+  // The caller only acts once the clock has run smoothly for 1.5 s (audioClockArmed).
+  const AUDIO_STALL_MS = 1000;
+  let _acLastT = null, _acLastMove = 0, _acSmoothSince = 0;
   function audioClockStalled() {
-    if (!audioCtx || audioCtx.state !== 'running') { _acLastT = null; return false; }
-    const a = audioCtx.currentTime, p = performance.now();
-    if (_acLastT === null) { _acLastT = a; _acLastMove = p; return false; }
+    const p = performance.now();
+    if (!audioCtx || audioCtx.state !== 'running') { _acLastT = null; _acSmoothSince = 0; return false; }
+    const a = audioCtx.currentTime;
+    if (_acLastT === null) { _acLastT = a; _acLastMove = p; _acSmoothSince = p; return false; }
     if (a !== _acLastT) {
       const wallMs = p - _acLastMove, audMs = (a - _acLastT) * 1000;
       _acLastT = a; _acLastMove = p;
-      return wallMs > 500 && audMs < wallMs * 0.5;   // audio was held while frames kept coming
+      if (wallMs > AUDIO_STALL_MS && audMs < wallMs * 0.3) { _acSmoothSince = p; return true; }
+      if (wallMs > 250) _acSmoothSince = p;           // a burst: restart the smooth-run timer
+      return false;
     }
-    return p - _acLastMove > 350;
+    if (p - _acLastMove > AUDIO_STALL_MS) { _acSmoothSince = p; return true; }
+    return false;
   }
+  function audioClockArmed() { return _acSmoothSince > 0 && performance.now() - _acSmoothSince > 1500; }
   // Inside a user gesture: the standard iOS unlock (play a silent buffer) + resume.
   function kickAudio() {
     if (!audioCtx) return;
@@ -9519,10 +9528,15 @@
     // T6 audio watchdog: if the audio was live in this run and is now gone
     // (some browsers skip 'statechange'), pause instead of playing on silently.
     if (audioCtx) {
-      const stalled = audioClockStalled();       // always called, so the tracker stays current
+      const armedBefore = audioClockArmed();          // judged on the history BEFORE this frame
+      const stalled = audioClockStalled();            // always called, so the tracker stays current
       if (inRunState()) {
-        if (audioCtx.state === 'running' && !stalled) _runAudioSeen = true;
-        else if (_runAudioSeen) pauseGame('audio');   // state change OR a stopped clock (Siri)
+        if (audioCtx.state === 'running') {
+          if (!stalled) _runAudioSeen = true;
+          else if (_runAudioSeen && armedBefore) pauseGame('audio');   // clock stopped (Siri)
+        } else if (_runAudioSeen) {
+          pauseGame('audio');                                          // state changed (call, BT)
+        }
       }
     }
     const showPB = inRunState();
