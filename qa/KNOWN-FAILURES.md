@@ -10,10 +10,11 @@ real regression.
 |---|---|---|---|
 | audio output latency is compensated somewhere | `tests/static.test.js` | node:test `todo` | T14 · RV-06 |
 | tap judgement uses the input event timestamp | `tests/static.test.js` | node:test `todo` | T8 · RV-05 |
-| in-flight notes stay on the audio grid after a tab resume | `tests/timing.spec.js` (nightly) | `test.fail()` (expected failure) | T6 · RV-03 |
 
-When the fixing task lands, remove the marker in the same PR. For the `test.fail()` case,
-Playwright reports "expected to fail, but passed", which turns CI red until the marker goes.
+When the fixing task lands, remove the marker in the same PR.
+
+**Fixed:** the RV-03 tab-resume test (`tests/timing.spec.js`) was a `test.fail()` known failure
+until Phase 2 T6. It now passes and is a normal regression guard; its marker was removed in the T6 PR.
 
 ## Known flaky (blocking, with one visible retry)
 
