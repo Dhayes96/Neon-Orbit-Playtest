@@ -3247,7 +3247,8 @@
       for (let i = 0; i < steps.length; i++) {
         const abs = base + bar * 16 + steps[i];
         const d = Math.abs(abs - s);
-        if (d < bestD) { bestD = d; best = abs; }
+        // deterministic tie-break: on an exact tie the earlier step wins
+        if (d < bestD - 1e-6 || (Math.abs(d - bestD) <= 1e-6 && abs < best)) { bestD = d; best = abs; }
       }
     }
     if (best === null || bestD > 2.01) return null;   // > half a beat away
@@ -5328,6 +5329,9 @@
   let comboTier = 0;           // highest COMBO_MILESTONES index reached this run
 
   let notes = [], particles = [], sparks = [], shockwaves = [];
+  // RV-08: time of the last note scheduleNotes() spawned, so the min-gap check
+  // carries across pattern boundaries. Reset wherever the field is cleared.
+  let lastScheduledHitT = -Infinity;
   let score = 0, combo = 0, maxCombo = 0, perfects = 0;
   let energy = 100, bpm = 74, nextBeatTime = 0, beatIndex = 0, leadTime = 1.4;
   let pulse = 0, shake = 0;
@@ -5661,7 +5665,7 @@
     state = 'playing';
     startTime = clockNow();
     lastNow = startTime;
-    notes = []; particles = []; sparks = []; shockwaves = [];
+    notes = []; lastScheduledHitT = -Infinity; particles = []; sparks = []; shockwaves = [];
     score = 0; combo = 0; maxCombo = 0; perfects = 0;
     comboTier = 0; levelPauseUntil = 0; bgPulse = 0; lastPatternName = '';
     runStats = freshRunStats();
@@ -6214,7 +6218,7 @@
 
     // Clear any in-flight notes so the player resumes on a fresh pattern —
     // no lingering ring can be "missed" across the pause.
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
     moveArmed = false;
     bpm = stageBpmTarget();   // RV-01 (option B): tempo steps under the LEVEL banner
 
@@ -6310,7 +6314,7 @@
     const nowT = clockNow() - startTime;
     state = 'bossIntro';
     bossIntroUntil = nowT + 1.5;   // ~1.5s intro
-    notes = [];                    // clear field for a clean entrance
+    notes = []; lastScheduledHitT = -Infinity;                    // clear field for a clean entrance
     moveArmed = false;
 
     // boss music arrangement (crossfade over the SAME vibe — no restart)
@@ -6350,7 +6354,7 @@
     const nowT = clockNow() - startTime;
     state = 'bossIntro';
     bossIntroUntil = nowT + 1.8;
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
     moveArmed = false;
 
     applyBossMusic(true);
@@ -6447,7 +6451,7 @@
     const nowT = clockNow() - startTime;
     if (DEBUG) { const elapsedSeconds = (nowT - bossFightStart).toFixed(1); console.log('[boss duration]', def.name, elapsedSeconds); }
     bossDefeatUntil = nowT + 1.7;
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
 
     // energy reward (Eclipse Sovereign restores to full)
     energy = Math.min(100, def.energyReward >= 999 ? 100 : energy + def.energyReward);
@@ -6592,7 +6596,7 @@
     leadTime = Math.max(0.92, p.lead);
     nextMoveAt = p.move > 0 ? p.move + 1 : Infinity;
     hitsSinceMove = 0; moveArmed = false;
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
     bpm = stageBpmTarget();   // RV-01: exact tempo before any note is planned
     nextBeatTime = nowT + leadTime + 0.2;
     // update stage fill
@@ -6818,7 +6822,7 @@
   function enterRealm() {
     // No circles exist inside the realm — the field is swept clean on entry.
     // These are silent removals: no score, no combo, no misses.
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
     realmMusicOn = true;
     realmSnap = 0;
     bgPulse = 1;
@@ -6828,7 +6832,7 @@
     // Re-anchor the beat clock so rings resume cleanly instead of dumping a
     // backlog the instant reality snaps back.
     const nowT = clockNow() - startTime;
-    notes = [];
+    notes = []; lastScheduledHitT = -Infinity;
     nextBeatTime = nowT + leadTime + 0.35;
     realmMusicOn = false;
     realmSnap = 1;                                  // reality-snap effect
@@ -7095,7 +7099,7 @@
       // minimum readable spacing = a bit more than the OK window
       const minGap = Math.max(MIN_NOTE_GAP, windows().ok * 1.7);
 
-      let prevTime = -Infinity;
+      let prevTime = lastScheduledHitT;
       for (let i = 0; i < pat.offsets.length; i++) {
         let noteT = nextBeatTime + pat.offsets[i] * beat;
 
@@ -7126,6 +7130,7 @@
         if (noteT - prevTime < minGap) continue; // drop notes that would crowd
         spawnNote(noteT, beatIndex);
         prevTime = noteT;
+        lastScheduledHitT = noteT;
         beatIndex++;
       }
       // Advance to the next pattern. Burst patterns leave built-in rest via span.
