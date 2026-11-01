@@ -4066,6 +4066,11 @@
     // position. Jumping back to step 0 restarted the bar mid-phrase, which is
     // what made dense phases sound choppy rather than merely late.
     const stepDur0 = (60 / bpm) / 4;
+    // startMusic() may schedule the first step up to ~1-2 s ahead; anything beyond 4 s means the
+    // audio timeline restarted (iOS after a lock), which would leave the music silent.
+    if (music.nextStepTime > audioCtx.currentTime + 4) {
+      music.nextStepTime = audioCtx.currentTime + 0.04;   // fresh anchor
+    }
     if (music.nextStepTime < audioCtx.currentTime - stepDur0 * 2) {
       reanchorMusicGrid(music, audioCtx.currentTime + 0.04);   // T6a: whole steps, grid phase kept
     }
@@ -7615,6 +7620,59 @@
     focus: 'Paused because the game lost focus.',
     audio: 'Paused because the audio was interrupted.',
   };
+  // iOS Safari can leave the context saying 'running' while its clock has stopped
+  // (Siri, and after the screen is locked and woken). The state never changes, so
+  // watch the clock itself: report a stall when currentTime hasn't moved for 350 ms,
+  // or when a frame gap shows the audio advanced far less than the wall clock.
+  let _acLastT = -1, _acLastMove = 0;
+  function audioClockStalled() {
+    if (!audioCtx || audioCtx.state !== 'running') { _acLastT = -1; return false; }
+    const a = audioCtx.currentTime, p = performance.now();
+    if (_acLastT < 0) { _acLastT = a; _acLastMove = p; return false; }
+    if (a !== _acLastT) {
+      const wallMs = p - _acLastMove, audMs = (a - _acLastT) * 1000;
+      _acLastT = a; _acLastMove = p;
+      return wallMs > 500 && audMs < wallMs * 0.5;   // audio was held while frames kept coming
+    }
+    return p - _acLastMove > 350;
+  }
+  // Inside a user gesture: the standard iOS unlock (play a silent buffer) + resume.
+  function kickAudio() {
+    if (!audioCtx) return;
+    try {
+      const src = audioCtx.createBufferSource();
+      src.buffer = audioCtx.createBuffer(1, 1, 22050);
+      src.connect(audioCtx.destination);
+      src.start(0);
+    } catch {}
+    try { audioCtx.resume(); } catch {}
+  }
+  // Resolves true once the context is running AND its clock is actually moving.
+  // If it says running but stays stuck, cycle the session (suspend → resume) up to twice.
+  function whenAudioAdvancing(timeoutMs) {
+    return new Promise((resolve) => {
+      if (!audioCtx) return resolve(false);
+      const t0 = performance.now();
+      let lastA = -1, lastMove = t0, moves = 0, cycles = 0;
+      (function poll() {
+        if (!audioCtx) return resolve(false);
+        const now = performance.now();
+        if (audioCtx.state !== 'running') {
+          try { audioCtx.resume(); } catch {}
+        } else {
+          const a = audioCtx.currentTime;
+          if (lastA >= 0 && a > lastA) { if (++moves >= 2) return resolve(true); lastMove = now; }
+          lastA = a;
+          if (now - lastMove > 500 && cycles < 2) {
+            cycles++; lastMove = now;
+            try { audioCtx.suspend().then(() => audioCtx.resume()).catch(() => {}); } catch {}
+          }
+        }
+        if (now - t0 > timeoutMs) return resolve(false);
+        setTimeout(poll, 40);
+      })();
+    });
+  }
   function setMusicPaused(on) {
     if (!audioCtx || !musicGain) return;
     try {
@@ -7644,10 +7702,11 @@
   function requestResume() {
     if (state !== 'paused' || !pauseInfo || pauseInfo.countdownStart) return;
     ensureAudio();
-    tryResumeAudio(true);               // inside the tap: iOS needs a user gesture
+    kickAudio();                        // inside the tap: iOS needs a user gesture
+    tryResumeAudio(true);
     pauseInfo.countdownStart = -1;      // waiting for audio to come back
     pauseMsgEl.textContent = 'Starting audio…';
-    whenAudioRunning(2000).then((ok) => {
+    whenAudioAdvancing(3000).then((ok) => {
       if (state !== 'paused' || !pauseInfo) return;
       if (!ok) {
         pauseInfo.countdownStart = 0;
@@ -7688,13 +7747,27 @@
   function finishResume() {
     const info = pauseInfo;
     if (!info) return;
+    if (audioCtx && (audioCtx.state !== 'running' || audioClockStalled())) {
+      // audio dropped again during the countdown (e.g. Siri): stay paused
+      info.countdownStart = 0;
+      pauseOverlayEl.classList.remove('counting');
+      pauseMsgEl.textContent = PAUSE_REASON.audio;
+      return;
+    }
     const now = clockNow();
     startTime += now - info.at;         // game time was frozen for the whole pause
     lastNow = now;
     state = info.from;
     pauseInfo = null;
     pauseOverlayEl.classList.remove('show', 'counting');
-    if (audioCtx && audioCtx.state === 'running') reanchorMusicGrid(music, audioCtx.currentTime + 0.05);
+    if (audioCtx && audioCtx.state === 'running') {
+      const at = audioCtx.currentTime + 0.05;
+      // iOS can restart the audio timeline after a lock: a schedule far in the future
+      // would leave the music silent. Rings are re-planned below, so a fresh anchor is safe.
+      if (music.nextStepTime > at + 1) music.nextStepTime = at;
+      else reanchorMusicGrid(music, at);
+    }
+    _acLastT = -1;                      // restart the stall tracker
     setMusicPaused(false);
     resyncRunAfterInterruption(now - startTime);
     try { tone(990, 0.06, 'sine', 0.035); } catch {}
@@ -9445,9 +9518,12 @@
     creditAwayTime();
     // T6 audio watchdog: if the audio was live in this run and is now gone
     // (some browsers skip 'statechange'), pause instead of playing on silently.
-    if (audioCtx && inRunState()) {
-      if (audioCtx.state === 'running') _runAudioSeen = true;
-      else if (_runAudioSeen) pauseGame('audio');
+    if (audioCtx) {
+      const stalled = audioClockStalled();       // always called, so the tracker stays current
+      if (inRunState()) {
+        if (audioCtx.state === 'running' && !stalled) _runAudioSeen = true;
+        else if (_runAudioSeen) pauseGame('audio');   // state change OR a stopped clock (Siri)
+      }
     }
     const showPB = inRunState();
     if (showPB !== pauseBtnEl.classList.contains('show')) pauseBtnEl.classList.toggle('show', showPB);

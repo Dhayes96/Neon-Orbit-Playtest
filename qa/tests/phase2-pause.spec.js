@@ -212,3 +212,86 @@ test('T6a 700 ms main-thread stall: the music re-anchors by whole steps, so in-f
   expect(inFlight.length, 'rings in flight after the stall').toBeGreaterThanOrEqual(1);
   expect(errs.filter((e) => Math.abs(e) > GRID_TOL_MS).length, 'in-flight rings off the grid after a stall').toBe(0);
 });
+
+// ---- iOS device reports (Dennel, 2026-11-01) ----
+// iOS Safari can keep the AudioContext reporting 'running' while its clock has stopped:
+// during Siri, and after the screen is locked and woken. These tests fake that by
+// overriding audioCtx.currentTime on the instance (the engine's own clock is untouched).
+async function freezeAudioClock(page) {
+  await page.evaluate(() => {
+    const proto = Object.getPrototypeOf(audioCtx);
+    const real = Object.getOwnPropertyDescriptor(BaseAudioContext.prototype, 'currentTime').get;
+    window.__frozenAt = real.call(audioCtx);
+    window.__realCT = () => real.call(audioCtx);
+    Object.defineProperty(audioCtx, 'currentTime', { configurable: true, get: () => window.__frozenAt });
+  });
+}
+async function thawAudioClock(page, { backwardsBy = 0 } = {}) {
+  await page.evaluate((back) => {
+    const offset = window.__realCT() - window.__frozenAt + back;   // continue from the frozen value (or earlier)
+    Object.defineProperty(audioCtx, 'currentTime', { configurable: true, get: () => window.__realCT() - offset });
+  }, backwardsBy);
+}
+
+test('T6 iOS Siri: audio clock stops while the context still says running → auto-pause, no misses', async ({ page }) => {
+  const errors = await boot(page);
+  await installProbes(page);
+  await startRun(page);
+  await startBot(page);
+  await page.waitForTimeout(4000);
+  const before = await snap(page);
+  await freezeAudioClock(page);            // Siri: state stays 'running', clock stops, page stays visible
+  await page.waitForTimeout(2500);
+  const during = await snap(page);
+  await thawAudioClock(page);
+  const cd = await resumeAndCount(page);
+  await page.waitForTimeout(7000);
+  const grid = await gridAfter(page, during.nq);
+  writeResult('phase2-ios-siri', { before, during, countdown: cd, gridAfterResumeMs: grid, errors });
+  expect(errors).toEqual([]);
+  expect(during.state, 'paused during Siri').toBe('paused');
+  expect(during.misses - before.misses).toBe(0);
+  expect(cd.state).toBe('playing');
+  expect(grid.length, 'rings spawn after resume').toBeGreaterThanOrEqual(3);
+  expect(grid.filter((e) => Math.abs(e) > GRID_TOL_MS).length).toBe(0);
+});
+
+test('T6 iOS screen lock: after waking, the clock is stuck until Resume kicks it → countdown waits, then rings spawn on the grid', async ({ page }) => {
+  const errors = await boot(page);
+  await installProbes(page);
+  await startRun(page);
+  await startBot(page);
+  await page.waitForTimeout(4000);
+  await hideTab(page);                     // screen off
+  await page.waitForTimeout(2000);
+  await freezeAudioClock(page);            // woken context: says running, clock stuck
+  await showTab(page);
+  await page.waitForTimeout(1000);
+  const back = await snap(page);
+  // The stuck clock thaws only when Resume kicks the audio (silent buffer / suspend+resume)
+  await page.evaluate(() => {
+    const realResume = audioCtx.resume.bind(audioCtx), realSuspend = audioCtx.suspend.bind(audioCtx);
+    window.__kicked = 0;
+    audioCtx.suspend = () => { window.__kicked++; return realSuspend(); };
+    audioCtx.resume = () => realResume();
+    const realCreate = audioCtx.createBufferSource.bind(audioCtx);
+    audioCtx.createBufferSource = () => { window.__kicked++; return realCreate(); };
+  });
+  const thaw = setTimeout(() => {}, 0);
+  const watcher = page.evaluate(() => new Promise((res) => { (function w() { if (window.__kicked > 0) return res(true); setTimeout(w, 20); })(); }));
+  const clicked = page.click('#pauseResumeBtn', { timeout: 5000 });
+  await watcher; await thawAudioClock(page, { backwardsBy: 30 });   // iOS may also restart the timeline
+  await clicked; clearTimeout(thaw);
+  await page.waitForFunction(() => state !== 'paused', null, { timeout: 10000 });
+  const r0 = await snap(page);
+  await page.waitForTimeout(7000);
+  const grid = await gridAfter(page, back.nq);
+  const end = await snap(page);
+  writeResult('phase2-ios-lock', { back, r0, end, gridAfterResumeMs: grid, errors });
+  expect(errors).toEqual([]);
+  expect(back.state).toBe('paused');
+  expect(r0.state).toBe('playing');
+  expect(grid.length, 'rings spawn after waking + resume').toBeGreaterThanOrEqual(3);
+  expect(grid.filter((e) => Math.abs(e) > GRID_TOL_MS).length).toBe(0);
+  expect(end.steps - r0.steps, 'music plays after resume').toBeGreaterThan(20);
+});
