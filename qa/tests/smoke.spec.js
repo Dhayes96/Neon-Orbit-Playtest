@@ -29,6 +29,8 @@ test('start run: real click starts audio + sequencer + note spawning, 10s with n
     wrapped: __qa.wrapped, notes: __qa.notes.length, steps: __qa.steps.length, misses: runStats.misses,
     ac: audioCtx.state, sampleRate: audioCtx.sampleRate, baseLatency: audioCtx.baseLatency, outputLatency: audioCtx.outputLatency }));
   writeResult('smoke-run', { r, errors });
+  console.log('smoke-run ' + JSON.stringify({ state: r.state, steps: r.wrapped.step, notes: r.wrapped.note, ac: r.ac,
+    pauses: await page.evaluate(() => (typeof _t6PauseCount === 'number' ? _t6PauseCount : null)) }));
   expect(r.wrapped.step).toBeGreaterThan(30);    // ~49 16th-steps in 10s @74 BPM: probes really intercept internal calls
   expect(r.wrapped.note).toBeGreaterThan(3);
   // the 10 s snapshot can land on the ~1 s LEVEL banner, which is still a live run
