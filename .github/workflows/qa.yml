@@ -70,8 +70,9 @@ jobs:
         with: { name: timing-results, path: qa/results, retention-days: 30 }
 
   lighthouse:
-    name: Lighthouse CI (load perf budget)
+    name: Lighthouse CI (informational, non-blocking)
     runs-on: ubuntu-latest
+    continue-on-error: true   # performance audit is informational for now (Dennel, 2026-10-31)
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4

@@ -177,6 +177,9 @@ test('ear-bot: a player tapping exactly on the audible step, across a BPM ramp',
 // CROSS-REVIEW ADDITION (RV-03): rings still in flight when the player returns must either be
 // cleared by the game or land on a scheduled audio step. Baseline is expected to FAIL.
 test('state: in-flight notes stay on the audio grid (or are cleared) after a tab resume', async ({ page }) => {
+  // KNOWN PHASE 2 FAILURE (T6 / RV-03): expected to fail until T6. If it starts passing,
+  // Playwright reports "expected to fail, but passed": remove this line when T6 lands.
+  test.fail(true, 'known Phase 2 failure: T6 / RV-03');
   const errors = await boot(page);
   await installProbes(page);
   await startRun(page);
