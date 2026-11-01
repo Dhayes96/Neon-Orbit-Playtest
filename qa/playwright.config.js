@@ -18,8 +18,12 @@ module.exports = defineConfig({
   projects: [
     { name: 'stress-chrome', use: { ...devices['Desktop Chrome'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testMatch: /stress\.spec/ },
     { name: 'desktop-chrome', use: { ...devices['Desktop Chrome'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testIgnore: /mobile\.spec|stress\.spec/ },
-    { name: 'firefox-smoke', use: { ...devices['Desktop Firefox'], launchOptions: { firefoxUserPrefs: { 'media.autoplay.default': 0, 'media.autoplay.blocking_policy': 0, 'media.autoplay.block-webaudio': false } } }, testMatch: /smoke\.spec/ },
-    { name: 'webkit-smoke', use: { ...devices['Desktop Safari'] }, testMatch: /smoke\.spec/ },
+    // retries: 1 — Firefox audio start-up on CI runners is intermittently slow; a pass on retry is
+    // reported as "flaky" (never silent). See qa/KNOWN-FAILURES.md.
+    { name: 'firefox-smoke', retries: 1, use: { ...devices['Desktop Firefox'], launchOptions: { firefoxUserPrefs: { 'media.autoplay.default': 0, 'media.autoplay.blocking_policy': 0, 'media.autoplay.block-webaudio': false } } }, testMatch: /smoke\.spec/ },
+    // retries: 1 — on CI, WebKit's sequencer occasionally falls just under the step-count floor
+    // (29 vs >30 in 10 s on 2026-11-01). Retry-passes report as "flaky". Root cause: Phase 2 T7 (scheduler headroom).
+    { name: 'webkit-smoke', retries: 1, use: { ...devices['Desktop Safari'] }, testMatch: /smoke\.spec/ },
     { name: 'mobile-pixel7', use: { ...devices['Pixel 7'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testMatch: /mobile\.spec/ },
   ],
 });

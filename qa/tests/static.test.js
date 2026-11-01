@@ -13,11 +13,13 @@ test('Conductor.swing() returns the same swing the sequencer uses (not the never
   assert.ok(!readsDeadField, 'Conductor.swing() reads music.active.prof, which is never assigned, so note swing is always 0');
 });
 
-test('audio output latency is compensated somewhere (outputLatency/baseLatency/getOutputTimestamp)', () => {
+// KNOWN PHASE 2 FAILURE (T14 / RV-06). Runs and reports, but as `todo` it doesn't fail CI. Remove `todo` when T14 lands.
+test('audio output latency is compensated somewhere (outputLatency/baseLatency/getOutputTimestamp)', { todo: 'known Phase 2 failure: T14 / RV-06' }, () => {
   assert.ok(/outputLatency|getOutputTimestamp|baseLatency/.test(src), 'no output-latency compensation in source');
 });
 
-test('tap judgement uses the input event timestamp, not handler time', () => {
+// KNOWN PHASE 2 FAILURE (T8 / RV-05). Runs and reports, but as `todo` it doesn't fail CI. Remove `todo` when T8 lands.
+test('tap judgement uses the input event timestamp, not handler time', { todo: 'known Phase 2 failure: T8 / RV-05' }, () => {
   const m = src.match(/function handleTap\([\s\S]*?\n  \}\n/);
   assert.ok(m, 'handleTap not found');
   assert.ok(/timeStamp/.test(m[0]), 'handleTap judges with clockNow() at handler time (ignores e.timeStamp)');

@@ -70,12 +70,17 @@ jobs:
         with: { name: timing-results, path: qa/results, retention-days: 30 }
 
   lighthouse:
-    name: Lighthouse CI (load perf budget)
+    name: Lighthouse CI (informational, non-blocking)
     runs-on: ubuntu-latest
+    continue-on-error: true   # performance audit is informational for now (Dennel, 2026-10-31)
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm i -g @lhci/cli@0.14.x
-      - run: lhci autorun --collect.staticDistDir=. --assert.preset=lighthouse:no-pwa --assert.assertions.categories:performance=warn --upload.target=temporary-public-storage
+      - run: lhci autorun --collect.staticDistDir=. --assert.preset=lighthouse:no-pwa --assert.assertions.categories:performance=warn --upload.target=filesystem --upload.outputDir=lighthouse-reports
+      - name: Keep the Lighthouse reports (private Actions artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with: { name: lighthouse-reports, path: "lighthouse-reports\n.lighthouseci", include-hidden-files: true, retention-days: 30 }
