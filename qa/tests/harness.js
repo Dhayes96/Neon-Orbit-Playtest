@@ -59,7 +59,8 @@ async function installProbes(page) {
       return origSpawn.apply(this, arguments);
     };
     // CROSS-REVIEW ADDITION: mark notes the game itself deletes (level-up / boss start / boss end clear `notes`)
-    for (const fn of ['beginLevelPause', 'startBossEncounter', 'startDragonEncounter', 'defeatBoss', 'endBossEncounter', 'enterRealm', 'exitRealm']) {
+    for (const fn of ['beginLevelPause', 'startBossEncounter', 'startDragonEncounter', 'defeatBoss', 'endBossEncounter', 'enterRealm', 'exitRealm',
+      'pauseGame', 'resyncRunAfterInterruption']) {   // Phase 2: a pause clears rings with no penalty
       if (typeof window[fn] !== 'function') continue;
       const orig = window[fn];
       window[fn] = function () {

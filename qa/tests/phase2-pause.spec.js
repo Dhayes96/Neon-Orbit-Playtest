@@ -17,7 +17,7 @@ async function startRun(page) {
   await page.waitForFunction(() => audioCtx && audioCtx.state === 'running' && music.on, null, { timeout: 5000 });
 }
 const snap = (page) => page.evaluate(() => ({ state, score, combo, energy: +energy.toFixed(3), stage, misses: runStats.misses,
-  hits: runStats.hits, steps: __qa.steps.length, notes: notes.length, now: clockNow(),
+  hits: runStats.hits, steps: __qa.steps.length, nq: __qa.notes.length, notes: notes.length, now: clockNow(),
   musicGain: musicGain ? musicGain.gain.value : null,
   pauses: typeof _t6PauseCount === 'number' ? _t6PauseCount : null,
   resyncs: typeof _t6ResyncCount === 'number' ? _t6ResyncCount : null }));
@@ -53,20 +53,21 @@ async function resumeAndCount(page) {
   }));
   return seen;
 }
-// Notes spawned after `sinceNow` (clockNow) vs the audio steps actually scheduled.
-async function gridAfter(page, sinceNow) {
+// Rings spawned after probe index `fromIdx` (taken while paused, when nothing spawns)
+// vs the audio steps actually scheduled. Indexing avoids time math across the
+// startTime shift that resume applies.
+async function gridAfter(page, fromIdx) {
   return page.evaluate((since) => {
     const steps = __qa.steps; const lastW = steps.length ? steps[steps.length - 1].when : 0;
     const out = [];
-    for (const n of __qa.notes) {
+    for (const n of __qa.notes.slice(since)) {
       if (n.audio == null || n.cleared || n.audio > lastW - 0.05) continue;
-      if (n.nowG + startTime < since) continue;
       let bd = Infinity, e = 0;
       for (const s of steps) { const d = Math.abs(n.audio - s.w); if (d < bd) { bd = d; e = (n.audio - s.w) * 1000; } }
       out.push(+e.toFixed(2));
     }
     return out;
-  }, sinceNow);
+  }, fromIdx);
 }
 
 test('T6 pause button: upper-right, freezes the run with no penalty, silences music; Resume counts 3-2-1 and play resumes on the grid', async ({ page }) => {
@@ -87,7 +88,7 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   const cd = await resumeAndCount(page);
   const r0 = await snap(page);
   await page.waitForTimeout(7000);
-  const grid = await gridAfter(page, r0.now);
+  const grid = await gridAfter(page, p1.nq);   // nothing spawns while paused, so everything after p1 is post-resume
   const end = await snap(page);
   const res = { box, vp, before, p0, p1, countdown: cd, r0, end, gridAfterResumeMs: grid, errors };
   writeResult('phase2-pause-button', res);
@@ -126,7 +127,7 @@ test('T6 tab switch: auto-pauses, stays paused on return (no misses); one Resume
   const cd = await resumeAndCount(page);
   const r0 = await snap(page);
   await page.waitForTimeout(7000);
-  const grid = await gridAfter(page, r0.now);
+  const grid = await gridAfter(page, back.nq);
   const res = { before, hidden, back, countdown: cd, r0, gridAfterResumeMs: grid, errors };
   writeResult('phase2-tab-switch', res);
   expect(errors).toEqual([]);
@@ -135,7 +136,7 @@ test('T6 tab switch: auto-pauses, stays paused on return (no misses); one Resume
   expect(back.misses - before.misses, 'no misses from the tab switch').toBe(0);
   expect(back.pauses - before.pauses, 'one pause despite 3 hide events').toBe(1);
   expect(r0.resyncs - before.resyncs, 'one resync despite 3 return events').toBe(1);
-  expect(r0.score).toBe(before.score);
+  expect(r0.score, 'score preserved across the pause').toBe(back.score);
   expect(grid.length).toBeGreaterThanOrEqual(3);
   expect(grid.filter((e) => Math.abs(e) > GRID_TOL_MS).length, 'rings off the grid after resume').toBe(0);
 });
@@ -177,7 +178,7 @@ test('T6 audio interruption while visible (OS holds the context): auto-pause, no
   const cd = await resumeAndCount(page);
   const r0 = await snap(page);
   await page.waitForTimeout(7000);
-  const grid = await gridAfter(page, r0.now);
+  const grid = await gridAfter(page, during.nq);
   const ac = await page.evaluate(() => audioCtx.state);
   writeResult('phase2-audio-interruption', { before, during, countdown: cd, r0, ac, gridAfterResumeMs: grid, errors });
   expect(errors).toEqual([]);
