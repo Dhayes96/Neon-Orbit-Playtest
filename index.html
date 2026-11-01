@@ -2847,6 +2847,8 @@
     if (!music.on || !audioCtx || !music.active) {
       return ((performance.now() / 1000) * 1.6) % 1; // no audio yet: frame clock is fine here
     }
+    // RV-04: follow the audible step, not the scheduler's lookahead position.
+    if (Conductor.ready()) { const s = Conductor.stepAt(); return (((s / 4) % 1) + 1) % 1; }
     const stepDur = (60 / Math.max(1, bpm)) / 4;
     const since = Math.max(0, audioCtx.currentTime - (music.nextStepTime - stepDur));
     const sub = Math.min(0.999, since / Math.max(0.0001, stepDur));
