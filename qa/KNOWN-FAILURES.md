@@ -15,6 +15,13 @@ real regression.
 When the fixing task lands, remove the marker in the same PR. For the `test.fail()` case,
 Playwright reports "expected to fail, but passed", which turns CI red until the marker goes.
 
+## Known flaky (blocking, with one visible retry)
+
+- **Firefox smoke "start run"** (`firefox-smoke` project). On GitHub runners Firefox's AudioContext
+  sometimes takes more than 5 s to reach `running`, even with the PulseAudio null sink (it failed 1 of 4
+  runs on 2026-11-01). Firefox gets 15 s for audio start-up, and the project has `retries: 1`. A
+  pass on retry shows as **flaky** in the report, so it isn't silent. Two failures in a row still fail CI.
+
 ## Informational, non-blocking
 
 - **Lighthouse CI** (`lighthouse` job, `continue-on-error: true`). Reports are still generated every run and kept as the private `lighthouse-reports` Actions artifact (30 days), so performance reporting is preserved. Its strict `lighthouse:no-pwa`

@@ -15,12 +15,14 @@ test('boot: loads headless with no console/page errors and a live render loop', 
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
-test('start run: real click starts audio + sequencer + note spawning, 10s with no errors', async ({ page }) => {
+test('start run: real click starts audio + sequencer + note spawning, 10s with no errors', async ({ page, browserName }) => {
   const errors = await boot(page);
   await installProbes(page);
   await page.click('#startBtn');
   await page.waitForFunction(() => state === 'playing');
-  await page.waitForFunction(() => audioCtx && audioCtx.state === 'running' && music.on, null, { timeout: 5000 });
+  // Firefox on a CI runner (PulseAudio null sink) sometimes needs >5 s to bring its AudioContext up.
+  const audioTimeout = browserName === 'firefox' ? 15000 : 5000;
+  await page.waitForFunction(() => audioCtx && audioCtx.state === 'running' && music.on, null, { timeout: audioTimeout });
   await startBot(page); // without a player the run correctly ends in ~10s (energy drain + auto-miss)
   await page.waitForTimeout(10_000);
   const r = await page.evaluate(() => ({ state, stage, bpm, music: { on: music.on, step: music.step, bar: music.bar },
