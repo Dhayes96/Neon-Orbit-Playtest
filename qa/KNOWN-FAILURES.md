@@ -21,6 +21,11 @@ Playwright reports "expected to fail, but passed", which turns CI red until the 
   sometimes takes more than 5 s to reach `running`, even with the PulseAudio null sink (it failed 1 of 4
   runs on 2026-11-01). Firefox gets 15 s for audio start-up, and the project has `retries: 1`. A
   pass on retry shows as **flaky** in the report, so it isn't silent. Two failures in a row still fail CI.
+- **WebKit smoke "start run"** (`webkit-smoke` project). Once on 2026-11-01, WebKit's sequencer
+  scheduled 29 sixteenth-steps in 10 s against the `> 30` floor (about 49 expected in real time). The
+  floor is **not** lowered, because a low count means steps really were late or dropped. Instead the
+  project has `retries: 1` (shown as flaky). Root cause belongs to Phase 2 **T7 (RV-14, scheduler
+  headroom)**, which the 6× CPU-throttle stress test also reports (report-only).
 
 ## Informational, non-blocking
 
