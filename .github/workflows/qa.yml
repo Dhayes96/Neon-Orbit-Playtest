@@ -40,6 +40,9 @@ jobs:
       - name: Smoke (Chromium desktop + Pixel 7 emulation + Firefox + WebKit)
         if: ${{ !cancelled() }}   # run even while the Phase 2 static guards are still red
         run: npx playwright test tests/smoke.spec.js tests/mobile.spec.js --project=desktop-chrome --project=mobile-pixel7 --project=firefox-smoke --project=webkit-smoke
+      - name: iPhone audio unlock on touchend/click (Chromium + WebKit, emulated iPhone)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/crazygames-audio-resume.spec.js --project=desktop-chrome --project=webkit-smoke
       - name: CrazyGames build (build script + no external requests / banned strings)
         if: ${{ !cancelled() }}
         run: npx playwright test tests/crazygames-build.spec.js --project=desktop-chrome
