@@ -38,9 +38,8 @@ async function openHost(page, attrs, w, h) {
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => {
     if (m.type() !== 'error') return;
-    // Known + documented: when the portal frame doesn't grant clipboard-write, Chrome logs this
-    // as the game tries the Clipboard API; the game then falls back (execCommand) and shows
-    // "Copied". Recorded as a note, not a failure. Any other console error fails the test.
+    // The game checks the permissions policy before using the Clipboard API (clipboardAllowed),
+    // so a portal frame without clipboard-write must NOT produce this notice any more.
     if (/Permissions policy violation: The Clipboard API has been blocked/.test(m.text())) { notes.push('clipboard-permissions-policy notice'); return; }
     errors.push('console.error: ' + m.text());
   });
@@ -99,6 +98,8 @@ for (const [kind, attrs] of Object.entries(FRAMES)) {
     const res = { kind, attrs, origin, audioOk, mid, pausedByButton, afterOutside, copy, backAtMenu, errors, notes };
     writeResult(`cg-iframe-${kind}`, res);
     expect(errors).toEqual([]);
+    expect(notes, 'no clipboard permissions-policy console notice').toEqual([]);
+    expect(copy.label.trim(), 'Copy Result still copies via the fallback').toBe('Copied ✓');
     expect(origin, 'game runs cross-origin from the host').toBe(GAME_ORIGIN);
     expect(audioOk, 'audio starts from a click inside the frame').toBe(true);
     expect(mid.hits).toBeGreaterThan(0);
