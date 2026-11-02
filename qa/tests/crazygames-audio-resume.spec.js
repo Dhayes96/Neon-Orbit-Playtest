@@ -49,14 +49,26 @@ test('iPhone: audio interrupted mid-run → run auto-pauses; touchend resumes au
   // idempotent while running: taps do not call resume()
   await fire(page, 'touchend'); await fire(page, 'click');
   const callsWhileRunning = await page.evaluate(() => window.__resumeCalls);
-  // interruption: the context is suspended (as iOS does) → the run auto-pauses
-  await page.evaluate(() => audioCtx.suspend());
-  await page.waitForFunction(() => state === 'paused', null, { timeout: 4000 });
+  // interruption: the context is suspended and, like iOS, refuses resume() outside a gesture
+  await page.evaluate(() => {
+    window.__realResume = audioCtx.resume;            // the counting spy from spyResume()
+    audioCtx.resume = () => { window.__resumeCalls++; return Promise.resolve(); };   // counted, refused
+    audioCtx.suspend();
+  });
+  await page.waitForFunction(() => state === 'paused' && audioCtx.state === 'suspended', null, { timeout: 4000 });
   const pausedReason = await page.evaluate(() => pauseInfo && pauseInfo.reason);
-  await page.evaluate(() => { window.__resumeCalls = 0; });
-  await fire(page, 'touchend');           // the documented iOS fix
+  // resume() calls made synchronously inside the touchend handler itself
+  const callsInTouchend = await page.evaluate(() => {
+    window.__resumeCalls = 0;
+    document.body.dispatchEvent(new Event('touchend', { bubbles: true }));
+    return window.__resumeCalls;
+  });
+  // now let resume() through (the gesture case) and tap again: audio comes back, run stays paused
+  await page.evaluate(() => { audioCtx.resume = window.__realResume; });
+  await fire(page, 'touchend');
   await page.waitForTimeout(600);
-  const afterTouch = await page.evaluate(() => ({ calls: window.__resumeCalls, ac: audioCtx.state, state }));
+  const afterTouch = await page.evaluate(() => ({ ac: audioCtx.state, state }));
+  afterTouch.calls = callsInTouchend;
   // only the Resume button restarts the run (3-2-1)
   await page.locator('#pauseResumeBtn').tap();
   await page.waitForFunction(() => state === 'playing', null, { timeout: 8000 });
