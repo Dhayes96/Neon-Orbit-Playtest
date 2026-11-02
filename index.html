@@ -305,6 +305,8 @@
       cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
     }
     #pauseBtn.show { display: flex; }
+    /* invisible 10px halo: a slightly-off thumb still hits Pause */
+    #pauseBtn::after { content: ''; position: absolute; inset: -10px; border-radius: 50%; }
     #pauseBtn i { display: block; width: 5px; height: 16px; border-radius: 2px; background: #fff; box-shadow: 0 0 8px var(--glow1); }
     #pauseOverlay {
       position: fixed; inset: 0; z-index: 40; display: none;
@@ -5745,10 +5747,15 @@
 
   // ================= resize =================
 
+  let _sizeSig = '';
   function resize() {
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
-    W = Math.floor(window.innerWidth);
-    H = Math.floor(window.innerHeight);
+    const nDPR = Math.min(window.devicePixelRatio || 1, 2);
+    const nW = Math.floor(window.innerWidth), nH = Math.floor(window.innerHeight);
+    const si = safeInsets();
+    const sig = [nDPR, nW, nH, si.top, si.left, si.right, si.bottom].map(Math.round).join(',');
+    if (sig === _sizeSig) return;       // settle passes re-measure often; only act on a real change
+    _sizeSig = sig;
+    DPR = nDPR; W = nW; H = nH;
     canvas.width = Math.floor(W * DPR);
     canvas.height = Math.floor(H * DPR);
     canvas.style.width = W + 'px';
@@ -5760,10 +5767,53 @@
     // snap the drawn target to its anchor after rotation/resize
     tgtAnim = null;
     tgt.x = anchorPos().x; tgt.y = anchorPos().y;
+    // Rings already in flight locked their destination in the OLD layout; after a rotation that
+    // point can be off-screen or far from the drawn target. Every in-flight ring aims at the
+    // current anchor (moves only happen with no rings in flight), so re-aim them there.
+    for (const n of notes) { n.tx = tgt.x; n.ty = tgt.y; }
   }
-  window.addEventListener('resize', resize);
-  window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+  // iOS Safari reports stale innerWidth/innerHeight and safe-area insets for a while during a
+  // rotation, and may fire its only resize event before they settle. Re-measure over ~1 s;
+  // resize() is a no-op unless something actually changed.
+  let _settleTimers = [];
+  // iOS can leave the page scrolled/offset after a rotation even with overflow hidden. Fixed UI
+  // (Pause, HUD) is then drawn in one place but hit-tested in another, so taps miss. Snap back.
+  function resetViewportOffset() {
+    const vv = window.visualViewport;
+    if (window.scrollX || window.scrollY || (vv && (Math.abs(vv.offsetTop) > 0.5 || Math.abs(vv.offsetLeft) > 0.5))) {
+      try { window.scrollTo(0, 0); } catch {}
+    }
+  }
+  // ...and can keep a leftover zoom from the rotation. Re-applying the viewport meta resets it.
+  const _vpMeta = document.querySelector('meta[name="viewport"]');
+  function resetViewportZoom() {
+    const vv = window.visualViewport;
+    if (!_vpMeta || !vv || Math.abs(vv.scale - 1) < 0.01) return;
+    const c = _vpMeta.getAttribute('content');
+    _vpMeta.setAttribute('content', c + ', minimum-scale=1.0');
+    setTimeout(() => _vpMeta.setAttribute('content', c), 50);
+  }
+  function onRotate() { resetViewportZoom(); scheduleResize(); }
+  function scheduleResize() {
+    resetViewportOffset();
+    resize();
+    _settleTimers.forEach(clearTimeout);
+    _settleTimers = [100, 250, 500, 1000].map((ms) => setTimeout(() => { resetViewportOffset(); resize(); }, ms));
+    requestAnimationFrame(resize);
+  }
+  window.addEventListener('resize', scheduleResize);
+  window.addEventListener('orientationchange', onRotate);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleResize);
+  if (window.screen && screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', onRotate);
   resize();
+
+  // Pointer position in canvas (drawing) coordinates. Maps through the canvas's real on-screen
+  // box, so taps stay aligned with what is drawn even if the layout was measured mid-rotation.
+  function canvasPoint(e) {
+    const r = canvas.getBoundingClientRect();
+    const sx = r.width > 0 ? W / r.width : 1, sy = r.height > 0 ? H / r.height : 1;
+    return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
+  }
 
   // ================= start / end =================
 
@@ -7443,7 +7493,8 @@
     // the position check. Pointer/touch must land within the generous zone.
     const zoneR = tapZoneRadius();
     if (zoneR > 0 && !fromKey && e && typeof e.clientX === 'number') {
-      const dx = e.clientX - bestNote.tx, dy = e.clientY - bestNote.ty;
+      const cp = canvasPoint(e);
+      const dx = cp.x - bestNote.tx, dy = cp.y - bestNote.ty;
       if (Math.hypot(dx, dy) > zoneR) {
         // On time but outside the zone → OFF TARGET: gentler than a full miss.
         if (canActivateAbility()) return;      // arming a charged core
@@ -7533,8 +7584,7 @@
   function realmPlanetTap(e) {
     if (!realmActive() || !realmPlanet || doomMode) return false;
     if (!e || typeof e.clientX !== 'number') return false;
-    const rect = canvas.getBoundingClientRect();
-    const px = e.clientX - rect.left, py = e.clientY - rect.top;
+    const { x: px, y: py } = canvasPoint(e);
     if (Math.hypot(px - realmPlanet.x, py - realmPlanet.y) > realmPlanet.r * 1.9) return false;
     realmPlanet.taps++;
     createBurst(realmPlanet.x, realmPlanet.y, '#ffd76b', 18, 1.1);
@@ -7557,8 +7607,7 @@
     if (!canActivateAbility() && !realmActive()) return;
     // Touch/mouse must begin inside the inner target circle (generous radius).
     if (e && typeof e.clientX === 'number') {
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left, py = e.clientY - rect.top;
+      const { x: px, y: py } = canvasPoint(e);
       if (Math.hypot(px - tgt.x, py - tgt.y) > targetR * 1.9) return;
     }
     abHoldStart = performance.now();
@@ -7847,7 +7896,13 @@
     resyncRunAfterInterruption(now - startTime);
     try { tone(990, 0.06, 'sine', 0.035); } catch {}
   }
+  // Pause acts on touch-down: iOS sometimes drops the synthetic click after a tap (notably after
+  // a rotation). click stays as the mouse/keyboard path; pauseGame() is idempotent.
+  pauseBtnEl.addEventListener('pointerdown', (e) => { e.stopPropagation(); pauseGame('button'); });
   pauseBtnEl.addEventListener('click', (e) => { e.stopPropagation(); pauseGame('button'); });
+  // Resume needs a gesture iOS accepts for audio (touchend/click); touchend covers a dropped
+  // click. requestResume() ignores repeats once the countdown has started.
+  pauseResumeBtnEl.addEventListener('touchend', (e) => { e.stopPropagation(); requestResume(); }, { passive: true });
   pauseResumeBtnEl.addEventListener('click', (e) => { e.stopPropagation(); requestResume(); });
 
   document.addEventListener('visibilitychange', () => {
@@ -9589,6 +9644,7 @@
 
   // ================= 14. LOOP (single rAF loop) =================
 
+  let _geoCheckAt = 0;
   function loop() {
     const nowAbs = clockNow();
     // While the page is hidden the run is frozen outright. Browsers vary in
@@ -9615,6 +9671,14 @@
           pauseGame('audio');                                          // state changed (call, BT)
         }
       }
+    }
+    // Safety net: if a rotation slipped past every event, catch the mismatch within ~0.5 s.
+    const _wallMs = performance.now();
+    if (_wallMs - _geoCheckAt > 500) {
+      _geoCheckAt = _wallMs;
+      const vv = window.visualViewport;
+      if (Math.floor(window.innerWidth) !== W || Math.floor(window.innerHeight) !== H ||
+          window.scrollX || window.scrollY || (vv && (Math.abs(vv.offsetTop) > 0.5 || Math.abs(vv.offsetLeft) > 0.5))) scheduleResize();
     }
     const showPB = inRunState();
     if (showPB !== pauseBtnEl.classList.contains('show')) pauseBtnEl.classList.toggle('show', showPB);
