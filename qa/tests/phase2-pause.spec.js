@@ -20,7 +20,8 @@ const snap = (page) => page.evaluate(() => ({ state, score, combo, energy: +ener
   hits: runStats.hits, steps: __qa.steps.length, nq: __qa.notes.length, notes: notes.length, now: clockNow(),
   musicGain: musicGain ? musicGain.gain.value : null,
   pauses: typeof _t6PauseCount === 'number' ? _t6PauseCount : null,
-  resyncs: typeof _t6ResyncCount === 'number' ? _t6ResyncCount : null }));
+  resyncs: typeof _t6ResyncCount === 'number' ? _t6ResyncCount : null,
+  from: typeof pauseInfo !== 'undefined' && pauseInfo ? pauseInfo.from : null }));
 async function hideTab(page) {
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
@@ -47,7 +48,7 @@ async function resumeAndCount(page) {
       const el = document.getElementById('pauseCount');
       const txt = el && el.offsetParent !== null ? el.textContent.trim() : '';
       if (txt && out[out.length - 1] !== txt) out.push(txt);
-      if (state !== 'paused' || performance.now() - t0 > 8000) return resolve({ digits: out, ms: performance.now() - t0, state });
+      if (state !== 'paused' || performance.now() - t0 > 8000) return resolve({ digits: out, ms: performance.now() - t0, state, ac: audioCtx ? audioCtx.currentTime : null });
       requestAnimationFrame(poll);
     })();
   }));
@@ -100,9 +101,15 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   expect(p1.steps - p0.steps, 'no music steps scheduled while paused').toBe(0);
   expect(p1.musicGain, 'music silenced while paused').toBeLessThan(0.01);
   expect(p1.misses - before.misses, 'no misses from pausing').toBe(0);
-  expect(p1.energy, 'no energy drain while paused').toBeGreaterThanOrEqual(before.energy - 0.5);
+  // Baseline is p0 (pause applied), not `before`: energy drains every frame during play, so the
+  // ms between the `before` snapshot and the click registering legitimately move it. While
+  // paused it must not move at all.
+  expect(p1.energy, 'no energy drain while paused (frozen exactly)').toBe(p0.energy);
   expect(cd.digits.slice(0, 3), '3-2-1 countdown').toEqual(['3', '2', '1']);
-  expect(cd.state).toBe('playing');
+  // The bot can legitimately trigger a level-up in the ms before the click lands; Resume must
+  // return to exactly the state the pause interrupted (normally 'playing').
+  expect(['playing', 'levelup', 'bossIntro', 'bossBattle', 'bossDefeat'], 'paused from an in-run state').toContain(p0.from);
+  expect(cd.state, 'resumes into the state it paused from').toBe(p0.from);
   // Baseline is p0 (the moment the pause took effect), not `before`: the bot can legitimately
   // land a hit in the ms between the `before` snapshot and the click registering. Anything that
   // happened in that window must be a gain only; from p0 on, state must be frozen exactly.
@@ -112,10 +119,19 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   expect(p0.score, 'pausing never removes score').toBeGreaterThanOrEqual(before.score);
   expect(st(p1), 'state frozen while paused').toEqual(st(p0));
   expect(st(r0), 'score and state preserved through resume').toEqual(st(p0));
-  // The restore is scheduled at audioCtx.currentTime; AudioParam.value only reflects it after the
-  // audio thread renders its next quantum (~3 ms), so poll briefly instead of reading one instant.
-  await expect.poll(() => page.evaluate(() => musicGain.gain.value),
-    { message: 'music restored on resume', timeout: 500, intervals: [10] }).toBeGreaterThan(0.01);
+  // The restore is scheduled at audioCtx.currentTime; AudioParam.value only reflects it once the
+  // audio thread has rendered past that point. Read it when the AUDIO clock is 50 ms past resume:
+  // strict in audio time, and immune to the test machine's own scheduling delays.
+  const restored = await page.evaluate((acResume) => new Promise((resolve) => {
+    const t0 = performance.now();
+    (function wait() {
+      if (audioCtx.currentTime >= acResume + 0.05) return resolve({ gain: musicGain.gain.value, audioMs: (audioCtx.currentTime - acResume) * 1000 });
+      if (performance.now() - t0 > 5000) return resolve({ gain: musicGain.gain.value, audioMs: null });
+      requestAnimationFrame(wait);
+    })();
+  }), cd.ac);
+  expect(restored.audioMs, 'audio clock advanced after resume').not.toBeNull();
+  expect(restored.gain, 'music restored within 50 ms of audio time after resume').toBeGreaterThan(0.01);
   expect(r0.resyncs - before.resyncs, 'exactly one resync').toBe(1);
   expect(grid.length, 'rings scheduled after resume').toBeGreaterThanOrEqual(3);
   expect(grid.filter((e) => Math.abs(e) > GRID_TOL_MS).length, 'rings off the grid after resume').toBe(0);
