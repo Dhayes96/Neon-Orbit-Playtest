@@ -863,6 +863,60 @@
       #feverBanner { animation: none; }
       #screenPulse.go { animation: none; }
     }
+  
+    /* ===== Short / landscape viewports (CrazyGames iframe sizes 800×450 … 1366×768) =====
+       Every call-to-action must be fully in view without scrolling. Applies only to
+       short screens; tall desktop and portrait phone layouts are unchanged. */
+    @media (max-height: 820px) {
+      /* results: the action row stays pinned to the bottom of the card; stats scroll under it */
+      #overScreen .btn-stack {
+        position: sticky; bottom: -26px; z-index: 2;
+        margin: 12px -24px -26px; padding: 12px 24px 26px;
+        grid-template-columns: repeat(3, 1fr); gap: 10px;
+        background: linear-gradient(to top, rgba(10,8,24,0.97) 70%, rgba(10,8,24,0));
+        border-radius: 0 0 32px 32px;
+      }
+      #overScreen .btn-stack .btn { padding: 12px 10px; font-size: 14px; }
+      #overScreen .feedback-link { margin-top: 30px; }
+    }
+    @media (max-height: 620px) {
+      .overlay {
+        padding: 10px;
+        padding-top: max(10px, env(safe-area-inset-top, 0px));
+        padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+      }
+      .card { padding: 16px 20px; border-radius: 24px; max-height: calc(100vh - 20px); }
+      .btn { min-height: 48px; padding: 11px 18px; font-size: 15px; }
+      h2 { font-size: 20px; margin-bottom: 2px; }
+      /* results: compact */
+      #overScreen .new-best { margin-bottom: 4px; padding: 4px 14px; }
+      #overScreen .result-head { margin: 4px 0 0; gap: 14px; }
+      #overScreen .grade { font-size: 52px; }
+      #overScreen .result-score .rs-val { font-size: 34px; }
+      #overScreen .subtitle { margin: 4px auto 8px; font-size: 13px; }
+      #overScreen .stats-row { margin: 8px 0; gap: 8px; }
+      #overScreen .mini { padding: 6px 6px; }
+      #overScreen .mini b { font-size: 15px; }
+      #overScreen .stat-lines { grid-template-columns: repeat(3, 1fr); gap: 2px 14px; margin: 6px 2px 2px; }
+      #overScreen .stat-lines .sl { padding: 3px 2px; font-size: 12px; }
+      #overScreen .xp-result { margin: 8px 0 2px; }
+      #overScreen .btn-stack { margin: 8px -20px -16px; padding: 10px 20px 16px; bottom: -16px; border-radius: 0 0 24px 24px; }
+    }
+    /* menu: two columns on short landscape screens (title + level + best | buttons) */
+    @media (max-height: 620px) and (min-aspect-ratio: 4/3) {
+      #menuScreen .card {
+        width: min(820px, 94vw);
+        display: grid; column-gap: 28px; align-items: center;
+        grid-template-columns: 1fr 1fr;
+        grid-template-areas: "title buttons" "pill buttons" "ticket buttons" "hint hint" "ver ver";
+      }
+      #menuScreen h1 { grid-area: title; font-size: 46px; }
+      #menuScreen .level-pill { grid-area: pill; justify-self: center; margin-top: 10px; }
+      #menuScreen .daily-ticket { grid-area: ticket; margin: 10px 0 0; }
+      #menuScreen .btn-stack { grid-area: buttons; margin-top: 0; gap: 8px; }
+      #menuScreen .hint { grid-area: hint; margin-top: 10px; }
+      #menuScreen .version-tag { grid-area: ver; margin-top: 6px; }
+    }
   </style>
 </head>
 <body>
