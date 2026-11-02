@@ -5745,10 +5745,15 @@
 
   // ================= resize =================
 
+  let _sizeSig = '';
   function resize() {
-    DPR = Math.min(window.devicePixelRatio || 1, 2);
-    W = Math.floor(window.innerWidth);
-    H = Math.floor(window.innerHeight);
+    const nDPR = Math.min(window.devicePixelRatio || 1, 2);
+    const nW = Math.floor(window.innerWidth), nH = Math.floor(window.innerHeight);
+    const si = safeInsets();
+    const sig = [nDPR, nW, nH, si.top, si.left, si.right, si.bottom].map(Math.round).join(',');
+    if (sig === _sizeSig) return;       // settle passes re-measure often; only act on a real change
+    _sizeSig = sig;
+    DPR = nDPR; W = nW; H = nH;
     canvas.width = Math.floor(W * DPR);
     canvas.height = Math.floor(H * DPR);
     canvas.style.width = W + 'px';
@@ -5760,10 +5765,34 @@
     // snap the drawn target to its anchor after rotation/resize
     tgtAnim = null;
     tgt.x = anchorPos().x; tgt.y = anchorPos().y;
+    // Rings already in flight locked their destination in the OLD layout; after a rotation that
+    // point can be off-screen or far from the drawn target. Every in-flight ring aims at the
+    // current anchor (moves only happen with no rings in flight), so re-aim them there.
+    for (const n of notes) { n.tx = tgt.x; n.ty = tgt.y; }
   }
-  window.addEventListener('resize', resize);
-  window.addEventListener('orientationchange', () => setTimeout(resize, 120));
+  // iOS Safari reports stale innerWidth/innerHeight and safe-area insets for a while during a
+  // rotation, and may fire its only resize event before they settle. Re-measure over ~1 s;
+  // resize() is a no-op unless something actually changed.
+  let _settleTimers = [];
+  function scheduleResize() {
+    resize();
+    _settleTimers.forEach(clearTimeout);
+    _settleTimers = [100, 250, 500, 1000].map((ms) => setTimeout(resize, ms));
+    requestAnimationFrame(resize);
+  }
+  window.addEventListener('resize', scheduleResize);
+  window.addEventListener('orientationchange', scheduleResize);
+  if (window.visualViewport) window.visualViewport.addEventListener('resize', scheduleResize);
+  if (window.screen && screen.orientation && screen.orientation.addEventListener) screen.orientation.addEventListener('change', scheduleResize);
   resize();
+
+  // Pointer position in canvas (drawing) coordinates. Maps through the canvas's real on-screen
+  // box, so taps stay aligned with what is drawn even if the layout was measured mid-rotation.
+  function canvasPoint(e) {
+    const r = canvas.getBoundingClientRect();
+    const sx = r.width > 0 ? W / r.width : 1, sy = r.height > 0 ? H / r.height : 1;
+    return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
+  }
 
   // ================= start / end =================
 
@@ -7443,7 +7472,8 @@
     // the position check. Pointer/touch must land within the generous zone.
     const zoneR = tapZoneRadius();
     if (zoneR > 0 && !fromKey && e && typeof e.clientX === 'number') {
-      const dx = e.clientX - bestNote.tx, dy = e.clientY - bestNote.ty;
+      const cp = canvasPoint(e);
+      const dx = cp.x - bestNote.tx, dy = cp.y - bestNote.ty;
       if (Math.hypot(dx, dy) > zoneR) {
         // On time but outside the zone → OFF TARGET: gentler than a full miss.
         if (canActivateAbility()) return;      // arming a charged core
@@ -7533,8 +7563,7 @@
   function realmPlanetTap(e) {
     if (!realmActive() || !realmPlanet || doomMode) return false;
     if (!e || typeof e.clientX !== 'number') return false;
-    const rect = canvas.getBoundingClientRect();
-    const px = e.clientX - rect.left, py = e.clientY - rect.top;
+    const { x: px, y: py } = canvasPoint(e);
     if (Math.hypot(px - realmPlanet.x, py - realmPlanet.y) > realmPlanet.r * 1.9) return false;
     realmPlanet.taps++;
     createBurst(realmPlanet.x, realmPlanet.y, '#ffd76b', 18, 1.1);
@@ -7557,8 +7586,7 @@
     if (!canActivateAbility() && !realmActive()) return;
     // Touch/mouse must begin inside the inner target circle (generous radius).
     if (e && typeof e.clientX === 'number') {
-      const rect = canvas.getBoundingClientRect();
-      const px = e.clientX - rect.left, py = e.clientY - rect.top;
+      const { x: px, y: py } = canvasPoint(e);
       if (Math.hypot(px - tgt.x, py - tgt.y) > targetR * 1.9) return;
     }
     abHoldStart = performance.now();
