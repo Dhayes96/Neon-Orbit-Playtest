@@ -5027,7 +5027,7 @@
         $('mapperMeta').textContent = 'exported · copied';
       };
       try {
-        if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+        if (clipboardAllowed()) {
           navigator.clipboard.writeText(json).then(done).catch(manual);
         } else {
           manual();
@@ -6214,6 +6214,18 @@
     return lines.join('\n');
   }
 
+  // True unless the Clipboard API is unavailable or the page's permissions policy forbids it
+  // (e.g. a portal iframe without allow="clipboard-write"). Calling it there logs a console
+  // "Permissions policy violation" before failing, so we go straight to the fallback instead.
+  // Browsers without the policy API (Firefox, Safari) behave exactly as before.
+  function clipboardAllowed() {
+    try {
+      const pp = document.permissionsPolicy || document.featurePolicy;
+      if (pp && typeof pp.allowsFeature === 'function' && !pp.allowsFeature('clipboard-write')) return false;
+    } catch {}
+    return !!(navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext);
+  }
+
   // Copy Result — Clipboard API with a graceful fallback for older/insecure
   // contexts (execCommand) and a final fallback that shows the text to copy.
   function copyResult(btnId, origLabel) {
@@ -6226,7 +6238,7 @@
     };
     trackEvent('copy_result', {});
     sfxSuccess();
-    if (navigator.clipboard && navigator.clipboard.writeText && window.isSecureContext) {
+    if (clipboardAllowed()) {
       navigator.clipboard.writeText(text).then(() => flash('Copied ✓')).catch(() => legacyCopy(text, flash));
     } else {
       legacyCopy(text, flash);
