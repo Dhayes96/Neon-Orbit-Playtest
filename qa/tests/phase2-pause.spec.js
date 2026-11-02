@@ -103,9 +103,19 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   expect(p1.energy, 'no energy drain while paused').toBeGreaterThanOrEqual(before.energy - 0.5);
   expect(cd.digits.slice(0, 3), '3-2-1 countdown').toEqual(['3', '2', '1']);
   expect(cd.state).toBe('playing');
-  expect({ score: r0.score, combo: r0.combo, stage: r0.stage, misses: r0.misses },
-    'score and state preserved').toEqual({ score: before.score, combo: before.combo, stage: before.stage, misses: before.misses });
-  expect(r0.musicGain, 'music restored on resume').toBeGreaterThan(0.01);
+  // Baseline is p0 (the moment the pause took effect), not `before`: the bot can legitimately
+  // land a hit in the ms between the `before` snapshot and the click registering. Anything that
+  // happened in that window must be a gain only; from p0 on, state must be frozen exactly.
+  const st = (s) => ({ score: s.score, combo: s.combo, stage: s.stage, misses: s.misses });
+  expect(p0.misses, 'no misses between snapshot and pause').toBe(before.misses);
+  expect(p0.stage, 'stage unchanged by pausing').toBe(before.stage);
+  expect(p0.score, 'pausing never removes score').toBeGreaterThanOrEqual(before.score);
+  expect(st(p1), 'state frozen while paused').toEqual(st(p0));
+  expect(st(r0), 'score and state preserved through resume').toEqual(st(p0));
+  // The restore is scheduled at audioCtx.currentTime; AudioParam.value only reflects it after the
+  // audio thread renders its next quantum (~3 ms), so poll briefly instead of reading one instant.
+  await expect.poll(() => page.evaluate(() => musicGain.gain.value),
+    { message: 'music restored on resume', timeout: 500, intervals: [10] }).toBeGreaterThan(0.01);
   expect(r0.resyncs - before.resyncs, 'exactly one resync').toBe(1);
   expect(grid.length, 'rings scheduled after resume').toBeGreaterThanOrEqual(3);
   expect(grid.filter((e) => Math.abs(e) > GRID_TOL_MS).length, 'rings off the grid after resume').toBe(0);
