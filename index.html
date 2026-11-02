@@ -7848,6 +7848,17 @@
   // Any real interaction is the most reliable moment to resume on mobile.
   window.addEventListener('pointerdown', () => tryResumeAudio(true), { passive: true, capture: true });
   window.addEventListener('keydown', () => tryResumeAudio(true), { capture: true });
+  // iOS / CrazyGames: AudioContext.resume() is only honoured inside a touchend or click
+  // gesture (docs.crazygames.com technical requirements). Idempotent: does nothing while
+  // audio is running, never starts music by itself, and never un-pauses a paused run
+  // (only the Resume button does that).
+  function gestureResumeAudio() {
+    if (!audioCtx || document.hidden || audioCtx.state === 'running') return;
+    kickAudio();                 // silent buffer + resume(), inside the gesture
+    tryResumeAudio(true);
+  }
+  window.addEventListener('touchend', gestureResumeAudio, { passive: true, capture: true });
+  window.addEventListener('click', gestureResumeAudio, { passive: true, capture: true });
 
   // Block iOS gesture zoom + rubber-band scroll during play.
   document.addEventListener('gesturestart', (e) => e.preventDefault());
@@ -9631,9 +9642,13 @@
     primeMenuAudio();
     window.removeEventListener('pointerdown', firstGesture, true);
     window.removeEventListener('keydown', firstGesture, true);
+    window.removeEventListener('touchend', firstGesture, true);
+    window.removeEventListener('click', firstGesture, true);
   }
   window.addEventListener('pointerdown', firstGesture, true);
   window.addEventListener('keydown', firstGesture, true);
+  window.addEventListener('touchend', firstGesture, true);   // iOS: unlock must happen in touchend/click
+  window.addEventListener('click', firstGesture, true);
 
   refreshMenu();
   showScreen('menu');
