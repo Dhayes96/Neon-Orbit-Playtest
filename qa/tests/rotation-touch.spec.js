@@ -84,3 +84,74 @@ for (const variant of ['clean', 'stale']) {
     expect(log.P2.zoned, 'tap-zone stages were exercised after rotating back').toBeGreaterThan(0);
   });
 }
+
+// ---- Pause/Resume after rotation (Dennel, real iPhone: Pause didn't respond after going landscape)
+async function iphoneRun(browser) {
+  const { defaultBrowserType, ...dev } = devices['iPhone 13'];
+  const ctx = await browser.newContext({ ...dev, viewport: PORTRAIT });
+  const page = await ctx.newPage();
+  const errors = await boot(page);
+  await page.click('#startBtn');
+  await page.waitForFunction(() => state === 'playing');
+  return { ctx, page, errors };
+}
+const centre = (page, sel) => page.evaluate((s) => { const r = document.querySelector(s).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width }; }, sel);
+async function tapPauseThenResume(page, label) {
+  const p = await centre(page, '#pauseBtn');
+  expect(p.w, `${label}: pause button visible`).toBeGreaterThan(0);
+  expect(await page.evaluate(({ x, y }) => document.elementFromPoint(x, y).id, p), `${label}: nothing covers Pause`).toBe('pauseBtn');
+  await page.touchscreen.tap(p.x, p.y);
+  await expect.poll(() => page.evaluate(() => state), { message: `${label}: tap pauses`, timeout: 1000 }).toBe('paused');
+  const r = await centre(page, '#pauseResumeBtn');
+  await page.touchscreen.tap(r.x, r.y);
+  await page.waitForFunction(() => state === 'playing', null, { timeout: 8000 });
+}
+
+for (const variant of ['clean', 'stale']) {
+  test(`rotation (${variant}): Pause and Resume respond to a tap in landscape and back in portrait`, async ({ browser }) => {
+    const { ctx, page, errors } = await iphoneRun(browser);
+    await page.waitForTimeout(1500);
+    await tapPauseThenResume(page, 'portrait');
+    for (const [label, size, from] of [['landscape', LANDSCAPE, PORTRAIT], ['portrait again', PORTRAIT, LANDSCAPE]]) {
+      if (variant === 'stale') await staleSize(page, from);
+      await page.setViewportSize(size);
+      if (variant === 'stale') { await page.waitForTimeout(300); await releaseSize(page); }
+      await page.waitForTimeout(1200);
+      await tapPauseThenResume(page, label);
+    }
+    await ctx.close();
+    expect(errors).toEqual([]);
+  });
+}
+
+test('Pause works on touch-down alone and Resume on touchend alone (iOS dropping the click)', async ({ browser }) => {
+  const { ctx, page, errors } = await iphoneRun(browser);
+  await page.setViewportSize(LANDSCAPE);
+  await page.waitForTimeout(1200);
+  await page.evaluate(() => document.getElementById('pauseBtn').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch', isPrimary: true })));
+  expect(await page.evaluate(() => state), 'pointerdown alone pauses').toBe('paused');
+  await page.evaluate(() => document.getElementById('pauseResumeBtn').dispatchEvent(new Event('touchend', { bubbles: true })));
+  await page.waitForFunction(() => state === 'playing', null, { timeout: 8000 });
+  await ctx.close();
+  expect(errors).toEqual([]);
+});
+
+test('safety net: a rotation that fires no resize events is still picked up, and a scrolled page snaps back', async ({ browser }) => {
+  const { ctx, page, errors } = await iphoneRun(browser);
+  await page.waitForTimeout(800);
+  // The browser reports the OLD size through the whole rotation and well past the ~1 s settle
+  // window, then the real size appears with no event at all. Only the loop safety net sees it.
+  await staleSize(page, PORTRAIT);
+  await page.setViewportSize(LANDSCAPE);
+  await page.waitForTimeout(1600);
+  expect(await page.evaluate(() => [W, H]), 'precondition: layout still stale').toEqual([PORTRAIT.width, PORTRAIT.height]);
+  await releaseSize(page);                                 // real size now visible, no event fired
+  await expect.poll(() => page.evaluate(() => [W, H]), { message: 'layout catches up without events', timeout: 1500 }).toEqual([LANDSCAPE.width, LANDSCAPE.height]);
+  // iOS can leave the document scrolled after a rotation; fixed UI is then hit-tested off its drawing.
+  const scrolled = await page.evaluate(() => { document.body.style.height = '3000px'; window.scrollTo(0, 120); return window.scrollY; });
+  expect(scrolled, 'precondition: page actually scrolled').toBeGreaterThan(0);
+  await expect.poll(() => page.evaluate(() => window.scrollY), { message: 'scroll snapped back', timeout: 1500 }).toBe(0);
+  await page.evaluate(() => { document.body.style.height = ''; });
+  await ctx.close();
+  expect(errors).toEqual([]);
+});
