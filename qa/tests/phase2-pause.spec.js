@@ -432,7 +432,7 @@ test('T6b 1.3 s main-thread freeze: game clock keeps following the audio clock; 
     const planned = notes.filter((n) => !n.hit && !n.missed).map((n) => ({ hitTime: n.hitTime, audio: Conductor.gameToAudio(n.hitTime), bpm }));
     const t0 = performance.now(); while (performance.now() - t0 < 1300) { /* freeze */ }
     return new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => res({
-      offsetShiftMs: (Conductor.clockOffset() - off0) * 1000,
+      offsetShiftMs: (Conductor.clockOffset() - off0) * 1000, stateAfter: state,
       inFlight: planned.filter((p) => p.audio > audioCtx.currentTime + 0.15).map((p) => ({ ...p, audioNow: Conductor.gameToAudio(p.hitTime) })),
     }))));
   });
@@ -443,9 +443,51 @@ test('T6b 1.3 s main-thread freeze: game clock keeps following the audio clock; 
   const errs = live.map((n) => +gridError(n.audioNow, n.bpm, steps).e.toFixed(2));
   writeResult('phase2-freeze-1300', { offsetShiftMs: r.offsetShiftMs, inFlight: r.inFlight.length, live: live.length, errMs: errs, errors });
   expect(errors).toEqual([]);
+  expect(r.stateAfter, 'a 1.3 s hiccup plays on (only freezes over 3 s pause the run)').not.toBe('paused');
   expect(Math.abs(r.offsetShiftMs), 'game clock still tracks the audio clock after the freeze (ms)').toBeLessThanOrEqual(GRID_TOL_MS);
   expect(live.length, 'in-flight rings that actually play').toBeGreaterThanOrEqual(1);
   expect(errs.filter((e) => Math.abs(e) > GRID_TOL_MS), 'in-flight rings off the grid after the freeze (ms)').toEqual([]);
+});
+
+// T6c: a freeze over 3 s (JS stopped while the audio clock kept running, e.g. the OS froze the
+// page without a visibility event). The clock keeps the full gap (T6b), so every ring that
+// passed meanwhile would be judged a miss; instead the run must pause before anything is judged,
+// with no penalty, and resume on the grid. The bot is stopped first: a human can't tap during a
+// freeze, and a bot tap 3 s late would itself be a miss that says nothing about the game.
+test('T6c 3.5 s main-thread freeze: the run pauses before anything is judged (no misses); Resume returns on the grid', async ({ page }) => {
+  const errors = await boot(page);
+  await installProbes(page);
+  await capturePauses(page);
+  await startRun(page);
+  await startBot(page);
+  await page.waitForFunction(() => state === 'playing' && notes.filter((n) => !n.hit && !n.missed).length >= 1 && (clockNow() - startTime) > 4, null, { timeout: 30000 });
+  await page.evaluate(() => { window.__botStop = true; });
+  const atFreeze = await page.evaluate(() => {
+    const at = window.__snapNow();
+    const t0 = performance.now(); while (performance.now() - t0 < 3500) { /* freeze */ }
+    return at;
+  });
+  await page.waitForFunction(() => state === 'paused', null, { timeout: 5000 });
+  await page.waitForTimeout(500);
+  const during = await snap(page);
+  const pre = await prePause(page);
+  const cd = await resumeAndCount(page);
+  await page.evaluate(() => { window.__botStop = false; });
+  await startBot(page);
+  await page.waitForTimeout(7000);
+  const grid = await gridAfter(page, during.nq);
+  writeResult('phase2-freeze-3500', { atFreeze, pre, during, countdown: cd, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors });
+  expect(errors).toEqual([]);
+  expect(pre, 'pause captured in-game').not.toBeNull();
+  expect(pre.reason, 'paused for the freeze').toBe('freeze');
+  expect(st(pre), 'nothing judged between the freeze and the pause').toEqual(st(atFreeze));
+  expect(pre.energy, 'no energy change before the pause').toBeGreaterThanOrEqual(atFreeze.energy - 0.5);
+  expect(st(during), 'state frozen while paused').toEqual(st(pre));
+  expect(during.energy, 'no energy drain while paused (exact)').toBe(pre.energy);
+  expect(cd.digits.slice(0, 3), '3-2-1 countdown').toEqual(['3', '2', '1']);
+  expect(cd.state, 'resumes into the state it paused from').toBe(pre.state);
+  expect(grid.length, 'rings scheduled after resume').toBeGreaterThanOrEqual(3);
+  expect(grid.filter((e) => Math.abs(e) > GRID_TOL_MS).length, 'rings off the grid after resume').toBe(0);
 });
 
 // ---- iOS device reports (Dennel, 2026-11-01) ----
