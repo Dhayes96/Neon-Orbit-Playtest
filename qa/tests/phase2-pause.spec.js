@@ -228,7 +228,10 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   const btn = page.locator('#pauseBtn');
   await expect(btn).toBeVisible();
   const box = await btn.boundingBox(); const vp = page.viewportSize();
-  const musicPeakPlaying = await musicPeak(page, 10);   // proves the tap carries the music (else 'silent' means nothing)
+  // Proves the tap carries the music (else 'silent' means nothing). Keep reading (max 3 s) past a
+  // rest or the stage-change gap in the music: CI WebKit once read 0 over a single 0.5 s window.
+  let musicPeakPlaying = await musicPeak(page, 10);
+  for (let i = 0; i < 5 && musicPeakPlaying.peak <= 0.0005; i++) musicPeakPlaying = await musicPeak(page, 10);
   const before = await snap(page);
   await btn.click({ timeout: 5000 });
   await page.waitForTimeout(250);
@@ -450,9 +453,12 @@ test('T6b 1.3 s main-thread freeze: game clock keeps following the audio clock; 
     const off0 = Conductor.clockOffset();
     const planned = notes.filter((n) => !n.hit && !n.missed).map((n) => ({ hitTime: n.hitTime, audio: Conductor.gameToAudio(n.hitTime), bpm }));
     const t0 = performance.now(); while (performance.now() - t0 < 1300) { /* freeze */ }
+    // In flight = still ahead when the freeze ENDS (was: after two more frames, which on a starved
+    // WebKit at 4 workers took long enough for every ring to pass, so nothing was left to check).
+    const ahead = planned.filter((p) => p.audio > audioCtx.currentTime + 0.15);
     return new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => res({
       offsetShiftMs: (Conductor.clockOffset() - off0) * 1000, stateAfter: state,
-      inFlight: planned.filter((p) => p.audio > audioCtx.currentTime + 0.15).map((p) => ({ ...p, audioNow: Conductor.gameToAudio(p.hitTime) })),
+      inFlight: ahead.map((p) => ({ ...p, audioNow: Conductor.gameToAudio(p.hitTime) })),
     }))));
   });
   await page.waitForTimeout(4000);
