@@ -66,10 +66,39 @@ async function gridAfter(page, fromIdx) {
       let bd = Infinity, e = 0;
       for (const s of steps) { const d = Math.abs(n.audio - s.w); if (d < bd) { bd = d; e = (n.audio - s.w) * 1000; } }
       out.push(+e.toFixed(2));
+      if (Math.abs(e) > 2) {
+        let ns = null, nd = Infinity; for (const s2 of steps) { const d2 = Math.abs(n.audio - s2.w); if (d2 < nd) { nd = d2; ns = s2; } }
+        (window.__diagOff ||= []).push({ e: +e.toFixed(3), idx: n.index, nowG: +n.nowG.toFixed(3), noteAudio: +n.audio.toFixed(4), stepW: +ns.w.toFixed(4), stepStep: ns.step, stepLate: +((ns.acNow - ns.when) * 1000).toFixed(1), stepDur: +ns.stepDur.toFixed(4), sw: ns.sw, bpm: n.bpm, stepBpm: ns.bpm, phase: n.phaseKey, stepPhase: ns.phaseKey });
+      }
     }
     return out;
   }, fromIdx);
 }
+
+
+// ---- DIAG (diag/webkit-pause branch only; never merged) ----
+test.afterEach(async ({ page }, info) => {
+  let d = {};
+  try {
+    d = await page.evaluate(() => {
+      const ac = typeof audioCtx !== 'undefined' && audioCtx;
+      const reads = []; const t0 = performance.now();
+      while (performance.now() - t0 < 60) reads.push(ac ? ac.currentTime : 0);
+      const incs = []; for (let i = 1; i < reads.length; i++) if (reads[i] !== reads[i - 1]) incs.push(+((reads[i] - reads[i - 1]) * 1000).toFixed(2));
+      const st = (window.__qa && __qa.steps) || [];
+      const late = st.filter((s) => s.acNow > s.when).map((s) => +((s.acNow - s.when) * 1000).toFixed(1));
+      const ov = document.getElementById('pauseOverlay');
+      return { off: window.__diagOff || [], acIncMs: incs.slice(0, 12), acState: ac && ac.state, baseLatency: ac && ac.baseLatency, sampleRate: ac && ac.sampleRate,
+        stepsTotal: st.length, stepsLate: late.length, stepsLateMax: late.length ? Math.max(...late) : 0,
+        frames: (window.__qa && __qa.frames || []).filter((f) => f > 100).length, framesMax: Math.round(Math.max(0, ...((window.__qa && __qa.frames) || [0]))),
+        state, pauses: typeof _t6PauseCount === 'number' ? _t6PauseCount : null, resyncs: typeof _t6ResyncCount === 'number' ? _t6ResyncCount : null,
+        overlay: ov ? ov.className : null, pauseMsg: (document.getElementById('pauseMsg') || {}).textContent, pauseReason: typeof pauseInfo !== 'undefined' && pauseInfo ? pauseInfo.reason : null };
+    });
+  } catch (e) { d = { evalError: String(e).slice(0, 200) }; }
+  d.title = info.title.slice(0, 40); d.project = info.project.name; d.repeat = info.repeatEachIndex; d.status = info.status;
+  d.error = info.error ? String(info.error.message || '').replace(/\u001b\[[0-9;]*m/g, '').split('\n').filter(Boolean).slice(0, 6).join(' | ').slice(0, 400) : null;
+  console.log('DIAGJSON ' + JSON.stringify(d));
+});
 
 test('T6 pause button: upper-right, freezes the run with no penalty, silences music; Resume counts 3-2-1 and play resumes on the grid', async ({ page }) => {
   const errors = await boot(page);
