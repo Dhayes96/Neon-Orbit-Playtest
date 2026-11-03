@@ -643,3 +643,71 @@ test('T6 iOS screen lock: after waking, the clock is stuck until Resume kicks it
   expect(music.firstAt, 'music restarts within 1 s of resume').toBeLessThanOrEqual(1);
   expect(music.lastWhenVsEnd, 'music still scheduled at the end').toBeGreaterThan(-0.5);
 });
+
+// T6d: the game<->audio clock offset must be exactly constant while audio runs. It used to read
+// audioCtx.currentTime twice (once inside clockNow(), once directly), so an audio render quantum
+// landing between the reads (2.67 ms at 48 kHz; several under load) moved it, and a ring placed
+// through that offset landed that far off the beat (QA: 1 Chromium ring 2.67 ms off). This reads
+// the offset continuously for 300 ms of busy main thread: the audio thread ticks ~110 times.
+test('T6d clock offset is exactly constant while audio runs (no render-quantum jitter)', async ({ page }) => {
+  const errors = await boot(page);
+  await startRun(page);
+  await page.waitForTimeout(1500);
+  const r = await page.evaluate(() => {
+    let min = Infinity, max = -Infinity, n = 0; const ac0 = audioCtx.currentTime;
+    const t0 = performance.now();
+    while (performance.now() - t0 < 300) { const o = Conductor.clockOffset(); if (o < min) min = o; if (o > max) max = o; n++; }
+    return { spreadMs: (max - min) * 1000, reads: n, audioAdvancedMs: (audioCtx.currentTime - ac0) * 1000, state, ac: audioCtx.state };
+  });
+  writeResult('phase2-offset-jitter', { ...r, errors });
+  expect(errors).toEqual([]);
+  expect(r.ac).toBe('running');
+  expect(r.audioAdvancedMs, 'audio clock ticked during the window (else the check is vacuous)').toBeGreaterThan(100);
+  expect(r.spreadMs, 'offset spread across reads (ms)').toBeLessThan(1e-6);
+});
+
+// T6e: Siri on a janky device. Main-thread hiccups (350 ms every 700 ms) must not stop the Siri
+// detector from arming, and a hiccup must not keep it disarmed once the clock stops. QA saw both
+// on a loaded WebKit ("never armed in 30 s"; "paused during Siri" got playing). The same jank with
+// the clock RUNNING must not pause (the false-pause guard the arming exists for).
+test('T6e Siri under main-thread jank: detector still arms and pauses; jank alone never pauses', async ({ page }) => {
+  const errors = await boot(page);
+  await installProbes(page);
+  await capturePauses(page);
+  await startRun(page);
+  await startBot(page);
+  await page.waitForTimeout(3000);
+  await page.evaluate(() => {
+    window.__jank = setInterval(() => { const t0 = performance.now(); while (performance.now() - t0 < 350) { /* hiccup */ } }, 700);
+  });
+  // Jank alone, clock running, 6 s: plays on (no pause of any kind).
+  await page.waitForTimeout(6000);
+  const jankOnly = await snap(page);
+  const armedUnderJank = await page.evaluate(() => audioClockArmed());
+  // Siri: freeze the clock as soon as the detector is armed (same task), jank continuing.
+  const armWait = await page.waitForFunction(() => {
+    if (!(audioClockArmed() && (state === 'playing' || state === 'bossBattle'))) return false;
+    const real = Object.getOwnPropertyDescriptor(BaseAudioContext.prototype, 'currentTime').get;
+    window.__frozenAt = real.call(audioCtx);
+    window.__realCT = () => real.call(audioCtx);
+    Object.defineProperty(audioCtx, 'currentTime', { configurable: true, get: () => window.__frozenAt });
+    window.__atFreeze = window.__snapNow();
+    return true;
+  }, null, { timeout: 10000 }).then(() => true, () => false);
+  let during = null, atFreeze = null, pre = null;
+  if (armWait) {
+    atFreeze = await page.evaluate(() => window.__atFreeze);
+    await page.waitForTimeout(3000);
+    during = await snap(page);
+    pre = await prePause(page);
+  }
+  await page.evaluate(() => clearInterval(window.__jank));
+  writeResult('phase2-siri-jank', { jankOnly, armedUnderJank, armWait, atFreeze, pre, during, errors });
+  expect(errors).toEqual([]);
+  expect(jankOnly.pauses, 'jank alone, clock running: no pause').toBe(0);
+  expect(['playing', 'levelup', 'bossIntro', 'bossBattle', 'bossDefeat'], 'jank alone: still in the run').toContain(jankOnly.state);
+  expect(armWait, 'detector armed within 10 s under jank').toBe(true);
+  expect(during.state, 'paused during Siri under jank').toBe('paused');
+  expect(pre && pre.reason, 'paused by the audio-clock detector').toBe('audio');
+  expect(during.misses - atFreeze.misses, 'no misses from the frozen clock').toBe(0);
+});
