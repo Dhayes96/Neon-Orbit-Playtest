@@ -57,6 +57,11 @@ async function recordMusicAutomation(page) {
     // Tap the music bus output: what is actually rendered, not the param readout.
     const an = window.__musicTap = audioCtx.createAnalyser(); an.fftSize = 2048;
     musicGain.connect(an);
+    // Pull the tap from the output through a silent node: an analyser that nothing downstream pulls
+    // is processed only when the engine decides to (CI WebKit at 4 workers read a peak of exactly 0
+    // for 3 s after a resume whose restore the game had scheduled immediately). Gain 0: inaudible.
+    const sink = window.__musicTapSink = audioCtx.createGain(); sink.gain.value = 0;
+    an.connect(sink); sink.connect(audioCtx.destination);
   });
 }
 // Peak level on the music bus tap over `n` reads, 50 ms apart.
@@ -69,7 +74,21 @@ const musicPeak = (page, n = 5) => page.evaluate((n) => new Promise((res) => {
     setTimeout(read, 50);
   })();
 }), n);
-const pollGain = (page, cmp, limit, ms) => expect.poll(() => page.evaluate(() => musicGain.gain.value), { timeout: ms, intervals: [20] })[cmp](limit);
+// Wait for the engine's gain readout to exceed `limit` within `liveMs` of RUNNING time: frame gaps
+// over 250 ms (a whole-machine stall; QA saw one of 3.3 s at 4 workers) don't use up the window,
+// they are logged instead. Same 2 s of live time as before; hard cap 15 s of wall time.
+const gainUpWithin = (page, limit, liveMs) => page.evaluate(({ limit, liveMs }) => new Promise((res) => {
+  const t0 = performance.now(); let last = t0, live = 0, stalls = 0, maxGap = 0;
+  (function f() {
+    const p = performance.now(), g = p - last; last = p; maxGap = Math.max(maxGap, g);
+    if (g <= 250) live += g; else stalls++;
+    const v = musicGain.gain.value;
+    const out = { v, liveMs: Math.round(live), wallMs: Math.round(p - t0), stalls, maxGapMs: Math.round(maxGap), state };
+    if (v > limit) return res({ ok: true, ...out });
+    if (live >= liveMs || p - t0 > 15000) return res({ ok: false, ...out });
+    requestAnimationFrame(f);
+  })();
+}), { limit, liveMs });
 const prePause = (page, i = 0) => page.evaluate((k) => window.__pauses[k] || null, i);
 const st = (s) => ({ score: s.score, combo: s.combo, stage: s.stage, misses: s.misses });
 
@@ -301,9 +320,14 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   // Engine applies the restore: Chromium's readout must be back up within 2 s, as before. On every
   // engine the music bus tap must carry the music again within 3 s. (CI WebKit read .value stuck at
   // the paused 0.0001 after resume while the restore it scheduled was immediate: same stale readout.)
-  if (browserName !== 'webkit') await pollGain(page, 'toBeGreaterThan', 0.01, 2000);
+  const gainUp = browserName !== 'webkit' ? await gainUpWithin(page, 0.01, 2000) : null;
+  const stepsAtTap = await page.evaluate(() => __qa.steps.length);
   let musicPeakResumed = await musicPeak(page, 10);
   for (let i = 0; i < 5 && musicPeakResumed.peak <= 0.0005; i++) musicPeakResumed = await musicPeak(page, 10);
+  // Diagnostics: tells a stuck tap from real silence (were steps scheduled? what state?).
+  const tapWindow = await page.evaluate((k) => ({ stepsScheduled: __qa.steps.length - k, state, ac: audioCtx.state, gain: musicGain.gain.value }), stepsAtTap);
+  writeResult('phase2-pause-button', { ...res, gainUp, musicPeakResumed, tapWindow });
+  if (gainUp) expect(gainUp.ok, 'engine reports music back up within 2 s of running time after resume').toBe(true);
   expect(musicPeakResumed.peak, 'music bus carries the music again after resume').toBeGreaterThan(0.0005);
   expect(r0.resyncs - before.resyncs, 'exactly one resync').toBe(1);
   expect(grid.length, 'rings scheduled after resume').toBeGreaterThanOrEqual(3);
@@ -328,7 +352,8 @@ test('T6 tab switch: auto-pauses, stays paused on return (no misses); one Resume
   const cd = await resumeAndCount(page);
   const r0 = await snap(page);
   const grid = await gridAfterResume(page, back.nq);
-  const res = { before, pre, hidden, back, countdown: cd, r0, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors };
+  const gridDetail = await gridDetailAfter(page, back.nq);
+  const res = { before, pre, hidden, back, countdown: cd, r0, gridAfterResumeMs: grid, gridDetail, ringsOnDroppedSteps: grid.dropped, errors };
   writeResult('phase2-tab-switch', res);
   expect(errors).toEqual([]);
   expect(hidden.state).toBe('paused');
@@ -582,8 +607,9 @@ test('T6 iOS Siri: audio clock stops while the context still says running → au
   await thawAudioClock(page);
   const cd = await resumeAndCount(page);
   const grid = await gridAfterResume(page, during.nq);
+  const gridDetail = await gridDetailAfter(page, during.nq);
   const pre = await prePause(page);
-  writeResult('phase2-ios-siri', { before, atFreeze, pre, during, siriTL, countdown: cd, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors });
+  writeResult('phase2-ios-siri', { before, atFreeze, pre, during, siriTL, countdown: cd, gridAfterResumeMs: grid, gridDetail, ringsOnDroppedSteps: grid.dropped, errors });
   expect(errors).toEqual([]);
   expect(during.misses - atFreeze.misses, 'no misses from the frozen clock').toBe(0);
   expect(pre && pre.reason, 'paused by the audio-clock detector').toBe('audio');
