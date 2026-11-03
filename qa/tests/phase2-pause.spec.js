@@ -333,6 +333,37 @@ test('T6a 700 ms main-thread stall: the music re-anchors by whole steps, so in-f
   expect(errs.filter((e) => Math.abs(e) > GRID_TOL_MS).length, 'in-flight rings off the grid after a stall').toBe(0);
 });
 
+// T6b: a freeze longer than 1 s (found via WebKit on CI, where the page freezes up to ~1 s):
+// the game clock must keep following the audio clock, so rings already in flight still land on
+// the music. Before the fix, clockNow() capped any gap > 1 s to 1 s and lost the excess
+// (1.3 s freeze -> every in-flight ring 300 ms off the beat), on every engine.
+test('T6b 1.3 s main-thread freeze: game clock keeps following the audio clock; in-flight rings stay on the grid', async ({ page }) => {
+  const errors = await boot(page);
+  await installProbes(page);
+  await startRun(page);
+  await startBot(page);
+  await page.waitForFunction(() => state === 'playing' && notes.filter((n) => !n.hit && !n.missed && n.hitTime > clockNow() - startTime + 1.6).length >= 1 && (clockNow() - startTime) > 4, null, { timeout: 30000 });
+  const r = await page.evaluate(() => {
+    const off0 = Conductor.clockOffset();
+    const planned = notes.filter((n) => !n.hit && !n.missed).map((n) => ({ hitTime: n.hitTime, audio: Conductor.gameToAudio(n.hitTime), bpm }));
+    const t0 = performance.now(); while (performance.now() - t0 < 1300) { /* freeze */ }
+    return new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => res({
+      offsetShiftMs: (Conductor.clockOffset() - off0) * 1000,
+      inFlight: planned.filter((p) => p.audio > audioCtx.currentTime + 0.15).map((p) => ({ ...p, audioNow: Conductor.gameToAudio(p.hitTime) })),
+    }))));
+  });
+  await page.waitForTimeout(4000);
+  const steps = await page.evaluate(() => __qa.steps);
+  const clearedHits = await page.evaluate(() => __qa.notes.filter((q) => q.cleared).map((q) => q.hitTime));
+  const live = r.inFlight.filter((n) => !clearedHits.some((h) => Math.abs(h - n.hitTime) < 1e-9));
+  const errs = live.map((n) => +gridError(n.audioNow, n.bpm, steps).e.toFixed(2));
+  writeResult('phase2-freeze-1300', { offsetShiftMs: r.offsetShiftMs, inFlight: r.inFlight.length, live: live.length, errMs: errs, errors });
+  expect(errors).toEqual([]);
+  expect(Math.abs(r.offsetShiftMs), 'game clock still tracks the audio clock after the freeze (ms)').toBeLessThanOrEqual(GRID_TOL_MS);
+  expect(live.length, 'in-flight rings that actually play').toBeGreaterThanOrEqual(1);
+  expect(errs.filter((e) => Math.abs(e) > GRID_TOL_MS), 'in-flight rings off the grid after the freeze (ms)').toEqual([]);
+});
+
 // ---- iOS device reports (Dennel, 2026-11-01) ----
 // iOS Safari can keep the AudioContext reporting 'running' while its clock has stopped:
 // during Siri, and after the screen is locked and woken. These tests fake that by
