@@ -253,6 +253,12 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   const btn = page.locator('#pauseBtn');
   await expect(btn).toBeVisible();
   const box = await btn.boundingBox(); const vp = page.viewportSize();
+  // Keep the run alive: on a starved WebKit the bot misses enough rings for energy to hit 0 and the
+  // run to end (CI, 2 workers: Pause vanished before the click; another run was in 'gameover' after
+  // resume). Topping energy up here and after r0 changes no assertion: every check compares against
+  // `pre`, captured inside the game at the instant the pause takes effect.
+  const topUp = () => page.evaluate(() => { if (inRunState()) energy = 100; });
+  await topUp();
   // Proves the tap carries the music (else 'silent' means nothing). Keep reading (max 3 s) past a
   // rest or the stage-change gap in the music: CI WebKit once read 0 over a single 0.5 s window.
   let musicPeakPlaying = await musicPeak(page, 10);
@@ -280,6 +286,7 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   const fr = await frames(page);
   const cd = await resumeAndCount(page);
   const r0 = await snap(page);
+  await topUp();
   const gainLog = await page.evaluate(() => window.__gainLog);
   const grid = await gridAfterResume(page, p1.nq);   // nothing spawns while paused, so everything after p1 is post-resume
   const end = await snap(page);
