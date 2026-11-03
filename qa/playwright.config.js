@@ -24,6 +24,8 @@ module.exports = defineConfig({
     // retries: 1 — on CI, WebKit's sequencer occasionally falls just under the step-count floor
     // (29 vs >30 in 10 s on 2026-11-01). Retry-passes report as "flaky". Root cause: Phase 2 T7 (scheduler headroom).
     { name: 'webkit-smoke', retries: 1, use: { ...devices['Desktop Safari'] }, testMatch: /smoke\.spec|crazygames-audio-resume\.spec/ },
+    { name: 'webkit-pause-diag', use: { ...devices['Desktop Safari'] }, testMatch: /phase2-pause\.spec/ },
+    { name: 'chrome-pause-diag', use: { ...devices['Desktop Chrome'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testMatch: /phase2-pause\.spec/ },
     { name: 'mobile-pixel7', use: { ...devices['Pixel 7'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testMatch: /mobile\.spec/ },
   ],
 });
