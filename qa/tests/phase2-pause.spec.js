@@ -30,6 +30,12 @@ async function capturePauses(page) {
   await page.evaluate(() => {
     window.__snapNow = () => ({ state, score, combo, stage, misses: runStats.misses, energy: +energy.toFixed(3),
       oks: runStats.oks, offTarget: runStats.offTarget || 0, ac: audioCtx ? audioCtx.currentTime : null, wall: performance.now() });
+    // Unresolved rings already past their OK window at the current game time (call right after
+    // freezing the audio clock, so clockNow() lands exactly on the freeze instant).
+    window.__overdueAtFreeze = () => {
+      const t = clockNow() - startTime, okWin = windows().ok;
+      return notes.filter((n) => !n.hit && !n.missed && t - (n.hitTime + audioOffset()) > okWin + 0.02).length;
+    };
     window.__pauses = [];
     const orig = window.pauseGame;
     window.pauseGame = function (reason) {
@@ -252,7 +258,13 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   let musicPeakPlaying = await musicPeak(page, 10);
   for (let i = 0; i < 5 && musicPeakPlaying.peak <= 0.0005; i++) musicPeakPlaying = await musicPeak(page, 10);
   const before = await snap(page);
-  await btn.click({ timeout: 5000 });
+  try {
+    await btn.click({ timeout: 5000 });
+  } catch (e) {   // diagnostics: why the button was gone (an auto-pause? the run ended?)
+    writeResult('phase2-pause-button', { clickFailed: String(e.message).split('\n')[0], before, now: await snap(page),
+      pauses: await page.evaluate(() => window.__pauses), frames: await frames(page), musicPeakPlaying, errors });
+    throw e;
+  }
   await page.waitForTimeout(250);
   const p0 = await snap(page);
   await page.waitForTimeout(2000);
@@ -515,6 +527,7 @@ test('T6 iOS Siri: audio clock stops while the context still says running → au
     window.__realCT = () => real.call(audioCtx);
     Object.defineProperty(audioCtx, 'currentTime', { configurable: true, get: () => window.__frozenAt });
     window.__atFreeze = window.__snapNow();
+    window.__atFreeze.overdue = window.__overdueAtFreeze();
     const tl = window.__siriTL = []; const origS = window.audioClockStalled; let last = performance.now();
     window.audioClockStalled = function () {
       const armed = audioClockArmed(); const r = origS.apply(this, arguments); const p = performance.now();
@@ -535,7 +548,10 @@ test('T6 iOS Siri: audio clock stops while the context still says running → au
   const pre = await prePause(page);
   writeResult('phase2-ios-siri', { before, atFreeze, pre, during, siriTL, countdown: cd, gridAfterResumeMs: grid, gridDetail, ringsOnDroppedSteps: grid.dropped, errors });
   expect(errors).toEqual([]);
-  expect(during.misses - atFreeze.misses, 'no misses from the frozen clock').toBe(0);
+  // Rings already past their OK window when the clock stopped (game time at the freeze instant)
+  // are misses that happened BEFORE Siri; the game judges them on its next frame. Under jank the
+  // bot can miss one (CI WebKit, 2 workers: 1). Anything beyond those is a miss caused by the stall.
+  expect(during.misses - atFreeze.misses, 'no misses from the frozen clock (beyond rings already overdue at the freeze)').toBe(atFreeze.overdue);
   expect(pre && pre.reason, 'paused by the audio-clock detector').toBe('audio');
   expect(st(during), 'state frozen from the pause on').toEqual(st(pre));
   expect(cd.state).toBe('playing');
