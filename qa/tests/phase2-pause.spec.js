@@ -298,7 +298,13 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   expect(p0.from).toBe(pre.state);
   expect(cd.state, 'resumes into the state it paused from').toBe(pre.state);
   expect(st(r0), 'score and state preserved through resume').toEqual(st(pre));
-  await pollGain(page, 'toBeGreaterThan', 0.01, 2000);   // engine reports the music back up
+  // Engine applies the restore: Chromium's readout must be back up within 2 s, as before. On every
+  // engine the music bus tap must carry the music again within 3 s. (CI WebKit read .value stuck at
+  // the paused 0.0001 after resume while the restore it scheduled was immediate: same stale readout.)
+  if (browserName !== 'webkit') await pollGain(page, 'toBeGreaterThan', 0.01, 2000);
+  let musicPeakResumed = await musicPeak(page, 10);
+  for (let i = 0; i < 5 && musicPeakResumed.peak <= 0.0005; i++) musicPeakResumed = await musicPeak(page, 10);
+  expect(musicPeakResumed.peak, 'music bus carries the music again after resume').toBeGreaterThan(0.0005);
   expect(r0.resyncs - before.resyncs, 'exactly one resync').toBe(1);
   expect(grid.length, 'rings scheduled after resume').toBeGreaterThanOrEqual(3);
   expect(grid.filter((e) => Math.abs(e) > GRID_TOL_MS).length, 'rings off the grid after resume').toBe(0);
