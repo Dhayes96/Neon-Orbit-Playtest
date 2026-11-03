@@ -17,7 +17,7 @@ async function startRun(page) {
   await page.waitForFunction(() => audioCtx && audioCtx.state === 'running' && music.on, null, { timeout: 5000 });
 }
 const snap = (page) => page.evaluate(() => ({ state, score, combo, energy: +energy.toFixed(3), stage, misses: runStats.misses,
-  hits: runStats.hits, steps: __qa.steps.length, nq: __qa.notes.length, notes: notes.length, now: clockNow(),
+  hits: runStats.hits, steps: __qa.steps.length, nq: __qa.notes.length, notes: notes.length, now: clockNow(), ac: audioCtx ? audioCtx.currentTime : null,
   musicGain: musicGain ? musicGain.gain.value : null,
   pauses: typeof _t6PauseCount === 'number' ? _t6PauseCount : null,
   resyncs: typeof _t6ResyncCount === 'number' ? _t6ResyncCount : null,
@@ -59,16 +59,16 @@ async function recordMusicAutomation(page) {
     musicGain.connect(an);
   });
 }
-// Peak level on the music bus tap over 5 reads, 50 ms apart.
-const musicPeak = (page) => page.evaluate(() => new Promise((res) => {
+// Peak level on the music bus tap over `n` reads, 50 ms apart.
+const musicPeak = (page, n = 5) => page.evaluate((n) => new Promise((res) => {
   const an = window.__musicTap, buf = new Float32Array(an.fftSize); let peak = 0, k = 0;
   (function read() {
     an.getFloatTimeDomainData(buf);
     for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i]));
-    if (++k >= 5) return res({ peak, state });
+    if (++k >= n) return res({ peak, state });
     setTimeout(read, 50);
   })();
-}));
+}), n);
 const pollGain = (page, cmp, limit, ms) => expect.poll(() => page.evaluate(() => musicGain.gain.value), { timeout: ms, intervals: [20] })[cmp](limit);
 const prePause = (page, i = 0) => page.evaluate((k) => window.__pauses[k] || null, i);
 const st = (s) => ({ score: s.score, combo: s.combo, stage: s.stage, misses: s.misses });
@@ -228,7 +228,7 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   const btn = page.locator('#pauseBtn');
   await expect(btn).toBeVisible();
   const box = await btn.boundingBox(); const vp = page.viewportSize();
-  const musicPeakPlaying = await musicPeak(page);   // proves the tap carries the music (else 'silent' means nothing)
+  const musicPeakPlaying = await musicPeak(page, 10);   // proves the tap carries the music (else 'silent' means nothing)
   const before = await snap(page);
   await btn.click({ timeout: 5000 });
   await page.waitForTimeout(250);
@@ -274,9 +274,10 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   expect(gainLog.slice(pauseIdx + 1, resumeIdx).filter((c) => c.v != null && c.v > 0.01), 'nothing raises the music while paused').toEqual([]);
   // ...and the engine actually applies it (eventually; timing is asserted on the schedule above).
   if (browserName !== 'webkit') expect(gainPaused, 'engine reports music silenced 2 s into the pause').toBeLessThan(0.01);
-  expect(musicPeakPlaying.peak, 'music bus tap carries the music while playing').toBeGreaterThan(0.01);
+  // Bounds from CI: playing peaks 0.0015-0.19 (WebKit) / 0.09-0.17 (Chromium); paused peaks exactly 0.
+  expect(musicPeakPlaying.peak, 'music bus tap carries the music while playing').toBeGreaterThan(0.0005);
   expect(musicPeakPaused.state).toBe('paused');
-  expect(musicPeakPaused.peak, 'music bus output silent 2 s into the pause (peak, all engines)').toBeLessThan(0.001);
+  expect(musicPeakPaused.peak, 'music bus output silent 2 s into the pause (peak, all engines)').toBeLessThan(0.0001);
   // Baseline is `pre`, captured inside the game at the exact moment the pause took effect.
   // (A test-side snapshot taken earlier races the bot, which can land or miss a ring in the gap,
   // most of all during WebKit's main-thread freezes.) From that moment, nothing may change:
@@ -538,11 +539,22 @@ test('T6 iOS screen lock: after waking, the clock is stuck until Resume kicks it
   const grid = await gridAfterResume(page, back.nq);
   const end = await snap(page);
   const gridDetail = await gridDetailAfter(page, back.nq);
-  writeResult('phase2-ios-lock', { back, r0, end, gridAfterResumeMs: grid, gridDetail, ringsOnDroppedSteps: grid.dropped, errors });
+  const post = await page.evaluate((from) => __qa.steps.slice(from).map((x) => ({ when: x.when, acNow: x.acNow })), r0.steps);
+  let maxStepGap = 0; for (let i = 1; i < post.length; i++) maxStepGap = Math.max(maxStepGap, post[i].when - post[i - 1].when);
+  const music = { steps: post.length, firstAt: post.length ? +(post[0].acNow - r0.ac).toFixed(3) : null,
+    lastWhenVsEnd: post.length ? +(post[post.length - 1].when - end.ac).toFixed(3) : null, maxStepGapS: +maxStepGap.toFixed(3) };
+  writeResult('phase2-ios-lock', { back, r0, end, music, gridAfterResumeMs: grid, gridDetail, ringsOnDroppedSteps: grid.dropped, errors });
   expect(errors).toEqual([]);
   expect(back.state).toBe('paused');
   expect(r0.state).toBe('playing');
   expect(grid.length, 'rings spawn after waking + resume').toBeGreaterThanOrEqual(3);
   expect(grid.filter((e) => Math.abs(e) > GRID_TOL_MS).length).toBe(0);
-  expect(end.steps - r0.steps, 'music plays after resume').toBeGreaterThan(20);
+  // Music restarted and kept playing to the end. (Was: > 20 steps in the window. A starved
+  // WebKit drops 16ths during its freezes by design, so CI saw 16-19 with the music playing
+  // throughout.) Now: it restarts within 1 s of resume, is still being scheduled at the end,
+  // and at least 10 steps were scheduled in between. (No max-gap check: the stage-change gap
+  // in the music is deliberate, ~1.4 s.)
+  expect(music.steps, 'music plays after resume (steps)').toBeGreaterThanOrEqual(10);
+  expect(music.firstAt, 'music restarts within 1 s of resume').toBeLessThanOrEqual(1);
+  expect(music.lastWhenVsEnd, 'music still scheduled at the end').toBeGreaterThan(-0.5);
 });
