@@ -228,7 +228,10 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   const btn = page.locator('#pauseBtn');
   await expect(btn).toBeVisible();
   const box = await btn.boundingBox(); const vp = page.viewportSize();
-  const musicPeakPlaying = await musicPeak(page, 10);   // proves the tap carries the music (else 'silent' means nothing)
+  // Proves the tap carries the music (else 'silent' means nothing). Keep reading (max 3 s) past a
+  // rest or the stage-change gap in the music: CI WebKit once read 0 over a single 0.5 s window.
+  let musicPeakPlaying = await musicPeak(page, 10);
+  for (let i = 0; i < 5 && musicPeakPlaying.peak <= 0.0005; i++) musicPeakPlaying = await musicPeak(page, 10);
   const before = await snap(page);
   await btn.click({ timeout: 5000 });
   await page.waitForTimeout(250);
