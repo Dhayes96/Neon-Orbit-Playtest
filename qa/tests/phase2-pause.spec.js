@@ -22,6 +22,37 @@ const snap = (page) => page.evaluate(() => ({ state, score, combo, energy: +ener
   pauses: typeof _t6PauseCount === 'number' ? _t6PauseCount : null,
   resyncs: typeof _t6ResyncCount === 'number' ? _t6ResyncCount : null,
   from: typeof pauseInfo !== 'undefined' && pauseInfo ? pauseInfo.from : null }));
+// State captured INSIDE the game at the exact moment a pause takes effect (and, via
+// __snapNow, at the exact moment a simulated interruption starts). A snapshot taken by the
+// test a few ms earlier races the bot: under main-thread stalls (software-rendered WebKit
+// freezes 0.3-0.85 s on CI) it can legitimately land or miss a ring in that gap.
+async function capturePauses(page) {
+  await page.evaluate(() => {
+    window.__snapNow = () => ({ state, score, combo, stage, misses: runStats.misses, energy: +energy.toFixed(3), ac: audioCtx ? audioCtx.currentTime : null });
+    window.__pauses = [];
+    const orig = window.pauseGame;
+    window.pauseGame = function (reason) {
+      const pre = inRunState() ? window.__snapNow() : null;
+      const did = orig.apply(this, arguments);
+      if (pre && state === 'paused') window.__pauses.push({ ...pre, reason });
+      return did;
+    };
+  });
+}
+// AudioParam.value only reflects a scheduled change once the audio thread has rendered past
+// it. Read the music gain when the AUDIO clock reaches `at`: strict in audio time and immune to
+// the test machine's own scheduling delays. audioMs is null if the clock never got there (5 s).
+const gainAtAudioTime = (page, at) => page.evaluate((t) => new Promise((resolve) => {
+  const t0 = performance.now();
+  (function wait() {
+    if (audioCtx.currentTime >= t) return resolve({ gain: musicGain.gain.value, audioMs: (audioCtx.currentTime - t) * 1000 });
+    if (performance.now() - t0 > 5000) return resolve({ gain: musicGain.gain.value, audioMs: null });
+    requestAnimationFrame(wait);
+  })();
+}), at);
+const prePause = (page, i = 0) => page.evaluate((k) => window.__pauses[k] || null, i);
+const st = (s) => ({ score: s.score, combo: s.combo, stage: s.stage, misses: s.misses });
+
 async function hideTab(page) {
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
@@ -54,26 +85,41 @@ async function resumeAndCount(page) {
   }));
   return seen;
 }
-// Rings spawned after probe index `fromIdx` (taken while paused, when nothing spawns)
-// vs the audio steps actually scheduled. Indexing avoids time math across the
-// startTime shift that resume applies.
+// Grid error (ms) of a ring's audio time against the music's beat grid. The grid is defined
+// by the steps the sequencer actually scheduled: the nearest scheduled step s, plus k whole
+// steps (same BPM, swing applied to the slot exactly as the sequencer does). k != 0 means the
+// ring's beat was DROPPED by the scheduler: by design it never schedules into the past, so a
+// main-thread freeze longer than its 140 ms lookahead skips a 16th (see musicTick / T6a).
+// Such a ring is still exactly on the beat; it is counted separately (`dropped`), not as off-grid.
+function gridError(audio, bpm, steps) {
+  let s = null, bd = Infinity;
+  for (const x of steps) { const d = Math.abs(audio - x.w); if (d < bd) { bd = d; s = x; } }
+  if (!s) return { e: Infinity, k: 0 };
+  const k = Math.round((audio - s.when) / s.stepDur);
+  if (k === 0 || s.bpm !== bpm || Math.abs(k) > 4) return { e: (audio - s.w) * 1000, k: 0 };
+  const slot = (((s.step + k) % 4) + 4) % 4;
+  const expected = s.when + k * s.stepDur + (s.sw && slot === 2 ? s.stepDur * s.sw : 0);
+  return { e: (audio - expected) * 1000, k };
+}
+// Rings spawned after probe index `fromIdx` (taken while paused, when nothing spawns).
+// Indexing avoids time math across the startTime shift that resume applies.
 async function gridAfter(page, fromIdx) {
-  return page.evaluate((since) => {
-    const steps = __qa.steps; const lastW = steps.length ? steps[steps.length - 1].when : 0;
-    const out = [];
-    for (const n of __qa.notes.slice(since)) {
-      if (n.audio == null || n.cleared || n.audio > lastW - 0.05) continue;
-      let bd = Infinity, e = 0;
-      for (const s of steps) { const d = Math.abs(n.audio - s.w); if (d < bd) { bd = d; e = (n.audio - s.w) * 1000; } }
-      out.push(+e.toFixed(2));
-    }
-    return out;
-  }, fromIdx);
+  const { notes, steps } = await page.evaluate((since) => ({ notes: __qa.notes.slice(since), steps: __qa.steps }), fromIdx);
+  const lastW = steps.length ? steps[steps.length - 1].when : 0;
+  const out = []; out.dropped = 0;
+  for (const n of notes) {
+    if (n.audio == null || n.cleared || n.audio > lastW - 0.05) continue;
+    const g = gridError(n.audio, n.bpm, steps);
+    if (g.k) out.dropped++;
+    out.push(+g.e.toFixed(2));
+  }
+  return out;
 }
 
 test('T6 pause button: upper-right, freezes the run with no penalty, silences music; Resume counts 3-2-1 and play resumes on the grid', async ({ page }) => {
   const errors = await boot(page);
   await installProbes(page);
+  await capturePauses(page);
   await startRun(page);
   await startBot(page);
   await page.waitForTimeout(4000);
@@ -86,12 +132,15 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   const p0 = await snap(page);
   await page.waitForTimeout(2000);
   const p1 = await snap(page);
+  const pre = await prePause(page);            // state at the exact moment the pause took effect
+  const silenced = await gainAtAudioTime(page, pre.ac + 0.1);   // still paused: 100 ms of audio after the pause
   const cd = await resumeAndCount(page);
   const r0 = await snap(page);
+  const restored = await gainAtAudioTime(page, cd.ac + 0.05);
   await page.waitForTimeout(7000);
   const grid = await gridAfter(page, p1.nq);   // nothing spawns while paused, so everything after p1 is post-resume
   const end = await snap(page);
-  const res = { box, vp, before, p0, p1, countdown: cd, r0, end, gridAfterResumeMs: grid, errors };
+  const res = { box, vp, before, pre, p0, p1, silenced, countdown: cd, r0, restored, end, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors };
   writeResult('phase2-pause-button', res);
   expect(errors).toEqual([]);
   expect(box.x + box.width / 2, 'button on the right').toBeGreaterThan(vp.width * 0.6);
@@ -99,37 +148,25 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   expect(p0.state).toBe('paused');
   expect(p0.notes, 'in-flight rings cleared on pause').toBe(0);
   expect(p1.steps - p0.steps, 'no music steps scheduled while paused').toBe(0);
-  expect(p1.musicGain, 'music silenced while paused').toBeLessThan(0.01);
-  expect(p1.misses - before.misses, 'no misses from pausing').toBe(0);
-  // Baseline is p0 (pause applied), not `before`: energy drains every frame during play, so the
-  // ms between the `before` snapshot and the click registering legitimately move it. While
-  // paused it must not move at all.
-  expect(p1.energy, 'no energy drain while paused (frozen exactly)').toBe(p0.energy);
+  expect(silenced.audioMs, 'audio clock advanced while paused').not.toBeNull();
+  expect(silenced.gain, 'music silenced within 100 ms of audio time after pausing').toBeLessThan(0.01);
+  // Baseline is `pre`, captured inside the game at the exact moment the pause took effect.
+  // (A test-side snapshot taken earlier races the bot, which can land or miss a ring in the gap,
+  // most of all during WebKit's main-thread freezes.) From that moment, nothing may change:
+  // no misses, no score/combo/stage change, no energy drain, through the pause and the resume.
+  expect(pre, 'pause captured in-game').not.toBeNull();
+  expect(pre.reason).toBe('button');
+  expect(st(p0), 'pausing itself changes nothing').toEqual(st(pre));
+  expect(p0.energy, 'no energy change from pausing').toBe(pre.energy);
+  expect(st(p1), 'state frozen while paused').toEqual(st(pre));
+  expect(p1.energy, 'no energy drain while paused (frozen exactly)').toBe(pre.energy);
   expect(cd.digits.slice(0, 3), '3-2-1 countdown').toEqual(['3', '2', '1']);
-  // The bot can legitimately trigger a level-up in the ms before the click lands; Resume must
-  // return to exactly the state the pause interrupted (normally 'playing').
-  expect(['playing', 'levelup', 'bossIntro', 'bossBattle', 'bossDefeat'], 'paused from an in-run state').toContain(p0.from);
-  expect(cd.state, 'resumes into the state it paused from').toBe(p0.from);
-  // Baseline is p0 (the moment the pause took effect), not `before`: the bot can legitimately
-  // land a hit in the ms between the `before` snapshot and the click registering. Anything that
-  // happened in that window must be a gain only; from p0 on, state must be frozen exactly.
-  const st = (s) => ({ score: s.score, combo: s.combo, stage: s.stage, misses: s.misses });
-  expect(p0.misses, 'no misses between snapshot and pause').toBe(before.misses);
-  expect(p0.stage, 'stage unchanged by pausing').toBe(before.stage);
-  expect(p0.score, 'pausing never removes score').toBeGreaterThanOrEqual(before.score);
-  expect(st(p1), 'state frozen while paused').toEqual(st(p0));
-  expect(st(r0), 'score and state preserved through resume').toEqual(st(p0));
-  // The restore is scheduled at audioCtx.currentTime; AudioParam.value only reflects it once the
-  // audio thread has rendered past that point. Read it when the AUDIO clock is 50 ms past resume:
-  // strict in audio time, and immune to the test machine's own scheduling delays.
-  const restored = await page.evaluate((acResume) => new Promise((resolve) => {
-    const t0 = performance.now();
-    (function wait() {
-      if (audioCtx.currentTime >= acResume + 0.05) return resolve({ gain: musicGain.gain.value, audioMs: (audioCtx.currentTime - acResume) * 1000 });
-      if (performance.now() - t0 > 5000) return resolve({ gain: musicGain.gain.value, audioMs: null });
-      requestAnimationFrame(wait);
-    })();
-  }), cd.ac);
+  // Resume must return to exactly the state the pause interrupted (normally 'playing'; a bot hit
+  // just before the click can legitimately have started a level-up).
+  expect(['playing', 'levelup', 'bossIntro', 'bossBattle', 'bossDefeat'], 'paused from an in-run state').toContain(pre.state);
+  expect(p0.from).toBe(pre.state);
+  expect(cd.state, 'resumes into the state it paused from').toBe(pre.state);
+  expect(st(r0), 'score and state preserved through resume').toEqual(st(pre));
   expect(restored.audioMs, 'audio clock advanced after resume').not.toBeNull();
   expect(restored.gain, 'music restored within 50 ms of audio time after resume').toBeGreaterThan(0.01);
   expect(r0.resyncs - before.resyncs, 'exactly one resync').toBe(1);
@@ -140,6 +177,7 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
 test('T6 tab switch: auto-pauses, stays paused on return (no misses); one Resume gives exactly one resync and an on-grid run', async ({ page }) => {
   const errors = await boot(page);
   await installProbes(page);
+  await capturePauses(page);
   await startRun(page);
   await startBot(page);
   await page.waitForFunction(() => state === 'playing' && notes.filter((n) => !n.hit && !n.missed).length >= 2 && (clockNow() - startTime) > 4, null, { timeout: 30000 });
@@ -150,16 +188,20 @@ test('T6 tab switch: auto-pauses, stays paused on return (no misses); one Resume
   await showTab(page);                 // visibilitychange + focus + pageshow together
   await page.waitForTimeout(1500);
   const back = await snap(page);
+  const pre = await prePause(page);
   const cd = await resumeAndCount(page);
   const r0 = await snap(page);
   await page.waitForTimeout(7000);
   const grid = await gridAfter(page, back.nq);
-  const res = { before, hidden, back, countdown: cd, r0, gridAfterResumeMs: grid, errors };
+  const res = { before, pre, hidden, back, countdown: cd, r0, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors };
   writeResult('phase2-tab-switch', res);
   expect(errors).toEqual([]);
   expect(hidden.state).toBe('paused');
   expect(back.state, 'still paused after returning').toBe('paused');
-  expect(back.misses - before.misses, 'no misses from the tab switch').toBe(0);
+  // Baseline: game state at the exact moment the pause took effect (see capturePauses).
+  expect(pre, 'pause captured in-game').not.toBeNull();
+  expect(st(back), 'no misses or state change from the tab switch').toEqual(st(pre));
+  expect(back.energy, 'no energy drain while hidden').toBe(pre.energy);
   expect(back.pauses - before.pauses, 'one pause despite 3 hide events').toBe(1);
   expect(r0.resyncs - before.resyncs, 'one resync despite 3 return events').toBe(1);
   expect(r0.score, 'score preserved across the pause').toBe(back.score);
@@ -170,6 +212,7 @@ test('T6 tab switch: auto-pauses, stays paused on return (no misses); one Resume
 test('T6 focus loss: a window blur alone auto-pauses the run (no misses)', async ({ page }) => {
   const errors = await boot(page);
   await installProbes(page);
+  await capturePauses(page);
   await startRun(page);
   await startBot(page);
   await page.waitForTimeout(4000);
@@ -179,24 +222,29 @@ test('T6 focus loss: a window blur alone auto-pauses the run (no misses)', async
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await page.waitForTimeout(500);
   const after = await snap(page);
-  writeResult('phase2-blur', { before, after, errors });
+  const pre = await prePause(page);
+  writeResult('phase2-blur', { before, pre, after, errors });
   expect(errors).toEqual([]);
   expect(after.state).toBe('paused');
-  expect(after.misses - before.misses).toBe(0);
+  expect(pre, 'pause captured in-game').not.toBeNull();
+  expect(st(after), 'no misses or state change from the blur').toEqual(st(pre));
 });
 
 test('T6 audio interruption while visible (OS holds the context): auto-pause, no energy loss; Resume restarts audio on the grid', async ({ page }) => {
   const errors = await boot(page);
   await installProbes(page);
+  await capturePauses(page);
   await startRun(page);
   await startBot(page);
   await page.waitForTimeout(4000);
   const before = await snap(page);
   // Simulate an iOS-style interruption: the context is suspended and refuses to resume for 3 s.
-  await page.evaluate(() => {
+  const atSuspend = await page.evaluate(() => {
+    const at = window.__snapNow();      // state at the exact moment the interruption starts
     window.__realResume = audioCtx.resume.bind(audioCtx);
     audioCtx.resume = () => Promise.resolve();
     audioCtx.suspend();
+    return at;
   });
   await page.waitForTimeout(3000);
   const during = await snap(page);
@@ -206,11 +254,14 @@ test('T6 audio interruption while visible (OS holds the context): auto-pause, no
   await page.waitForTimeout(7000);
   const grid = await gridAfter(page, during.nq);
   const ac = await page.evaluate(() => audioCtx.state);
-  writeResult('phase2-audio-interruption', { before, during, countdown: cd, r0, ac, gridAfterResumeMs: grid, errors });
+  writeResult('phase2-audio-interruption', { before, atSuspend, during, countdown: cd, r0, ac, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors });
   expect(errors).toEqual([]);
   expect(during.state).toBe('paused');
-  expect(during.misses - before.misses, 'no misses during the interruption').toBe(0);
-  expect(during.energy, 'no energy lost during the interruption').toBeGreaterThanOrEqual(before.energy - 0.5);
+  // Baseline: state at the instant the interruption starts (taken in the same task that
+  // suspends the context), so bot activity before it can't leak in. The 0.5 energy tolerance
+  // covers the real gap between the context suspending and the game detecting it.
+  expect(during.misses - atSuspend.misses, 'no misses during the interruption').toBe(0);
+  expect(during.energy, 'no energy lost during the interruption').toBeGreaterThanOrEqual(atSuspend.energy - 0.5);
   expect(ac).toBe('running');
   expect(cd.state).toBe('playing');
   expect(r0.resyncs - before.resyncs).toBe(1);
@@ -228,12 +279,13 @@ test('T6a 700 ms main-thread stall: the music re-anchors by whole steps, so in-f
   const inFlight = await page.evaluate(() => {
     const t0 = performance.now(); while (performance.now() - t0 < 700) { /* stall */ }
     const now = clockNow() - startTime;
-    return notes.filter((n) => !n.hit && !n.missed && n.hitTime > now + 0.15).map((n) => ({ audio: Conductor.gameToAudio(n.hitTime) }));
+    return notes.filter((n) => !n.hit && !n.missed && n.hitTime > now + 0.15).map((n) => ({ audio: Conductor.gameToAudio(n.hitTime), bpm }));
   });
   await page.waitForTimeout(4000);
   const steps = await page.evaluate(() => __qa.steps);
-  const errs = inFlight.map((n) => { let bd = Infinity, e = 0; for (const s of steps) { const d = Math.abs(n.audio - s.w); if (d < bd) { bd = d; e = (n.audio - s.w) * 1000; } } return +e.toFixed(2); });
-  writeResult('phase2-stall', { inFlight: inFlight.length, errMs: errs, errors });
+  const g = inFlight.map((n) => gridError(n.audio, n.bpm, steps));
+  const errs = g.map((x) => +x.e.toFixed(2));
+  writeResult('phase2-stall', { inFlight: inFlight.length, errMs: errs, ringsOnDroppedSteps: g.filter((x) => x.k).length, errors });
   expect(errors).toEqual([]);
   expect(inFlight.length, 'rings in flight after the stall').toBeGreaterThanOrEqual(1);
   expect(errs.filter((e) => Math.abs(e) > GRID_TOL_MS).length, 'in-flight rings off the grid after a stall').toBe(0);
@@ -244,12 +296,13 @@ test('T6a 700 ms main-thread stall: the music re-anchors by whole steps, so in-f
 // during Siri, and after the screen is locked and woken. These tests fake that by
 // overriding audioCtx.currentTime on the instance (the engine's own clock is untouched).
 async function freezeAudioClock(page) {
-  await page.evaluate(() => {
+  return page.evaluate(() => {
     const proto = Object.getPrototypeOf(audioCtx);
     const real = Object.getOwnPropertyDescriptor(BaseAudioContext.prototype, 'currentTime').get;
     window.__frozenAt = real.call(audioCtx);
     window.__realCT = () => real.call(audioCtx);
     Object.defineProperty(audioCtx, 'currentTime', { configurable: true, get: () => window.__frozenAt });
+    return window.__snapNow ? window.__snapNow() : null;   // state at the freeze instant
   });
 }
 async function thawAudioClock(page, { restartAt = null } = {}) {
@@ -264,21 +317,26 @@ async function thawAudioClock(page, { restartAt = null } = {}) {
 test('T6 iOS Siri: audio clock stops while the context still says running → auto-pause, no misses', async ({ page }) => {
   const errors = await boot(page);
   await installProbes(page);
+  await capturePauses(page);
   await startRun(page);
   await startBot(page);
   await page.waitForTimeout(4000);
+  // Precondition: the Siri detector is armed. By design it arms only after 1.5 s of smooth
+  // audio (no frame gap > 250 ms), so a jank-induced false pause can't happen. On a CI WebKit
+  // that freezes the page every few seconds that can take longer than the old fixed 4 s.
+  await page.waitForFunction(() => audioClockArmed() && (state === 'playing' || state === 'bossBattle'), null, { timeout: 30000 });
   const before = await snap(page);
-  await freezeAudioClock(page);            // Siri: state stays 'running', clock stops, page stays visible
+  const atFreeze = await freezeAudioClock(page);            // Siri: state stays 'running', clock stops, page stays visible
   await page.waitForTimeout(2500);
   const during = await snap(page);
+  expect(during.state, 'paused during Siri').toBe('paused');   // before trying to click Resume
   await thawAudioClock(page);
   const cd = await resumeAndCount(page);
   await page.waitForTimeout(7000);
   const grid = await gridAfter(page, during.nq);
-  writeResult('phase2-ios-siri', { before, during, countdown: cd, gridAfterResumeMs: grid, errors });
+  writeResult('phase2-ios-siri', { before, atFreeze, during, countdown: cd, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors });
   expect(errors).toEqual([]);
-  expect(during.state, 'paused during Siri').toBe('paused');
-  expect(during.misses - before.misses).toBe(0);
+  expect(during.misses - atFreeze.misses, 'no misses from the frozen clock').toBe(0);
   expect(cd.state).toBe('playing');
   expect(grid.length, 'rings spawn after resume').toBeGreaterThanOrEqual(3);
   expect(grid.filter((e) => Math.abs(e) > GRID_TOL_MS).length).toBe(0);
@@ -315,7 +373,7 @@ test('T6 iOS screen lock: after waking, the clock is stuck until Resume kicks it
   await page.waitForTimeout(7000);
   const grid = await gridAfter(page, back.nq);
   const end = await snap(page);
-  writeResult('phase2-ios-lock', { back, r0, end, gridAfterResumeMs: grid, errors });
+  writeResult('phase2-ios-lock', { back, r0, end, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors });
   expect(errors).toEqual([]);
   expect(back.state).toBe('paused');
   expect(r0.state).toBe('playing');
