@@ -740,6 +740,7 @@ test('T6e Siri under main-thread jank: detector still arms and pauses; jank alon
     window.__realCT = () => real.call(audioCtx);
     Object.defineProperty(audioCtx, 'currentTime', { configurable: true, get: () => window.__frozenAt });
     window.__atFreeze = window.__snapNow();
+    window.__atFreeze.overdue = window.__overdueAtFreeze();
     return true;
   }, null, { timeout: 10000 }).then(() => true, () => false);
   let during = null, atFreeze = null, pre = null;
@@ -757,5 +758,5 @@ test('T6e Siri under main-thread jank: detector still arms and pauses; jank alon
   expect(armWait, 'detector armed within 10 s under jank').toBe(true);
   expect(during.state, 'paused during Siri under jank').toBe('paused');
   expect(pre && pre.reason, 'paused by the audio-clock detector').toBe('audio');
-  expect(during.misses - atFreeze.misses, 'no misses from the frozen clock').toBe(0);
+  expect(during.misses - atFreeze.misses, 'no misses from the frozen clock (beyond rings already overdue at the freeze)').toBe(atFreeze.overdue);
 });
