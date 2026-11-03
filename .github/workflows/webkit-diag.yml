@@ -1,0 +1,42 @@
+# DIAGNOSTIC ONLY (diag/** branches). Runs the Phase 2 pause spec on WebKit (and Chromium for
+# reference) with per-test diagnostics. Never merged to main.
+name: WebKit pause diagnostics
+on:
+  push:
+    branches: ['diag/**']
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    defaults: { run: { working-directory: qa } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: qa/package-lock.json }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium webkit
+      - name: Virtual audio device
+        run: |
+          sudo apt-get install -y --no-install-recommends pulseaudio
+          pulseaudio -D --exit-idle-time=-1
+          pactl load-module module-null-sink sink_name=qa_null
+          pactl set-default-sink qa_null
+      - name: Machine
+        run: nproc; uptime
+      - name: WebKit pause spec x5, 1 worker
+        continue-on-error: true
+        run: DIAG=1 npx playwright test tests/phase2-pause.spec.js --project=webkit-pause-diag --repeat-each=5 --workers=1 --retries=0 --reporter=line 2>&1 | tee wk1.log; uptime
+      - name: WebKit pause spec x3, 2 workers
+        continue-on-error: true
+        run: DIAG=1 npx playwright test tests/phase2-pause.spec.js --project=webkit-pause-diag --repeat-each=3 --workers=2 --retries=0 --reporter=line 2>&1 | tee wk2.log; uptime
+      - name: WebKit pause spec x2, 4 workers
+        continue-on-error: true
+        run: DIAG=1 npx playwright test tests/phase2-pause.spec.js --project=webkit-pause-diag --repeat-each=2 --workers=4 --retries=0 --reporter=line 2>&1 | tee wk4.log; uptime
+      - name: Chromium pause spec x3, 2 workers (reference)
+        continue-on-error: true
+        run: DIAG=1 npx playwright test tests/phase2-pause.spec.js --project=chrome-pause-diag --repeat-each=3 --workers=2 --retries=0 --reporter=line 2>&1 | tee cr2.log
+      - name: Summary
+        if: always()
+        run: |
+          for f in wk1 wk2 wk4 cr2; do echo "== $f"; grep -E "^\s+[0-9]+ (passed|failed|flaky)" $f.log || true; done
+          for f in wk1 wk2 wk4 cr2; do grep -h "^DIAGJSON" $f.log | sed "s/^/$f /" ; done
