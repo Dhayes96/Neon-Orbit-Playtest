@@ -479,19 +479,25 @@ test('T6b 1.3 s main-thread freeze: game clock keeps following the audio clock; 
   await installProbes(page);
   await startRun(page);
   await startBot(page);
-  await page.waitForFunction(() => state === 'playing' && notes.filter((n) => !n.hit && !n.missed && n.hitTime > clockNow() - startTime + 1.6).length >= 1 && (clockNow() - startTime) > 4, null, { timeout: 30000 });
-  const r = await page.evaluate(() => {
+  // The precondition (a ring > 1.6 s ahead) and the freeze run in the SAME task: before, a test
+  // round trip sat between them, and on a starved WebKit at 4 workers it used up the slack, so no
+  // ring was left in flight to check (QA: "in-flight rings that actually play" got 0).
+  await page.waitForFunction(() => {
+    if (!(state === 'playing' && (clockNow() - startTime) > 4)) return false;
+    const now = clockNow() - startTime;
+    if (!notes.some((n) => !n.hit && !n.missed && n.hitTime > now + 1.6)) return false;
     const off0 = Conductor.clockOffset();
     const planned = notes.filter((n) => !n.hit && !n.missed).map((n) => ({ hitTime: n.hitTime, audio: Conductor.gameToAudio(n.hitTime), bpm }));
     const t0 = performance.now(); while (performance.now() - t0 < 1300) { /* freeze */ }
-    // In flight = still ahead when the freeze ENDS (was: after two more frames, which on a starved
-    // WebKit at 4 workers took long enough for every ring to pass, so nothing was left to check).
+    // In flight = still ahead when the freeze ENDS.
     const ahead = planned.filter((p) => p.audio > audioCtx.currentTime + 0.15);
-    return new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => res({
-      offsetShiftMs: (Conductor.clockOffset() - off0) * 1000, stateAfter: state,
-      inFlight: ahead.map((p) => ({ ...p, audioNow: Conductor.gameToAudio(p.hitTime) })),
-    }))));
-  });
+    window.__t6b = { off0, ahead };
+    return true;
+  }, null, { timeout: 30000 });
+  const r = await page.evaluate(() => new Promise((res) => requestAnimationFrame(() => requestAnimationFrame(() => res({
+    offsetShiftMs: (Conductor.clockOffset() - window.__t6b.off0) * 1000, stateAfter: state,
+    inFlight: window.__t6b.ahead.map((p) => ({ ...p, audioNow: Conductor.gameToAudio(p.hitTime) })),
+  })))));
   await page.waitForTimeout(4000);
   const steps = await page.evaluate(() => __qa.steps);
   const clearedHits = await page.evaluate(() => __qa.notes.filter((q) => q.cleared).map((q) => q.hitTime));
