@@ -46,7 +46,9 @@ async function capturePauses(page) {
 async function recordMusicAutomation(page) {
   await page.evaluate(() => {
     window.__gainLog = [];
-    const g = musicGain.gain;
+    // Keep a strong reference: WebKit may garbage-collect a DOM wrapper that is only reachable
+    // through its own expando properties, and hand out a fresh, unwrapped AudioParam later.
+    const g = window.__gainParam = musicGain.gain;
     for (const fn of ['setValueAtTime', 'setTargetAtTime', 'linearRampToValueAtTime', 'exponentialRampToValueAtTime', 'cancelScheduledValues']) {
       const orig = g[fn].bind(g);
       g[fn] = function (...a) { window.__gainLog.push({ fn, v: fn === 'cancelScheduledValues' ? null : a[0], t: fn === 'cancelScheduledValues' ? a[0] : a[1], ac: audioCtx.currentTime, state }); return orig(...a); };
@@ -99,13 +101,27 @@ function gridError(audio, bpm, steps) {
   let s = null, bd = Infinity;
   for (const x of steps) { const d = Math.abs(audio - x.w); if (d < bd) { bd = d; s = x; } }
   if (!s) return { e: Infinity, k: 0 };
-  const k = Math.round((audio - s.when) / s.stepDur);
-  // (BPM may ramp slightly between spawn and scheduling; an invalid extrapolation can only
-  // make the residual larger, i.e. fail, so the 2 ms bound below stays the guard.)
-  if (k === 0 || Math.abs(k) > 4) return { e: (audio - s.w) * 1000, k: 0 };
-  const slot = (((s.step + k) % 4) + 4) % 4;
-  const expected = s.when + k * s.stepDur + (s.sw && slot === 2 ? s.stepDur * s.sw : 0);
-  return { e: (audio - expected) * 1000, k };
+  if (Math.round((audio - s.when) / s.stepDur) === 0) return { e: (audio - s.w) * 1000, k: 0 };
+  // The ring's slot has no scheduled step (dropped). Extrapolate whole steps from the nearest
+  // scheduled step on EACH side of the gap, each with its own step length and swing (a BPM change
+  // can fall inside the gap), and keep the closer fit. An invalid extrapolation can only make the
+  // residual larger, i.e. fail, so the 2 ms bound stays the guard.
+  let before = null, after = null;
+  for (const x of steps) {
+    if (x.when <= audio && (!before || x.when > before.when)) before = x;
+    if (x.when >= audio && (!after || x.when < after.when)) after = x;
+  }
+  let best = { e: (audio - s.w) * 1000, k: 0 };
+  for (const a of [before, after]) {
+    if (!a) continue;
+    const k = Math.round((audio - a.when) / a.stepDur);
+    if (k === 0 || Math.abs(k) > 4) continue;
+    const slot = (((a.step + k) % 4) + 4) % 4;
+    const expected = a.when + k * a.stepDur + (a.sw && slot === 2 ? a.stepDur * a.sw : 0);
+    const e = (audio - expected) * 1000;
+    if (Math.abs(e) < Math.abs(best.e)) best = { e, k };
+  }
+  return best;
 }
 // Rings spawned after probe index `fromIdx` (taken while paused, when nothing spawns).
 // Indexing avoids time math across the startTime shift that resume applies.
@@ -300,15 +316,20 @@ test('T6a 700 ms main-thread stall: the music re-anchors by whole steps, so in-f
   const inFlight = await page.evaluate(() => {
     const t0 = performance.now(); while (performance.now() - t0 < 700) { /* stall */ }
     const now = clockNow() - startTime;
-    return notes.filter((n) => !n.hit && !n.missed && n.hitTime > now + 0.15).map((n) => ({ audio: Conductor.gameToAudio(n.hitTime), bpm }));
+    return notes.filter((n) => !n.hit && !n.missed && n.hitTime > now + 0.15).map((n) => ({ audio: Conductor.gameToAudio(n.hitTime), bpm, hitTime: n.hitTime }));
   });
   await page.waitForTimeout(4000);
   const steps = await page.evaluate(() => __qa.steps);
-  const g = inFlight.map((n) => gridError(n.audio, n.bpm, steps));
+  // Rings the game cleared afterwards (level-up, boss start...) never play, so they have no grid
+  // position to check; the probes mark them. gridAfter() excludes them the same way.
+  const clearedHits = await page.evaluate(() => __qa.notes.filter((q) => q.cleared).map((q) => q.hitTime));
+  const live = inFlight.filter((n) => !clearedHits.some((h) => Math.abs(h - n.hitTime) < 1e-9));
+  const g = live.map((n) => gridError(n.audio, n.bpm, steps));
   const errs = g.map((x) => +x.e.toFixed(2));
-  writeResult('phase2-stall', { inFlight: inFlight.length, errMs: errs, ringsOnDroppedSteps: g.filter((x) => x.k).length, errors });
+  writeResult('phase2-stall', { inFlight: inFlight.length, clearedLater: inFlight.length - live.length, errMs: errs, ringsOnDroppedSteps: g.filter((x) => x.k).length, errors });
   expect(errors).toEqual([]);
   expect(inFlight.length, 'rings in flight after the stall').toBeGreaterThanOrEqual(1);
+  expect(live.length, 'in-flight rings that actually play (not cleared later)').toBeGreaterThanOrEqual(1);
   expect(errs.filter((e) => Math.abs(e) > GRID_TOL_MS).length, 'in-flight rings off the grid after a stall').toBe(0);
 });
 
