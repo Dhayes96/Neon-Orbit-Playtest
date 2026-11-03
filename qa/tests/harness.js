@@ -117,6 +117,7 @@ async function startBot(page, { lateMs = 0, mode = 'chart' } = {}) {
 function pct(arr, p) { if (!arr.length) return NaN; const s = [...arr].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(p / 100 * s.length))]; }
 function stats(arr) { return { n: arr.length, min: Math.min(...arr), p50: pct(arr, 50), p95: pct(arr, 95), p99: pct(arr, 99), max: Math.max(...arr), mean: arr.reduce((a, b) => a + b, 0) / (arr.length || 1) }; }
 function writeResult(name, obj) {
+  if (process.env.DIAG) console.log('DIAGJSON ' + name + ' ' + JSON.stringify(obj, (k, v) => (k === 'gainLog' ? undefined : v)));
   const dir = path.join(__dirname, '..', 'results'); fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, name + '.json'), JSON.stringify(obj, null, 2));
 }
