@@ -54,8 +54,21 @@ async function recordMusicAutomation(page) {
       const orig = g[fn].bind(g);
       g[fn] = function (...a) { window.__gainLog.push({ fn, v: fn === 'cancelScheduledValues' ? null : a[0], t: fn === 'cancelScheduledValues' ? a[0] : a[1], ac: audioCtx.currentTime, state }); return orig(...a); };
     }
+    // Tap the music bus output: what is actually rendered, not the param readout.
+    const an = window.__musicTap = audioCtx.createAnalyser(); an.fftSize = 2048;
+    musicGain.connect(an);
   });
 }
+// Peak level on the music bus tap over 5 reads, 50 ms apart.
+const musicPeak = (page) => page.evaluate(() => new Promise((res) => {
+  const an = window.__musicTap, buf = new Float32Array(an.fftSize); let peak = 0, k = 0;
+  (function read() {
+    an.getFloatTimeDomainData(buf);
+    for (let i = 0; i < buf.length; i++) peak = Math.max(peak, Math.abs(buf[i]));
+    if (++k >= 5) return res({ peak, state });
+    setTimeout(read, 50);
+  })();
+}));
 const pollGain = (page, cmp, limit, ms) => expect.poll(() => page.evaluate(() => musicGain.gain.value), { timeout: ms, intervals: [20] })[cmp](limit);
 const prePause = (page, i = 0) => page.evaluate((k) => window.__pauses[k] || null, i);
 const st = (s) => ({ score: s.score, combo: s.combo, stage: s.stage, misses: s.misses });
@@ -179,6 +192,18 @@ async function gridAfter(page, fromIdx) {
   }
   return out;
 }
+// Play on for 7 s after resume, as before; if a level-up/boss start in that window cleared
+// rings so fewer than 3 are checkable, keep playing (up to 15 s) until 3 are. The >= 3 and
+// <= 2 ms requirements are unchanged; only the observation window can be longer.
+async function gridAfterResume(page, fromIdx) {
+  await page.waitForTimeout(7000);
+  let grid = await gridAfter(page, fromIdx);
+  for (let waited = 7000; grid.length < 3 && waited < 15000; waited += 1000) {
+    await page.waitForTimeout(1000);
+    grid = await gridAfter(page, fromIdx);
+  }
+  return grid;
+}
 // Per-ring detail for the result files (diagnostic only): where each post-resume ring landed
 // relative to the nearest scheduled step, so an off-grid ring can be classified.
 async function gridDetailAfter(page, fromIdx) {
@@ -203,6 +228,7 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   const btn = page.locator('#pauseBtn');
   await expect(btn).toBeVisible();
   const box = await btn.boundingBox(); const vp = page.viewportSize();
+  const musicPeakPlaying = await musicPeak(page);   // proves the tap carries the music (else 'silent' means nothing)
   const before = await snap(page);
   await btn.click({ timeout: 5000 });
   await page.waitForTimeout(250);
@@ -211,26 +237,19 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   const p1 = await snap(page);
   const pre = await prePause(page);            // state at the exact moment the pause took effect
   const gainPaused = await page.evaluate(() => musicGain.gain.value);   // 2 s into the pause
-  // Engine readout: how long until the engine REPORTS the bus silent (still paused). Chromium must
-  // report it at 2 s, as before. WebKit gets up to 5 s: under CPU starvation its main-thread copy of
-  // AudioParam.value lags the render thread (QA saw ~1 run in 20-80 at full volume 2 s in, while the
-  // fade the game scheduled was correct). The fade's timing is asserted exactly on the schedule below.
-  const engineSilence = await page.evaluate((capMs) => new Promise((res) => {
-    const t0 = performance.now();
-    (function poll() {
-      const v = musicGain.gain.value, w = performance.now() - t0;
-      if (v < 0.01 || w > capMs) return res({ v, extraWaitMs: Math.round(w), state });
-      setTimeout(poll, 20);
-    })();
-  }), browserName === 'webkit' ? 3000 : 0);
+  // Engine check on the SIGNAL: peak level on the music bus output, 2 s into the pause, read from an
+  // AnalyserNode tap (5 reads, 50 ms apart). This is what is actually rendered. It replaces the
+  // AudioParam.value readout on WebKit: CI WebKit reported the value frozen at full volume (1.10)
+  // for 5 s of a pause while every other run read the scheduled 0.0001 exactly; WebKit only updates
+  // that readout when it processes the node, which it can stop doing once the bus input is silent.
+  const musicPeakPaused = await musicPeak(page);
   const fr = await frames(page);
   const cd = await resumeAndCount(page);
   const r0 = await snap(page);
   const gainLog = await page.evaluate(() => window.__gainLog);
-  await page.waitForTimeout(7000);
-  const grid = await gridAfter(page, p1.nq);   // nothing spawns while paused, so everything after p1 is post-resume
+  const grid = await gridAfterResume(page, p1.nq);   // nothing spawns while paused, so everything after p1 is post-resume
   const end = await snap(page);
-  const res = { box, vp, before, pre, p0, p1, gainPaused, engineSilence, framesBeforeResume: fr, gainLog, countdown: cd, r0, end, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors };
+  const res = { box, vp, before, pre, p0, p1, gainPaused, musicPeakPlaying, musicPeakPaused, framesBeforeResume: fr, gainLog, countdown: cd, r0, end, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors };
   writeResult('phase2-pause-button', res);
   expect(errors).toEqual([]);
   expect(box.x + box.width / 2, 'button on the right').toBeGreaterThan(vp.width * 0.6);
@@ -255,8 +274,9 @@ test('T6 pause button: upper-right, freezes the run with no penalty, silences mu
   expect(gainLog.slice(pauseIdx + 1, resumeIdx).filter((c) => c.v != null && c.v > 0.01), 'nothing raises the music while paused').toEqual([]);
   // ...and the engine actually applies it (eventually; timing is asserted on the schedule above).
   if (browserName !== 'webkit') expect(gainPaused, 'engine reports music silenced 2 s into the pause').toBeLessThan(0.01);
-  expect(engineSilence.v, 'engine reports music silenced while paused (Chromium: by 2 s; WebKit: by 5 s)').toBeLessThan(0.01);
-  expect(engineSilence.state, 'still paused when the engine reports silence').toBe('paused');
+  expect(musicPeakPlaying.peak, 'music bus tap carries the music while playing').toBeGreaterThan(0.01);
+  expect(musicPeakPaused.state).toBe('paused');
+  expect(musicPeakPaused.peak, 'music bus output silent 2 s into the pause (peak, all engines)').toBeLessThan(0.001);
   // Baseline is `pre`, captured inside the game at the exact moment the pause took effect.
   // (A test-side snapshot taken earlier races the bot, which can land or miss a ring in the gap,
   // most of all during WebKit's main-thread freezes.) From that moment, nothing may change:
@@ -297,8 +317,7 @@ test('T6 tab switch: auto-pauses, stays paused on return (no misses); one Resume
   const pre = await prePause(page);
   const cd = await resumeAndCount(page);
   const r0 = await snap(page);
-  await page.waitForTimeout(7000);
-  const grid = await gridAfter(page, back.nq);
+  const grid = await gridAfterResume(page, back.nq);
   const res = { before, pre, hidden, back, countdown: cd, r0, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors };
   writeResult('phase2-tab-switch', res);
   expect(errors).toEqual([]);
@@ -358,8 +377,7 @@ test('T6 audio interruption while visible (OS holds the context): auto-pause, no
   await page.evaluate(() => { audioCtx.resume = window.__realResume; });
   const cd = await resumeAndCount(page);
   const r0 = await snap(page);
-  await page.waitForTimeout(7000);
-  const grid = await gridAfter(page, during.nq);
+  const grid = await gridAfterResume(page, during.nq);
   const gridDetail = await gridDetailAfter(page, during.nq);
   const ac = await page.evaluate(() => audioCtx.state);
   const pre = await prePause(page);
@@ -477,8 +495,7 @@ test('T6 iOS Siri: audio clock stops while the context still says running → au
   expect(during.state, 'paused during Siri').toBe('paused');   // before trying to click Resume
   await thawAudioClock(page);
   const cd = await resumeAndCount(page);
-  await page.waitForTimeout(7000);
-  const grid = await gridAfter(page, during.nq);
+  const grid = await gridAfterResume(page, during.nq);
   const pre = await prePause(page);
   writeResult('phase2-ios-siri', { before, atFreeze, pre, during, siriTL, countdown: cd, gridAfterResumeMs: grid, ringsOnDroppedSteps: grid.dropped, errors });
   expect(errors).toEqual([]);
@@ -518,8 +535,7 @@ test('T6 iOS screen lock: after waking, the clock is stuck until Resume kicks it
   await clicked; clearTimeout(thaw);
   await page.waitForFunction(() => state !== 'paused', null, { timeout: 10000 });
   const r0 = await snap(page);
-  await page.waitForTimeout(7000);
-  const grid = await gridAfter(page, back.nq);
+  const grid = await gridAfterResume(page, back.nq);
   const end = await snap(page);
   const gridDetail = await gridDetailAfter(page, back.nq);
   writeResult('phase2-ios-lock', { back, r0, end, gridAfterResumeMs: grid, gridDetail, ringsOnDroppedSteps: grid.dropped, errors });
