@@ -6,7 +6,8 @@
 // ≤ 2 ms grid error after resume, exactly 1 resync per interruption, score and state
 // preserved. These tests are expected to FAIL on main (no pause controller yet).
 const { test, expect } = require('@playwright/test');
-const { boot, installProbes, startBot, writeResult } = require('./harness');
+const { boot, installProbes, startBot, writeResult: _wr } = require('./harness');
+const writeResult = (n, o) => { console.log('DIAGRES ' + JSON.stringify({ n, dropped: o.ringsOnDroppedSteps, grid: o.gridAfterResumeMs || o.errMs })); return _wr(n, o); };
 
 const GRID_TOL_MS = 2;
 test.describe.configure({ timeout: 90_000 });
@@ -137,6 +138,23 @@ async function gridAfter(page, fromIdx) {
   }
   return out;
 }
+
+
+// ---- DIAG (diag/** branch only; never merged) ----
+test.afterEach(async ({ page }, info) => {
+  let d = {};
+  try {
+    d = await page.evaluate(() => {
+      const st = (window.__qa && __qa.steps) || [];
+      const fr = (window.__qa && __qa.frames) || [0];
+      return { stepsTotal: st.length, frames: fr.filter((f) => f > 250).length, framesMax: Math.round(Math.max(0, ...fr)), state,
+        pauses: typeof _t6PauseCount === 'number' ? _t6PauseCount : null, pre: (window.__pauses || [])[0] || null };
+    });
+  } catch (e) { d = { evalError: String(e).slice(0, 200) }; }
+  d.title = info.title.slice(0, 40); d.project = info.project.name; d.repeat = info.repeatEachIndex; d.status = info.status;
+  d.error = info.error ? String(info.error.message || '').replace(/\u001b\[[0-9;]*m/g, '').split('\n').filter(Boolean).slice(0, 6).join(' | ').slice(0, 400) : null;
+  console.log('DIAGJSON ' + JSON.stringify(d));
+});
 
 test('T6 pause button: upper-right, freezes the run with no penalty, silences music; Resume counts 3-2-1 and play resumes on the grid', async ({ page }) => {
   const errors = await boot(page);
