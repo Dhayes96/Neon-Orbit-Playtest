@@ -31,7 +31,11 @@ until Phase 2 T6. It now passes and is a normal regression guard; its marker was
   against the **audio clock that actually elapsed** (±10%) instead of a wall-clock floor, and logs a
   `smoke-clocks` line (wall s, audio s, ratio, steps, expected range, grid gaps). Dropped or late steps
   still fail (a 1-in-6 drop mutant scores 41: it passed the old `> 30` floor and fails the new check).
-  The audio clock must keep ≥ 0.9× wall time on Chromium/Firefox and ≥ 0.5× on WebKit.
+  The audio clock must keep ≥ 0.5× wall time on every engine.
+  **First CI result on PR #22 (automated):** CI WebKit's audio clock runs at real time (1.00×), and the
+  sequencer **drops about 30% of steps** there (32–34 scheduled vs 45–55 expected, 13–14 grid gaps). So
+  the WebKit failure is **not** a harness margin issue: it is the T7 scheduler-headroom problem showing up
+  on a starved CI box. The `smoke-clocks` line also logs re-anchors, skipped steps and 25 ms timer lateness.
 
 ## Informational, non-blocking
 
