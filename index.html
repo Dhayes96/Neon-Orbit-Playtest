@@ -2166,11 +2166,17 @@
       _clkReady = true;
       return _clkSec;
     }
-    const perfDelta = Math.max(0, Math.min(1, perf - _clkLastPerf));
+    const rawPerf = perf - _clkLastPerf;
+    const perfDelta = Math.max(0, Math.min(1, rawPerf));
     if (useAudio) {
       const a = audioCtx.currentTime;
       let d = a - _clkLastAudio;
-      if (!(d >= 0) || d > 1) d = perfDelta;   // context suspended/reset/jumped
+      // Distrust the audio delta only if the context suspended/reset/jumped. A long main-thread
+      // freeze (> 1 s between calls) is not a jump: the audio clock kept running in step with the
+      // wall clock, and capping it to 1 s used to drop the excess, shifting every ring in flight
+      // off the music by that amount (a 1.3 s freeze put rings 300 ms off the beat).
+      const freeze = d > 1 && Math.abs(d - rawPerf) < 0.25;
+      if (!(d >= 0) || (d > 1 && !freeze)) d = perfDelta;   // context suspended/reset/jumped
       _clkSec += d;
       _clkLastAudio = a;
     } else {
@@ -3012,7 +3018,11 @@
     /* Gameplay time and the audio clock advance together (clockNow() is
        audio-locked as of v0.1.1) but have different origins. This is the
        constant between them. */
-    clockOffset() { return audioCtx.currentTime - (clockNow() - startTime); },
+    // One audio-clock reading only: clockNow() advances by exactly the audio delta it read and
+    // keeps that reading in _clkLastAudio. Reading currentTime again here raced the audio thread:
+    // a render quantum (128 frames = 2.67 ms at 48 kHz, several under load) could land between
+    // the two reads and put a ring that far off the beat.
+    clockOffset() { const g = clockNow() - startTime; return _clkLastAudio - g; },
     audioToGame(a) { return a - this.clockOffset(); },
     gameToAudio(g) { return g + this.clockOffset(); },
 
@@ -7734,6 +7744,7 @@
     hidden: 'Paused while you were away.',
     focus: 'Paused because the game lost focus.',
     audio: 'Paused because the audio was interrupted.',
+    freeze: 'Paused because the game stalled for a moment.',
   };
   // iOS Safari can leave the context saying 'running' while its clock has stopped
   // (Siri, and after the screen is locked and woken). The state never changes, so
@@ -7743,19 +7754,27 @@
   // clock in bursts, and a false pause mid-run is worse than a 1 s detection delay.
   // The caller only acts once the clock has run smoothly for 1.5 s (audioClockArmed).
   const AUDIO_STALL_MS = 1000;
-  let _acLastT = null, _acLastMove = 0, _acSmoothSince = 0;
+  let _acLastT = null, _acLastMove = 0, _acLastSame = 0, _acSmoothSince = 0;
   function audioClockStalled() {
     const p = performance.now();
     if (!audioCtx || audioCtx.state !== 'running') { _acLastT = null; _acSmoothSince = 0; return false; }
     const a = audioCtx.currentTime;
-    if (_acLastT === null) { _acLastT = a; _acLastMove = p; _acSmoothSince = p; return false; }
+    if (_acLastT === null) { _acLastT = a; _acLastMove = p; _acLastSame = p; _acSmoothSince = p; return false; }
     if (a !== _acLastT) {
       const wallMs = p - _acLastMove, audMs = (a - _acLastT) * 1000;
-      _acLastT = a; _acLastMove = p;
+      // How long frames actually SAW the clock stand still (last frame with the old value minus
+      // the frame where it last moved). A main-thread hiccup has no frames in between, so this is
+      // ~0 even though wallMs is large: the audio clock kept running and is not bursty. Only a
+      // clock that sat still while frames kept coming (a bursty output) restarts the arming timer.
+      // (Was: wallMs > 250, which disarmed on every hiccup, so a janky device never armed, and a
+      // hiccup at the start of a Siri stall kept it disarmed for the whole stall.)
+      const seenStillMs = _acLastSame - _acLastMove;
+      _acLastT = a; _acLastMove = p; _acLastSame = p;
       if (wallMs > AUDIO_STALL_MS && audMs < wallMs * 0.3) { _acSmoothSince = p; return true; }
-      if (wallMs > 250) _acSmoothSince = p;           // a burst: restart the smooth-run timer
+      if (seenStillMs > 250) _acSmoothSince = p;      // a burst: restart the smooth-run timer
       return false;
     }
+    _acLastSame = p;
     if (p - _acLastMove > AUDIO_STALL_MS) { _acSmoothSince = p; return true; }
     return false;
   }
@@ -9645,8 +9664,17 @@
   // ================= 14. LOOP (single rAF loop) =================
 
   let _geoCheckAt = 0;
+  // A frame gap this long means the page was frozen (JS stopped) while the audio clock kept
+  // running, e.g. the OS froze the tab without a visibility event. clockNow() keeps that time so
+  // rings stay on the music (a 1-3 s hiccup plays on, in sync), but nobody can have been playing
+  // through 3 s, so pause instead of judging every ring that passed meanwhile.
+  const LONG_FREEZE_PAUSE_MS = 3000;
+  let _loopWallLast = 0;
   function loop() {
     const nowAbs = clockNow();
+    const _loopWall = performance.now();
+    const _loopGapMs = _loopWallLast ? _loopWall - _loopWallLast : 0;
+    _loopWallLast = _loopWall;
     // While the page is hidden the run is frozen outright. Browsers vary in
     // whether they pause rAF, throttle it, or keep it going, so we don't rely
     // on that: nothing updates or draws until the player is actually back.
@@ -9658,6 +9686,7 @@
       return;
     }
     creditAwayTime();
+    if (_loopGapMs > LONG_FREEZE_PAUSE_MS) pauseGame('freeze');   // before anything is judged
     // T6 audio watchdog: if the audio was live in this run and is now gone
     // (some browsers skip 'statechange'), pause instead of playing on silently.
     if (audioCtx) {
