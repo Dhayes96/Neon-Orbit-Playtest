@@ -2,7 +2,8 @@
 // Acceptance (Jarvis's brief): 0 external network requests on load and through a full run;
 // no googletagmanager / gtag( / playrhythmvoid.com / mailto: anywhere in the file; Shift+B and
 // ?mapper=1 do nothing; Rename hidden; the live index.html is unchanged by the build; the ZIP
-// holds index.html at the root and nothing else.
+// holds index.html at the root and nothing else. Decision 4A: the CrazyGames build shows v1.0 on both
+// version labels, while the live index.html keeps its own VERSION.
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -57,6 +58,13 @@ test('CrazyGames build: file contents, ZIP and the live index.html are as requir
   expect(build.liveAfter, 'live index.html unchanged by the build').toBe(build.liveBefore);
   expect(html).toContain('id="renameBtn" hidden');
   expect(html).not.toContain('id="feedbackLink"');
+  // Decision 4A: exactly one VERSION declaration, and it is v1.0; the live file keeps its own.
+  const live = fs.readFileSync(path.join(GAME, 'index.html'), 'utf8');
+  const cgDecls = html.match(/const VERSION = '[^']*';/g) || [];
+  const liveDecls = live.match(/const VERSION = '[^']*';/g) || [];
+  expect(cgDecls, 'CrazyGames VERSION declaration').toEqual(["const VERSION = 'v1.0';"]);
+  expect(liveDecls.length, 'live VERSION declaration').toBe(1);
+  expect(liveDecls[0], 'live VERSION is not changed by the build').not.toBe("const VERSION = 'v1.0';");
 });
 
 test('CrazyGames build: 0 external requests through load + a full run; share text has no link; dev tools and Rename unreachable', async ({ page }) => {
@@ -81,7 +89,13 @@ test('CrazyGames build: 0 external requests through load + a full run; share tex
   await page.keyboard.press('Shift+KeyB');
   await page.waitForTimeout(300);
   const mapperAfterShiftB = await page.evaluate(() => ({ open: Mapper.open, shown: getComputedStyle(document.getElementById('mapperOverlay')).display !== 'none' }));
-  const res = { external, share, shareBest, rename, boardCopy, mapperAfterShiftB, errors };
+  // Decision 4A: what the player actually sees on the menu and in Settings.
+  const labels = await page.evaluate(() => ({
+    VERSION,
+    menuTag: (document.querySelector('.version-tag') || {}).textContent,
+    settings: (document.getElementById('settingsVersion') || {}).textContent,
+  }));
+  const res = { external, share, shareBest, rename, boardCopy, mapperAfterShiftB, labels, errors };
   writeResult('cg-build-runtime', res);
   expect(errors).toEqual([]);
   expect(external, 'external network requests').toEqual([]);
@@ -90,6 +104,8 @@ test('CrazyGames build: 0 external requests through load + a full run; share tex
   expect(rename.rendered, 'Rename hidden').toBe(false);
   expect(boardCopy).not.toMatch(/coming soon/i);
   expect(mapperAfterShiftB).toEqual({ open: false, shown: false });
+  expect(labels, 'version labels (decision 4A)').toEqual({ VERSION: 'v1.0', menuTag: 'v1.0', settings: 'Rhythm Void v1.0' });
+  expect(share, 'share text carries no old version').not.toContain('v0.');
 });
 
 test('CrazyGames build: ?mapper=1 does nothing', async ({ page }) => {
