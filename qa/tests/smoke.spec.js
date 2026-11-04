@@ -45,10 +45,9 @@ test('start run: real click starts audio + sequencer + note spawning, 10s with n
   console.log('smoke-run ' + JSON.stringify({ state: r.state, steps: r.wrapped.step, notes: r.wrapped.note, ac: r.ac,
     pauses: await page.evaluate(() => (typeof _t6PauseCount === 'number' ? _t6PauseCount : null)) }));
   // Sequencer check, against the audio clock (was: wall-clock floor `steps > 30`).
-  // CI WebKit advances its audio clock slower than real time, so a wall-clock floor flakes there
-  // (28-35 steps per 10 s on CI vs ~49 on Chromium/Firefox) while not catching a sequencer that keeps
-  // up with wall time but drops steps. Now: every 16th-step the audio clock covered must have been
-  // scheduled, within ±10%. Dropped/late steps (reanchor skips, steps behind the clock) still fail.
+  // Every 16th-step the audio clock covered must have been scheduled, within ±10%. Dropped/late
+  // steps (reanchor skips, steps behind the clock) fail. On a starved CI WebKit runner this DOES fail:
+  // its audio clock runs at 1.00x but the 140 ms look-ahead scheduler drops steps (T7, a game issue).
   const wallS = (w1.wall - w0.wall) / 1000, audioS = w1.ac - w0.ac, stepsIn = w1.steps - w0.steps;
   // Expected count = audio seconds / the step length the game itself used (tempo can step mid-window).
   const win = (await page.evaluate(() => __qa.steps)).slice(w0.n);
@@ -61,11 +60,13 @@ test('start run: real click starts audio + sequencer + note spawning, 10s with n
     steps: stepsIn, expected: [+lo.toFixed(1), +hi.toFixed(1)], gaps, bpm: [w0.bpm, w1.bpm], ...diag };
   console.log('smoke-clocks ' + JSON.stringify(clocks));
   expect(r.wrapped.step).toBeGreaterThan(0);                   // probes really intercept internal calls
-  // The audio clock must actually run: >= 0.5x wall time on every engine, so a stalled or suspended
-  // context fails. (The first push used 0.9x for Chromium/Firefox, a guess; CI Chromium measured 0.83x
-  // with the PulseAudio null sink while its steps matched its audio clock. The step check below is
-  // what catches dropped/late steps, and it is unchanged.)
-  expect(audioS, 'audio clock vs wall: ' + JSON.stringify(clocks)).toBeGreaterThanOrEqual(0.5 * wallS);
+  // The audio clock must actually run near real time, so a stalled, suspended or slow clock fails.
+  // Floors are set from measured audio/wall ratios (Rhythm QA Nov 4 + CI runs 41915369525/41916342740):
+  //   WebKit: 0.999-1.001 (43 runs)        -> floor 0.9
+  //   Chromium: min 0.812 local under load, 0.83-0.87 on CI; Firefox 1.00 -> floor 0.75
+  // Both floors fail a 0.7x clock (the old 0.5x floor let it pass on every engine).
+  const audioFloor = browserName === 'webkit' ? 0.9 : 0.75;
+  expect(audioS, 'audio clock vs wall (floor ' + audioFloor + 'x): ' + JSON.stringify(clocks)).toBeGreaterThanOrEqual(audioFloor * wallS);
   expect(stepsIn, 'steps vs audio clock: ' + JSON.stringify(clocks)).toBeGreaterThanOrEqual(lo);
   expect(stepsIn, 'steps vs audio clock: ' + JSON.stringify(clocks)).toBeLessThanOrEqual(hi);
   expect(r.wrapped.note).toBeGreaterThan(3);
