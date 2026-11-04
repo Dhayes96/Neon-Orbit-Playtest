@@ -18,6 +18,7 @@
 //   - Beat Mapper dev tool unreachable (Shift+B and ?mapper=1 are inert)
 //   - Rename hidden (free-text player names; Developer Terms §4.5)
 //   - "Online board coming soon" replaced with neutral copy
+//   - version label set to v1.0 (decision 4A: v1.0 in the CrazyGames build only; the live site keeps its own VERSION)
 // No dependencies: the ZIP is written with node:zlib (deflate) and a minimal ZIP writer.
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { deflateRawSync } from 'node:zlib';
@@ -74,11 +75,20 @@ edit('hide Rename button', '<button class="btn tiny" id="renameBtn">Rename</butt
 editRe('neutral board copy', /<b>Online board coming soon\.<\/b>\s*<span>[^<]*<\/span>/,
   '<b>Your best runs</b>\n        <span>Your weekly best is tracked on this device.</span>');
 
+// 7. Version label: v1.0 in the CrazyGames build only (Dennel's decision 4A, Nov 2).
+//    VERSION is the single source of truth: at runtime it fills the menu .version-tag and the
+//    settings line ("Rhythm Void " + VERSION), and it is stamped on run records (v: VERSION).
+//    Matches whatever the live VERSION is, but exactly once, so a second declaration stops the build.
+const CG_VERSION = 'v1.0';
+editRe('version label v1.0 (decision 4A)', /const VERSION = 'v[0-9][0-9A-Za-z.\-]*';/,
+  `const VERSION = '${CG_VERSION}';   // CrazyGames build: decision 4A (live site keeps its own VERSION)`);
+
 // Final guard: none of these may remain anywhere in the CrazyGames file.
 const BANNED = ['googletagmanager', 'gtag(', 'playrhythmvoid.com', 'mailto:'];
 const left = BANNED.filter((b) => s.includes(b));
 if (left.length) throw new Error('[build-crazygames] banned strings still present: ' + left.join(', '));
 if (s === src) throw new Error('[build-crazygames] no changes applied');
+if (!s.includes(`const VERSION = '${CG_VERSION}';`)) throw new Error('[build-crazygames] version label not set to ' + CG_VERSION);
 
 // Write the build + ZIP (index.html at the root, nothing else).
 mkdirSync(OUT_DIR, { recursive: true });
