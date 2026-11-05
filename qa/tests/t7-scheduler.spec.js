@@ -184,6 +184,10 @@ test('T7: a single 450 ms stall right after the run starts drops no steps', asyn
   await page.click('#startBtn');
   await page.waitForFunction(() => state === 'playing');
   await page.waitForFunction(() => audioCtx && audioCtx.state === 'running' && music.on, null, { timeout: 5000 });
+  // Stall only once the recorder has seen an active scheduler tick. startMusic()'s own first tick is
+  // a direct call the setInterval wrapper can't see, so stalling before the first interval tick left
+  // no pre-stall tick to measure from (Chromium w4, Nov 5: stallGap null, preTicks 0). Still ~25 ms in.
+  await page.waitForFunction(() => window.__musicTicks.some((k) => k.active), null, { timeout: 5000 });
   const pre = await page.evaluate(() => ({ n: __qa.steps.length, start: MUSIC_AHEAD_START, min: MUSIC_AHEAD_MIN }));
   const t0 = await page.evaluate(() => { const t = performance.now(); while (performance.now() - t < 450) {} return t; });
   await page.waitForTimeout(1500);
@@ -199,19 +203,36 @@ test('T7: a single 450 ms stall right after the run starts drops no steps', asyn
     if (!(w[i].when - w[i - 1].when > 1.5 * w[i - 1].stepDur)) continue;
     gaps++;
     const m = w[i - 1].when + w[i - 1].stepDur;
-    let k = null; for (const x of ticks) if (x.ac != null && x.ac < m) k = x;
-    if (k && k.ac + k.after < m + 0.002 && stallGap != null && stallGap > Math.max(REQUIRED_START_AHEAD, lastPre.after)) stallGaps++; else defectGaps++;
-    console.log('t7-gap-detail start ' + JSON.stringify(gapDetail(m, ticks)));
+    // Judge the gap by the timer gap that actually starved the queue: the one just before the tick that
+    // decided m (same classifier as the jank test). It is a "stall" only if m was already due when that
+    // tick ran AND that timer gap was longer than both the required 750 ms and what the previous tick
+    // had really queued (q - ac). Otherwise it is a defect: the start headroom should have covered it.
+    // Was: the last tick with ac < m, its lookahead (not its real queue), and always the test's own
+    // 450 ms stall gap. That called a drop after a later, separate long gap a defect of the start
+    // headroom (WebKit w4, Nov 5: stallGap 0.546, but the deciding tick ran 0.21 s after m was due).
+    const d = decidingTick(m, ticks);
+    const prev = d ? ticks.filter((x) => x.t < d.t).pop() : null;
+    const starveGap = d && prev ? (d.tg - prev.tg) / 1000 : null;
+    const prevQueue = prev && prev.q != null && prev.ac != null ? prev.q - prev.ac : null;
+    const isStall = classifyGap(m, ticks) === 'stall' && starveGap != null && prevQueue != null &&
+      starveGap > Math.max(REQUIRED_START_AHEAD, prevQueue);
+    if (isStall) stallGaps++; else defectGaps++;
+    const r3 = (v) => (v == null ? null : +v.toFixed(3));
+    console.log('t7-gap-detail start ' + JSON.stringify({ ...gapDetail(m, ticks), starveGap: r3(starveGap), prevQueue: r3(prevQueue),
+      starvedByTestStall: !!(prev && lastPre && prev === lastPre), counted: isStall ? 'stall' : 'defect' }));
   }
   // Diagnostics only: how far the audio clock moved across the stall, next to the wall gap.
   const stallAudio = lastPre && firstPost && lastPre.ac != null && firstPost.ac != null ? +(firstPost.ac - lastPre.ac).toFixed(3) : null;
   const held = before.every((k) => Math.abs(k.after - pre.start) < 1e-6);
-  const res = { gaps, stallGaps, defectGaps, stallGap, stallAudio, held, preTicks: before.length,
+  // New, stricter: the queue each pre-stall tick really left (q - ac), not just musicAhead.
+  const preQueueMin = before.length && before.every((k) => k.q != null && k.ac != null) ? Math.min(...before.map((k) => k.q - k.ac)) : null;
+  const res = { gaps, stallGaps, defectGaps, stallGap, stallAudio, held, preQueueMin: preQueueMin == null ? null : +preQueueMin.toFixed(3), preTicks: before.length,
     aheadBeforeStall: lastPre ? +lastPre.after.toFixed(3) : null, aheadAfter: +r.ahead.toFixed(3), steps: w.length };
   console.log('t7-start-stall ' + JSON.stringify(res));
   expect(stallGap, 'the game saw the 450 ms stall as one timer gap: ' + JSON.stringify(res)).toBeGreaterThanOrEqual(0.44);
   expect(before.length, 'scheduler ticked before the stall: ' + JSON.stringify(res)).toBeGreaterThan(0);
   expect(held, 'start headroom held (not decayed) before the stall: ' + JSON.stringify(res)).toBe(true);
+  expect(preQueueMin, 'every pre-stall tick really queued the required start headroom: ' + JSON.stringify(res)).toBeGreaterThanOrEqual(REQUIRED_START_AHEAD);
   expect(pre.start, 'start headroom covers a 450 ms stall plus a ~300 ms late tick').toBeGreaterThanOrEqual(REQUIRED_START_AHEAD);
   expect(w.length, 'steps scheduled after the stall').toBeGreaterThan(4);
   expect(defectGaps, 'grid gaps (dropped steps) the start headroom should have covered: ' + JSON.stringify(res)).toBe(0);
