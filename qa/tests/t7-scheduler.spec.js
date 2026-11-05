@@ -117,24 +117,55 @@ test('T7: steps keep up with the audio clock through repeated 300 ms main-thread
 });
 
 // T7: the first seconds of a run are the jankiest (CI WebKit stalled 461 ms right after start and
-// dropped 3 steps before the lookahead could adapt). Each run now starts with 500 ms of headroom,
-// so one 450 ms stall just after start drops nothing. Fails with a 140 ms starting lookahead.
+// dropped 3 steps before the lookahead could adapt). Each run starts with 800 ms of headroom, held
+// (not decayed) for the first 2 s, so one 450 ms stall just after start drops nothing even when
+// the engine's timer was already ~300 ms late going into it (WebKit failed 9/40 with a 500 ms start
+// that had begun decaying). Checks, all on the ticks the game itself saw:
+//  - headroom: every active tick in the first 2 s (before the stall) kept musicAhead at the start value.
+//  - 0 "defect" gaps: no missing step that the last tick before it had already queued time for.
+//  - 0 gaps at all unless the game's own timer gap across the stall exceeded both the required 750 ms
+//    and the headroom actually queued (stall + the engine's lateness beyond it): only then is a gap logged as a "stall" gap, with the
+//    gap that caused it. Was "0 gaps of any kind"; that also failed when the box/engine, not the
+//    game, outran any headroom within the design cap. The headroom check is new and stricter: it
+//    fails a build that decays before the stall even when no step happens to drop.
+// Fails with a 140 ms or 500 ms-decaying start (headroom check), or a scheduler that drops queued steps.
+// Spec value, independent of the game's constant: 450 ms stall + ~300 ms late WebKit tick.
+const REQUIRED_START_AHEAD = 0.75;
 test('T7: a single 450 ms stall right after the run starts drops no steps', async ({ page }) => {
+  await recordMusicTicks(page);
   const errors = await boot(page);
   await installProbes(page);
   await page.click('#startBtn');
   await page.waitForFunction(() => state === 'playing');
   await page.waitForFunction(() => audioCtx && audioCtx.state === 'running' && music.on, null, { timeout: 5000 });
-  const n0 = await page.evaluate(() => __qa.steps.length);
-  await page.evaluate(() => { const t = performance.now(); while (performance.now() - t < 450) {} });
+  const pre = await page.evaluate(() => ({ n: __qa.steps.length, start: MUSIC_AHEAD_START, min: MUSIC_AHEAD_MIN }));
+  const t0 = await page.evaluate(() => { const t = performance.now(); while (performance.now() - t < 450) {} return t; });
   await page.waitForTimeout(1500);
-  const r = await page.evaluate((n0) => {
-    const w = __qa.steps.slice(Math.max(0, n0 - 1)); let gaps = 0;
-    for (let i = 1; i < w.length; i++) if (w[i].when - w[i - 1].when > 1.5 * w[i - 1].stepDur) gaps++;
-    return { gaps, steps: w.length, ahead: musicAhead };
-  }, n0);
-  console.log('t7-start-stall ' + JSON.stringify(r));
-  expect(r.steps, 'steps scheduled after the stall').toBeGreaterThan(4);
-  expect(r.gaps, 'grid gaps (dropped steps) after a 450 ms start-of-run stall: ' + JSON.stringify(r)).toBe(0);
+  const r = await page.evaluate((n0) => ({ w: __qa.steps.slice(Math.max(0, n0 - 1)), ahead: musicAhead, ticks: window.__musicTicks.slice() }), pre.n);
+  const ticks = withGaps(r.ticks).filter((k) => k.active);
+  const w = r.w;
+  const before = ticks.filter((k) => k.t <= t0);
+  const lastPre = before[before.length - 1];
+  const firstPost = ticks.find((k) => k.t > t0);
+  const stallGap = lastPre && firstPost ? +((firstPost.tg - lastPre.tg) / 1000).toFixed(3) : null;
+  let gaps = 0, stallGaps = 0, defectGaps = 0;
+  for (let i = 1; i < w.length; i++) {
+    if (!(w[i].when - w[i - 1].when > 1.5 * w[i - 1].stepDur)) continue;
+    gaps++;
+    const m = w[i - 1].when + w[i - 1].stepDur;
+    let k = null; for (const x of ticks) if (x.ac != null && x.ac < m) k = x;
+    if (k && k.ac + k.after < m + 0.002 && stallGap != null && stallGap > Math.max(REQUIRED_START_AHEAD, lastPre.after)) stallGaps++; else defectGaps++;
+  }
+  const held = before.every((k) => Math.abs(k.after - pre.start) < 1e-6);
+  const res = { gaps, stallGaps, defectGaps, stallGap, held, preTicks: before.length,
+    aheadBeforeStall: lastPre ? +lastPre.after.toFixed(3) : null, aheadAfter: +r.ahead.toFixed(3), steps: w.length };
+  console.log('t7-start-stall ' + JSON.stringify(res));
+  expect(stallGap, 'the game saw the 450 ms stall as one timer gap: ' + JSON.stringify(res)).toBeGreaterThanOrEqual(0.44);
+  expect(before.length, 'scheduler ticked before the stall: ' + JSON.stringify(res)).toBeGreaterThan(0);
+  expect(held, 'start headroom held (not decayed) before the stall: ' + JSON.stringify(res)).toBe(true);
+  expect(pre.start, 'start headroom covers a 450 ms stall plus a ~300 ms late tick').toBeGreaterThanOrEqual(REQUIRED_START_AHEAD);
+  expect(w.length, 'steps scheduled after the stall').toBeGreaterThan(4);
+  expect(defectGaps, 'grid gaps (dropped steps) the start headroom should have covered: ' + JSON.stringify(res)).toBe(0);
+  expect(stallGaps, 'at most one step lost, and only to a timer gap beyond the full start headroom: ' + JSON.stringify(res)).toBeLessThanOrEqual(1);
   expect(errors, errors.join('\n')).toEqual([]);
 });
