@@ -22,11 +22,13 @@ until Phase 2 T6. It now passes and is a normal regression guard; its marker was
   sometimes takes more than 5 s to reach `running`, even with the PulseAudio null sink (it failed 1 of 4
   runs on 2026-11-01). Firefox gets 15 s for audio start-up, and the project has `retries: 1`. A
   pass on retry shows as **flaky** in the report, so it isn't silent. Two failures in a row still fail CI.
-- **WebKit smoke "start run"** (`webkit-smoke` project). Once on 2026-11-01, WebKit's sequencer
-  scheduled 29 sixteenth-steps in 10 s against the `> 30` floor (about 49 expected in real time). The
-  floor is **not** lowered, because a low count means steps really were late or dropped. Instead the
-  project has `retries: 1` (shown as flaky). Root cause belongs to Phase 2 **T7 (RV-14, scheduler
-  headroom)**, which the 6× CPU-throttle stress test also reports (report-only).
+- **WebKit smoke "start run"** (`webkit-smoke` project). On 2026-11-01 and again on main `2415f61`
+  (2026-11-04), WebKit's sequencer scheduled 28–29 sixteenth-steps in 10 s against the `> 30` floor.
+  Diagnosed 2026-11-04 (`diag/webkit-smoke`): the audio clock was fine, but the CI WebKit main thread
+  ran at ~5 fps, so the 25 ms music timer fired 200–330 ms late and the fixed 140 ms lookahead
+  dropped 3–21 beats per run. **Fixed by T7 (RV-14, adaptive scheduler headroom, 140–500 ms).** The
+  floor was not lowered, and the smoke test now also fails on more than 1 dropped beat in 10 s. The
+  project keeps `retries: 1`.
 
 ## Informational, non-blocking
 

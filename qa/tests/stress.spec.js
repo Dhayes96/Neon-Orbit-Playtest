@@ -2,7 +2,7 @@ const { test, expect } = require('@playwright/test');
 const { boot, installProbes, startBot, stats, writeResult } = require('./harness');
 
 // Low-end device proxy: CDP CPU throttling. Detects sequencer steps that were
-// DROPPED (musicTick skips steps that fall behind the audio clock, line ~4024)
+// DROPPED (musicTick skips steps that fall behind the audio clock; T7 adaptive lookahead)
 // and frame-time blowups. Chromium-only (CDP).
 test('stress: 6x CPU throttle — dropped music steps and frame budget', async ({ page }) => {
   const errors = await boot(page);
@@ -31,5 +31,7 @@ test('stress: 6x CPU throttle — dropped music steps and frame budget', async (
     botResults: taps.reduce((m, t) => (m[t.res] = (m[t.res] || 0) + 1, m), {}), errors };
   writeResult('stress-cpu6x', result);
   expect(errors).toEqual([]);
-  expect.soft(dropped, 'music steps dropped under 6x throttle').toBe(0);
+  // T7 (RV-14): was report-only (main dropped ~40 of ~100 steps here). With the adaptive lookahead
+  // at most 2 may drop in 20 s, when the throttle switches on before the window has adapted.
+  expect(dropped, 'music steps dropped under 6x throttle').toBeLessThanOrEqual(2);
 });

@@ -4117,15 +4117,46 @@
 
   const MUSIC_XFADE = 0.55; // crossfade length in seconds (300–700ms range)
 
-  // Lookahead pump: keeps ~140ms of audio scheduled. One interval, always.
+  /* T7 (RV-14): adaptive scheduler headroom.
+     The sequencer keeps a window of audio scheduled ahead of the clock. A fixed
+     140 ms window drops steps whenever the 25 ms timer fires later than that
+     (a janky phone, a busy main thread): those beats go silent and the music
+     stutters, though the grid itself stays correct. The window now follows a
+     decaying peak of the real gaps between timer ticks, between 140 ms and
+     500 ms. Pausing stays instant because the pause fades the music bus, not
+     the schedule; the hidden-tab suspend waits for the window (onPageHidden). */
+  const LOOKAHEAD_MIN = 0.14, LOOKAHEAD_MAX = 0.5;
+  function makeLookahead() {
+    return {
+      last: 0, peak: 0,
+      // Call once per active tick. Gaps over 1 s are a freeze, a hidden tab or a pause
+      // (handled elsewhere), not timer jitter, so they don't inflate the window.
+      tick() {
+        const t = performance.now();
+        if (this.last) {
+          const gap = (t - this.last) / 1000;
+          if (gap <= 1) this.peak = gap > this.peak ? gap : this.peak * 0.985;
+        }
+        this.last = t;
+        return this.sec();
+      },
+      idle() { this.last = 0; },   // a skipped tick: the next gap isn't timer jitter
+      sec() { return Math.min(LOOKAHEAD_MAX, Math.max(LOOKAHEAD_MIN, this.peak * 1.3 + 0.03)); },
+    };
+  }
+  const musicLookahead = makeLookahead();
+  const menuLookahead = makeLookahead();
+
+  // Lookahead pump: keeps 140–500 ms of audio scheduled (adaptive, T7). One interval, always.
   function musicTick() {
-    if (!music.on || !audioCtx || !music.active) return;
+    if (!music.on || !audioCtx || !music.active) { musicLookahead.idle(); return; }
     // setInterval keeps firing in a background tab (throttled to ~1/s), and
-    // each tick would queue another ~140ms of lookahead — which is exactly the
+    // each tick would queue another lookahead window — which is exactly the
     // stray beat you'd hear after switching away. Schedule nothing while hidden.
-    if (document.hidden) return;
-    if (state === 'paused') return;            // T6: silent and unscheduled while paused
-    if (audioCtx.state !== 'running') { tryResumeAudio(); return; }  // recover, don't give up
+    if (document.hidden) { musicLookahead.idle(); return; }
+    if (state === 'paused') { musicLookahead.idle(); return; }   // T6: silent and unscheduled while paused
+    if (audioCtx.state !== 'running') { musicLookahead.idle(); tryResumeAudio(); return; }  // recover, don't give up
+    const lookahead = musicLookahead.tick();
     stepBossMusicMix();                        // ease the boss crossfade each tick
     // If the clock slips (context started late on mobile, or a heavy frame
     // stalls the timer) re-anchor the schedule WITHOUT resetting the musical
@@ -4140,7 +4171,7 @@
     if (music.nextStepTime < audioCtx.currentTime - stepDur0 * 2) {
       reanchorMusicGrid(music, audioCtx.currentTime + 0.04);   // T6a: whole steps, grid phase kept
     }
-    const ahead = audioCtx.currentTime + 0.14;
+    const ahead = audioCtx.currentTime + lookahead;
     let guard = 0;
     while (music.nextStepTime < ahead && guard++ < 64) {
       const stepDur = (60 / bpm) / 4;
@@ -4307,15 +4338,16 @@
   }
 
   function menuTick() {
-    if (!menuMusic.on || !audioCtx) return;
-    if (document.hidden) return;                                     // silence in the background
-    if (audioCtx.state !== 'running') { tryResumeAudio(); return; }  // recover, don't give up
+    if (!menuMusic.on || !audioCtx) { menuLookahead.idle(); return; }
+    if (document.hidden) { menuLookahead.idle(); return; }           // silence in the background
+    if (audioCtx.state !== 'running') { menuLookahead.idle(); tryResumeAudio(); return; }  // recover, don't give up
+    const lookahead = menuLookahead.tick();
     if (menuMusic.nextStepTime < audioCtx.currentTime - 0.2) {
       menuMusic.nextStepTime = audioCtx.currentTime + 0.06; menuMusic.step = 0;
     }
     const menuBpm = 84;                        // relaxed tempo
     const stepDur = (60 / menuBpm) / 4;
-    const ahead = audioCtx.currentTime + 0.14;
+    const ahead = audioCtx.currentTime + lookahead;
     let guard = 0;
     while (menuMusic.nextStepTime < ahead && guard++ < 64) {
       menuRenderStep(menuMusic.step, menuMusic.bar, Math.max(menuMusic.nextStepTime, audioCtx.currentTime + 0.005), stepDur);
@@ -7690,15 +7722,15 @@
     // and never actually fire.
     if (_hiddenAt) return;
     _hiddenAt = clockNow();
-    // Scheduling stops immediately (see the ticks), but up to ~140ms is already
-    // queued and pads/drones can ring for seconds. Suspend just after that tail
-    // so it fades out naturally instead of being cut mid-note.
+    // Scheduling stops immediately (see the ticks), but up to one lookahead window
+    // (140–500 ms, T7) is already queued and pads/drones can ring for seconds.
+    // Suspend just after that tail so queued beats don't play late on return.
     clearTimeout(_suspendTimer);
     _suspendTimer = setTimeout(() => {
       if (document.hidden && audioCtx && audioCtx.state === 'running') {
         try { audioCtx.suspend(); } catch {}
       }
-    }, 280);
+    }, Math.round(Math.max(musicLookahead.sec(), menuLookahead.sec()) * 1000) + 140);
   }
   // Credit time spent away back to the run clock so every pending note, boss
   // timer and ability window keeps its relative timing. Idempotent: clearing
