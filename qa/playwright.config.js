@@ -22,7 +22,8 @@ module.exports = defineConfig({
     // reported as "flaky" (never silent). See qa/KNOWN-FAILURES.md.
     { name: 'firefox-smoke', retries: 1, use: { ...devices['Desktop Firefox'], launchOptions: { firefoxUserPrefs: { 'media.autoplay.default': 0, 'media.autoplay.blocking_policy': 0, 'media.autoplay.block-webaudio': false } } }, testMatch: /smoke\.spec/ },
     // retries: 1 — on CI, WebKit's sequencer occasionally falls just under the step-count floor
-    // (29 vs >30 in 10 s on 2026-11-01). Retry-passes report as "flaky". Root cause: Phase 2 T7 (scheduler headroom).
+    // (29 vs >30 in 10 s on 2026-11-01). Retry-passes report as "flaky". Since 2026-11-04 the smoke check counts steps
+    // against the audio clock that elapsed (see KNOWN-FAILURES.md); retries stay at 1.
     { name: 'webkit-smoke', retries: 1, use: { ...devices['Desktop Safari'] }, testMatch: /smoke\.spec|crazygames-audio-resume\.spec/ },
     { name: 'mobile-pixel7', use: { ...devices['Pixel 7'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testMatch: /mobile\.spec/ },
   ],

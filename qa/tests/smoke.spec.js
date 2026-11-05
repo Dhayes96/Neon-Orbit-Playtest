@@ -24,14 +24,51 @@ test('start run: real click starts audio + sequencer + note spawning, 10s with n
   const audioTimeout = browserName === 'firefox' ? 15000 : 5000;
   await page.waitForFunction(() => audioCtx && audioCtx.state === 'running' && music.on, null, { timeout: audioTimeout });
   await startBot(page); // without a player the run correctly ends in ~10s (energy drain + auto-miss)
+  // Measure the window on BOTH clocks. The sequencer is driven by the audio clock, so its step
+  // count is checked against the audio time that actually elapsed (see the check below).
+  const w0 = await page.evaluate(() => {
+    // Diagnostics only (no assertion): where do dropped steps come from? Count grid re-anchors (whole
+    // steps skipped after a timer stall) and measure how late a 25 ms timer fires on this engine.
+    const d = window.__smokeDiag = { reanchors: 0, skipped: 0, timerMax: 0, timerOver100: 0 };
+    const o = reanchorMusicGrid;
+    window.reanchorMusicGrid = function () { const k = o.apply(this, arguments); if (k > 0) { d.reanchors++; d.skipped += k; } return k; };
+    let last = performance.now();
+    d.timer = setInterval(() => { const t = performance.now(), g = t - last; last = t; if (g > d.timerMax) d.timerMax = g; if (g > 100) d.timerOver100++; }, 25);
+    return { wall: performance.now(), ac: audioCtx.currentTime, steps: __qa.wrapped.step, bpm, n: __qa.steps.length };
+  });
   await page.waitForTimeout(10_000);
+  const w1 = await page.evaluate(() => ({ wall: performance.now(), ac: audioCtx.currentTime, steps: __qa.wrapped.step, bpm }));
   const r = await page.evaluate(() => ({ state, stage, bpm, music: { on: music.on, step: music.step, bar: music.bar },
     wrapped: __qa.wrapped, notes: __qa.notes.length, steps: __qa.steps.length, misses: runStats.misses,
     ac: audioCtx.state, sampleRate: audioCtx.sampleRate, baseLatency: audioCtx.baseLatency, outputLatency: audioCtx.outputLatency }));
   writeResult('smoke-run', { r, errors });
   console.log('smoke-run ' + JSON.stringify({ state: r.state, steps: r.wrapped.step, notes: r.wrapped.note, ac: r.ac,
     pauses: await page.evaluate(() => (typeof _t6PauseCount === 'number' ? _t6PauseCount : null)) }));
-  expect(r.wrapped.step).toBeGreaterThan(30);    // ~49 16th-steps in 10s @74 BPM: probes really intercept internal calls
+  // Sequencer check, against the audio clock (was: wall-clock floor `steps > 30`).
+  // Every 16th-step the audio clock covered must have been scheduled, within ±10%. Dropped/late
+  // steps (reanchor skips, steps behind the clock) fail. On a starved CI WebKit runner this DOES fail:
+  // its audio clock runs at 1.00x but the 140 ms look-ahead scheduler drops steps (T7, a game issue).
+  const wallS = (w1.wall - w0.wall) / 1000, audioS = w1.ac - w0.ac, stepsIn = w1.steps - w0.steps;
+  // Expected count = audio seconds / the step length the game itself used (tempo can step mid-window).
+  const win = (await page.evaluate(() => __qa.steps)).slice(w0.n);
+  const avgDur = win.length ? win.reduce((a, x) => a + x.stepDur, 0) / win.length : (60 / w0.bpm) / 4;
+  const lo = 0.9 * audioS / avgDur, hi = 1.1 * audioS / avgDur;
+  let gaps = 0; for (let i = 1; i < win.length; i++) if (win[i].when - win[i - 1].when > 1.5 * win[i - 1].stepDur) gaps++;
+  const diag = await page.evaluate(() => { const d = window.__smokeDiag; clearInterval(d.timer);
+    return { reanchors: d.reanchors, skipped: d.skipped, timerMaxMs: Math.round(d.timerMax), timerOver100: d.timerOver100 }; });
+  const clocks = { wallS: +wallS.toFixed(2), audioS: +audioS.toFixed(2), audioPerWall: +(audioS / wallS).toFixed(3),
+    steps: stepsIn, expected: [+lo.toFixed(1), +hi.toFixed(1)], gaps, bpm: [w0.bpm, w1.bpm], ...diag };
+  console.log('smoke-clocks ' + JSON.stringify(clocks));
+  expect(r.wrapped.step).toBeGreaterThan(0);                   // probes really intercept internal calls
+  // The audio clock must actually run near real time, so a stalled, suspended or slow clock fails.
+  // Floors are set from measured audio/wall ratios (Rhythm QA Nov 4 + CI runs 41915369525/41916342740):
+  //   WebKit: 0.999-1.001 (43 runs)        -> floor 0.9
+  //   Chromium: min 0.812 local under load, 0.83-0.87 on CI; Firefox 1.00 -> floor 0.75
+  // Both floors fail a 0.7x clock (the old 0.5x floor let it pass on every engine).
+  const audioFloor = browserName === 'webkit' ? 0.9 : 0.75;
+  expect(audioS, 'audio clock vs wall (floor ' + audioFloor + 'x): ' + JSON.stringify(clocks)).toBeGreaterThanOrEqual(audioFloor * wallS);
+  expect(stepsIn, 'steps vs audio clock: ' + JSON.stringify(clocks)).toBeGreaterThanOrEqual(lo);
+  expect(stepsIn, 'steps vs audio clock: ' + JSON.stringify(clocks)).toBeLessThanOrEqual(hi);
   expect(r.wrapped.note).toBeGreaterThan(3);
   // the 10 s snapshot can land on the ~1 s LEVEL banner, which is still a live run
   expect(['playing', 'levelup']).toContain(r.state);
