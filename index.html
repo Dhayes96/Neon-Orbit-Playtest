@@ -4117,15 +4117,49 @@
 
   const MUSIC_XFADE = 0.55; // crossfade length in seconds (300–700ms range)
 
-  // Lookahead pump: keeps ~140ms of audio scheduled. One interval, always.
+  // T7 (RV-14): adaptive lookahead. 140 ms is enough when the 25 ms timer is on time, but on a
+  // janky device (or a starved CI box) the timer can fire 200-500 ms late, and every step whose
+  // time passed during that gap was dropped (never scheduled into the past), so the music stuttered.
+  // Now the lookahead grows to cover the worst recent timer gap (+50 ms margin, capped at 600 ms)
+  // and decays back to 140 ms at 80 ms per second of wall time once the timer is on time again
+  // (per second, not per tick: a throttled timer that ticks less often, as on WebKit, used to decay
+  // far more slowly and kept extra latency for many seconds). Each run starts at
+  // 500 ms, because the first seconds of a run are the jankiest (CI WebKit: a 461 ms stall right
+  // after start dropped 3 steps before the lookahead could adapt). Start headroom is 800 ms and is
+  // held, not decayed, for the first 2 s of wall time: a stall drops steps when it plus the timer's
+  // own lateness outruns the queue, and WebKit's timer often fires ~300 ms late, so a 450 ms stall
+  // needs ~750 ms queued (a 500 ms start that was already decaying dropped a step on WebKit 9/40).
+  // Raises during play stay capped at 600 ms. On a smooth device it is back at 140 ms ~10 s in.
+  // A bigger queue never delays pause (gain cut) and steps stay on the grid.
+  // Steps are still placed exactly on the grid; only how far ahead they are queued changes.
+  // Pause stays instant: setMusicPaused() cuts the queued tail with the music gain.
+  const MUSIC_AHEAD_MIN = 0.14, MUSIC_AHEAD_START = 0.8, MUSIC_AHEAD_HOLD_MS = 2000, MUSIC_AHEAD_MAX = 0.6, MUSIC_AHEAD_MARGIN = 0.05, MUSIC_AHEAD_DECAY = 0.08; // decay: seconds of lookahead shed per second
+  let musicAhead = MUSIC_AHEAD_MIN;           // seconds of music kept scheduled (adaptive)
+  let musicLastTickWall = 0;                  // performance.now() of the last scheduling tick, 0 = none
+  let musicHoldUntil = 0;                     // T7: performance.now() until which start headroom is held
+  function updateMusicAhead() {
+    const now = performance.now();
+    const gap = musicLastTickWall ? (now - musicLastTickWall) / 1000 : 0;
+    musicLastTickWall = now;
+    // A gap over 2 s is a suspension, not jank: reanchorMusicGrid() handles that, so ignore it.
+    if (gap > 2) return musicAhead;
+    const want = gap + MUSIC_AHEAD_MARGIN;
+    if (want > musicAhead) musicAhead = Math.min(MUSIC_AHEAD_MAX, want);
+    else if (now >= musicHoldUntil) musicAhead = Math.max(MUSIC_AHEAD_MIN, musicAhead - MUSIC_AHEAD_DECAY * gap);
+    return musicAhead;
+  }
+
+  // Lookahead pump: keeps 140-600 ms of audio scheduled (800 ms at run start; T7, adaptive). One interval, always.
   function musicTick() {
-    if (!music.on || !audioCtx || !music.active) return;
+    if (!music.on || !audioCtx || !music.active) { musicLastTickWall = 0; return; }
     // setInterval keeps firing in a background tab (throttled to ~1/s), and
-    // each tick would queue another ~140ms of lookahead — which is exactly the
+    // each tick would queue more lookahead, which is exactly the
     // stray beat you'd hear after switching away. Schedule nothing while hidden.
-    if (document.hidden) return;
-    if (state === 'paused') return;            // T6: silent and unscheduled while paused
-    if (audioCtx.state !== 'running') { tryResumeAudio(); return; }  // recover, don't give up
+    // (Ticks that schedule nothing reset the gap timer, so a hidden/paused stretch never
+    // counts as timer jank.)
+    if (document.hidden) { musicLastTickWall = 0; return; }
+    if (state === 'paused') { musicLastTickWall = 0; return; }   // T6: silent and unscheduled while paused
+    if (audioCtx.state !== 'running') { musicLastTickWall = 0; tryResumeAudio(); return; }  // recover, don't give up
     stepBossMusicMix();                        // ease the boss crossfade each tick
     // If the clock slips (context started late on mobile, or a heavy frame
     // stalls the timer) re-anchor the schedule WITHOUT resetting the musical
@@ -4140,7 +4174,7 @@
     if (music.nextStepTime < audioCtx.currentTime - stepDur0 * 2) {
       reanchorMusicGrid(music, audioCtx.currentTime + 0.04);   // T6a: whole steps, grid phase kept
     }
-    const ahead = audioCtx.currentTime + 0.14;
+    const ahead = audioCtx.currentTime + updateMusicAhead();
     let guard = 0;
     while (music.nextStepTime < ahead && guard++ < 64) {
       const stepDur = (60 / bpm) / 4;
@@ -4187,6 +4221,9 @@
         const nowGame = clockNow() - startTime;
         music.nextStepTime = audioCtx.currentTime + Math.max(0.06, gameBeatT - nowGame);
       }
+      musicLastTickWall = 0;                  // T7: a new run starts with no timer gap measured
+      musicAhead = Math.max(musicAhead, MUSIC_AHEAD_START);   // T7: headroom for start-of-run jank
+      musicHoldUntil = performance.now() + MUSIC_AHEAD_HOLD_MS;   // T7: hold it through the jankiest first seconds
       music.timer = setInterval(musicTick, 25);
       musicTick();
     } catch {}
