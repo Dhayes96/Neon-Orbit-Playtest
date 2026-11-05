@@ -5,6 +5,10 @@ const { boot, installProbes, startBot, writeResult } = require('./harness');
 // tg = the game's own tick timestamp (musicLastTickWall), active = the tick reached the
 // lookahead update (not paused/hidden/suspended), before/after = musicAhead around the tick,
 // ac = audio clock at the tick, so ac + after is how far ahead that tick queued the music.
+// Diagnostics only (no assertion uses them): ac2 = audio clock read again right after the tick,
+// q = music.nextStepTime after the tick (where the queue really ended). Rhythm QA saw WebKit drop
+// a step with 800 ms queued across a 0.49-0.62 s stall, which the scheduler can only do if the audio
+// clock passed the queued step before its next tick; ac/ac2/q show whether the clock jumped.
 // This lets T7 judge the lookahead against the timer gaps the game actually saw, on any engine.
 async function recordMusicTicks(page) {
   await page.addInitScript(() => {
@@ -16,8 +20,8 @@ async function recordMusicTicks(page) {
         fn = function () {
           let before = null, ac = null; try { before = musicAhead; ac = audioCtx && audioCtx.currentTime; } catch {}
           const r = orig.apply(this, arguments);
-          let after = null, tg = 0; try { after = musicAhead; tg = musicLastTickWall; } catch {}
-          window.__musicTicks.push({ t: performance.now(), tg, active: tg !== 0, before, after, ac });
+          let after = null, tg = 0, ac2 = null, q = null; try { after = musicAhead; tg = musicLastTickWall; ac2 = audioCtx && audioCtx.currentTime; q = music.nextStepTime; } catch {}
+          window.__musicTicks.push({ t: performance.now(), tg, active: tg !== 0, before, after, ac, ac2, q });
           return r;
         };
       }
@@ -33,6 +37,20 @@ const REQUIRED_DECAY_PER_S = 0.08;
 // Timer gap the game measured on each tick (0 when the previous tick didn't reach the update).
 function withGaps(ticks) {
   return ticks.map((k, i) => ({ ...k, gap: (k.active && i > 0 && ticks[i - 1].active) ? (k.tg - ticks[i - 1].tg) / 1000 : 0 }));
+}
+
+// Diagnostics only: for a grid gap whose first missing step is due at audio time m, the last active
+// tick before m (k) and the next active tick (n), with wall and audio-clock advance between them.
+// If audio advanced more than k queued (q - ac) while wall advanced less, the engine's audio clock
+// jumped ahead of the wall clock (bursty output); otherwise the scheduler dropped a step it had queued time for.
+function gapDetail(m, ticks) {
+  const act = ticks.filter((x) => x.active && x.ac != null);
+  let i = -1; for (let j = 0; j < act.length; j++) if (act[j].ac < m) i = j;
+  const r3 = (v) => (v == null ? null : +v.toFixed(3));
+  const pick = (x) => x && { t: Math.round(x.t), ac: r3(x.ac), ac2: r3(x.ac2), q: r3(x.q), after: r3(x.after) };
+  const k = act[i], n = act[i + 1];
+  return { m: r3(m), k: pick(k), n: pick(n), wallAdv: k && n ? r3((n.tg - k.tg) / 1000) : null,
+    audioAdv: k && n ? r3(n.ac - k.ac) : null, queuedPastK: k ? r3(k.q - k.ac) : null, inTickJump: k ? r3(k.ac2 - k.ac) : null };
 }
 
 // T7 (RV-14): scheduler headroom. With a fixed 140 ms lookahead, a 25 ms timer that fires
@@ -79,6 +97,7 @@ test('T7: steps keep up with the audio clock through repeated 300 ms main-thread
     const m = win[i - 1].when + win[i - 1].stepDur;
     let k = null; for (const x of ticks) if (x.active && x.ac != null && x.ac < m) k = x;
     if (k && k.ac + k.after < m + 0.002) stallGaps++; else defectGaps++;
+    console.log('t7-gap-detail jank ' + JSON.stringify(gapDetail(m, ticks)));
   }
   // Settle bound, replayed from the timer gaps the game saw after the jank stopped: each raise to
   // min(max, gap + margin) and the jank-time value, minus decay per second of wall time since.
@@ -155,9 +174,12 @@ test('T7: a single 450 ms stall right after the run starts drops no steps', asyn
     const m = w[i - 1].when + w[i - 1].stepDur;
     let k = null; for (const x of ticks) if (x.ac != null && x.ac < m) k = x;
     if (k && k.ac + k.after < m + 0.002 && stallGap != null && stallGap > Math.max(REQUIRED_START_AHEAD, lastPre.after)) stallGaps++; else defectGaps++;
+    console.log('t7-gap-detail start ' + JSON.stringify(gapDetail(m, ticks)));
   }
+  // Diagnostics only: how far the audio clock moved across the stall, next to the wall gap.
+  const stallAudio = lastPre && firstPost && lastPre.ac != null && firstPost.ac != null ? +(firstPost.ac - lastPre.ac).toFixed(3) : null;
   const held = before.every((k) => Math.abs(k.after - pre.start) < 1e-6);
-  const res = { gaps, stallGaps, defectGaps, stallGap, held, preTicks: before.length,
+  const res = { gaps, stallGaps, defectGaps, stallGap, stallAudio, held, preTicks: before.length,
     aheadBeforeStall: lastPre ? +lastPre.after.toFixed(3) : null, aheadAfter: +r.ahead.toFixed(3), steps: w.length };
   console.log('t7-start-stall ' + JSON.stringify(res));
   expect(stallGap, 'the game saw the 450 ms stall as one timer gap: ' + JSON.stringify(res)).toBeGreaterThanOrEqual(0.44);
