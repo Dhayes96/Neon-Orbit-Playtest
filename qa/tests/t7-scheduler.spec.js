@@ -6,7 +6,8 @@ const { boot, installProbes, startBot, writeResult } = require('./harness');
 // lookahead update (not paused/hidden/suspended), before/after = musicAhead around the tick,
 // ac = audio clock at the tick, so ac + after is how far ahead that tick queued the music.
 // Diagnostics only (no assertion uses them): ac2 = audio clock read again right after the tick,
-// q = music.nextStepTime after the tick (where the queue really ended). Rhythm QA saw WebKit drop
+// q = music.nextStepTime after the tick (where the queue really ended), qb = music.nextStepTime before
+// the tick (where the queue ended when the tick began; qb <= m < q means this tick decided step m). Rhythm QA saw WebKit drop
 // a step with 800 ms queued across a 0.49-0.62 s stall, which the scheduler can only do if the audio
 // clock passed the queued step before its next tick; ac/ac2/q show whether the clock jumped.
 // This lets T7 judge the lookahead against the timer gaps the game actually saw, on any engine.
@@ -18,10 +19,10 @@ async function recordMusicTicks(page) {
       if (typeof fn === 'function' && fn.name === 'musicTick') {
         const orig = fn;
         fn = function () {
-          let before = null, ac = null; try { before = musicAhead; ac = audioCtx && audioCtx.currentTime; } catch {}
+          let before = null, ac = null, qb = null; try { before = musicAhead; ac = audioCtx && audioCtx.currentTime; qb = music.nextStepTime; } catch {}
           const r = orig.apply(this, arguments);
           let after = null, tg = 0, ac2 = null, q = null; try { after = musicAhead; tg = musicLastTickWall; ac2 = audioCtx && audioCtx.currentTime; q = music.nextStepTime; } catch {}
-          window.__musicTicks.push({ t: performance.now(), tg, active: tg !== 0, before, after, ac, ac2, q });
+          window.__musicTicks.push({ t: performance.now(), tg, active: tg !== 0, before, after, ac, ac2, qb, q });
           return r;
         };
       }
@@ -47,10 +48,29 @@ function gapDetail(m, ticks) {
   const act = ticks.filter((x) => x.active && x.ac != null);
   let i = -1; for (let j = 0; j < act.length; j++) if (act[j].ac < m) i = j;
   const r3 = (v) => (v == null ? null : +v.toFixed(3));
-  const pick = (x) => x && { t: Math.round(x.t), ac: r3(x.ac), ac2: r3(x.ac2), q: r3(x.q), after: r3(x.after) };
+  const pick = (x) => x && { t: Math.round(x.t), ac: r3(x.ac), ac2: r3(x.ac2), qb: r3(x.qb), q: r3(x.q), before: r3(x.before), after: r3(x.after), gap: r3(x.gap) };
   const k = act[i], n = act[i + 1];
+  const d = decidingTick(m, ticks);
   return { m: r3(m), k: pick(k), n: pick(n), wallAdv: k && n ? r3((n.tg - k.tg) / 1000) : null,
-    audioAdv: k && n ? r3(n.ac - k.ac) : null, queuedPastK: k ? r3(k.q - k.ac) : null, inTickJump: k ? r3(k.ac2 - k.ac) : null };
+    audioAdv: k && n ? r3(n.ac - k.ac) : null, queuedPastK: k ? r3(k.q - k.ac) : null, inTickJump: k ? r3(k.ac2 - k.ac) : null,
+    d: pick(d), dueVsD: d ? r3(m - d.ac) : null, cause: classifyGap(m, ticks) };
+}
+
+// The tick that moved the queue past step m (qb <= m < q): the only tick that could have scheduled m.
+function decidingTick(m, ticks) {
+  return ticks.find((x) => x.active && x.ac != null && x.qb != null && x.q != null && x.qb <= m + 1e-6 && m + 1e-6 < x.q) || null;
+}
+
+// A grid gap is a "stall" only if, when the deciding tick ran, step m was already due (m < ac + 2 ms,
+// the game's never-schedule-into-the-past guard): the queue had run dry before that tick, because the
+// timer gap before it was longer than the lookahead queued. Anything else is a "defect": the scheduler
+// skipped a step it still had time to schedule, or no tick ever covered m.
+// Was: judge by the last tick with ac < m and its queue AFTER the tick. When the late tick itself landed
+// 0-2 ms before m (WebKit w4, Nov 5: m 8.389, tick ac 8.388 after a ~0.5 s gap), that tick's refilled
+// queue made a real stall drop look like a defect.
+function classifyGap(m, ticks) {
+  const d = decidingTick(m, ticks);
+  return d && m < d.ac + 0.002 ? 'stall' : 'defect';
 }
 
 // T7 (RV-14): scheduler headroom. With a fixed 140 ms lookahead, a 25 ms timer that fires
@@ -70,33 +90,39 @@ test('T7: steps keep up with the audio clock through repeated 300 ms main-thread
   await startBot(page);
   const w0 = await page.evaluate(() => {
     window.__jank = setInterval(() => { const t = performance.now(); while (performance.now() - t < 300) {} }, 700);
-    return { wall: performance.now(), ac: audioCtx.currentTime, steps: __qa.wrapped.step, n: __qa.steps.length };
+    return { wall: performance.now(), ac: audioCtx.currentTime, steps: __qa.wrapped.step, n: __qa.steps.length, q: music.nextStepTime };
   });
   await page.waitForTimeout(8000);
   const w1 = await page.evaluate(() => { clearInterval(window.__jank);
-    return { wall: performance.now(), ac: audioCtx.currentTime, steps: __qa.wrapped.step, ahead: musicAhead, state }; });
-  const win = (await page.evaluate(() => __qa.steps)).slice(w0.n);
-  const audioS = w1.ac - w0.ac, stepsIn = w1.steps - w0.steps;
+    return { wall: performance.now(), ac: audioCtx.currentTime, steps: __qa.wrapped.step, ahead: musicAhead, state, q: music.nextStepTime }; });
+  const allSteps = await page.evaluate(() => __qa.steps);
+  // Steps are counted by when they PLAY (when in [ac0, ac1)), against the audio time the music grid
+  // actually covered in the window (from its first step, if the run's music started inside it).
+  // Was: steps SCHEDULED during the wall window vs all audio time. That count shifts with how deep the
+  // queue was at each end (up to 800 ms of start headroom at w0, up to 600 ms at w1 = several steps)
+  // and counted audio time before the first step as missing steps, so it failed WebKit w4 with no gap
+  // at all (Nov 5: 39 steps vs floor 39.0, gaps 0). Same ±10% bounds, on what was heard.
+  const win = allSteps.filter((x) => x.when >= w0.ac && x.when < w1.ac);
+  const gridFrom = allSteps.length ? Math.max(w0.ac, allSteps[0].when) : w0.ac;
+  const audioS = w1.ac - w0.ac, gridS = w1.ac - gridFrom, stepsIn = win.length, scheduledIn = w1.steps - w0.steps;
   const avgDur = win.reduce((a, x) => a + x.stepDur, 0) / Math.max(1, win.length);
-  const lo = 0.9 * audioS / avgDur, hi = 1.1 * audioS / avgDur;
+  const lo = 0.9 * gridS / avgDur, hi = 1.1 * gridS / avgDur;
   let gaps = 0; for (let i = 1; i < win.length; i++) if (win[i].when - win[i - 1].when > 1.5 * win[i - 1].stepDur) gaps++;
   // After the jank stops, the lookahead must decay (no permanent latency).
   await page.waitForTimeout(6000);
   const settled = await page.evaluate(() => ({ ahead: musicAhead, min: MUSIC_AHEAD_MIN, max: MUSIC_AHEAD_MAX,
     margin: MUSIC_AHEAD_MARGIN, ticks: window.__musicTicks.slice() }));
   const ticks = withGaps(settled.ticks);
-  // Classify each grid gap. The first missing step at audio time m was due after the last active
-  // tick before m. If that tick had queued music only up to ac + after < m, the timer stall outran
-  // the lookahead queued at that moment ("stall": the design adapts to the worst gap so far, capped
-  // at MUSIC_AHEAD_MAX, and can't cover a bigger one). If it had queued past m and m is still
-  // missing, the scheduler dropped a step it had time for ("defect").
+  // Classify each grid gap by the tick that moved the queue past the first missing step m (see
+  // classifyGap): "stall" if m was already due when that tick ran (the timer gap before it outran the
+  // lookahead; the design adapts to the worst gap so far, capped at MUSIC_AHEAD_MAX, and can't cover a
+  // bigger one), else "defect" (the scheduler skipped a step it had time for).
   const jank = ticks.filter((k) => k.t > w0.wall && k.t <= w1.wall + 1);
   let stallGaps = 0, defectGaps = 0;
   for (let i = 1; i < win.length; i++) {
     if (!(win[i].when - win[i - 1].when > 1.5 * win[i - 1].stepDur)) continue;
     const m = win[i - 1].when + win[i - 1].stepDur;
-    let k = null; for (const x of ticks) if (x.active && x.ac != null && x.ac < m) k = x;
-    if (k && k.ac + k.after < m + 0.002) stallGaps++; else defectGaps++;
+    if (classifyGap(m, ticks) === 'stall') stallGaps++; else defectGaps++;
     console.log('t7-gap-detail jank ' + JSON.stringify(gapDetail(m, ticks)));
   }
   // Settle bound, replayed from the timer gaps the game saw after the jank stopped: each raise to
@@ -108,7 +134,8 @@ test('T7: steps keep up with the audio clock through repeated 300 ms main-thread
   let bound = Math.max(settled.min, w1.ahead - R * (tLast - w1.wall) / 1000);
   for (const k of after) if (k.active) bound = Math.max(bound, Math.min(settled.max, k.gap + settled.margin) - R * (tLast - k.tg) / 1000);
   const worstGapAfter = after.reduce((m, k) => Math.max(m, k.gap), 0);
-  const res = { audioS: +audioS.toFixed(2), wallS: +((w1.wall - w0.wall) / 1000).toFixed(2), steps: stepsIn,
+  const res = { audioS: +audioS.toFixed(2), gridS: +gridS.toFixed(2), wallS: +((w1.wall - w0.wall) / 1000).toFixed(2), steps: stepsIn, scheduledIn,
+    queuedAtW0: +(w0.q - w0.ac).toFixed(3), queuedAtW1: +(w1.q - w1.ac).toFixed(3),
     expected: [+lo.toFixed(1), +hi.toFixed(1)], gaps, stallGaps, defectGaps, worstJankGap: +jank.reduce((m, k) => Math.max(m, k.gap), 0).toFixed(3),
     aheadDuringJank: +w1.ahead.toFixed(3), aheadSettled: +settled.ahead.toFixed(3), settleBound: +bound.toFixed(3),
     worstGapAfterJank: +worstGapAfter.toFixed(3), ticksAfterJank: after.length, inactiveAfter, state: w1.state };
