@@ -4121,13 +4121,15 @@
   // janky device (or a starved CI box) the timer can fire 200-500 ms late, and every step whose
   // time passed during that gap was dropped (never scheduled into the past), so the music stuttered.
   // Now the lookahead grows to cover the worst recent timer gap (+50 ms margin, capped at 600 ms)
-  // and decays back to 140 ms by 2 ms per tick once the timer is on time again. Each run starts at
+  // and decays back to 140 ms at 80 ms per second of wall time once the timer is on time again
+  // (per second, not per tick: a throttled timer that ticks less often, as on WebKit, used to decay
+  // far more slowly and kept extra latency for many seconds). Each run starts at
   // 500 ms, because the first seconds of a run are the jankiest (CI WebKit: a 461 ms stall right
   // after start dropped 3 steps before the lookahead could adapt); on a smooth device it is back
   // at 140 ms within ~4.5 s.
   // Steps are still placed exactly on the grid; only how far ahead they are queued changes.
   // Pause stays instant: setMusicPaused() cuts the queued tail with the music gain.
-  const MUSIC_AHEAD_MIN = 0.14, MUSIC_AHEAD_START = 0.5, MUSIC_AHEAD_MAX = 0.6, MUSIC_AHEAD_MARGIN = 0.05, MUSIC_AHEAD_DECAY = 0.002;
+  const MUSIC_AHEAD_MIN = 0.14, MUSIC_AHEAD_START = 0.5, MUSIC_AHEAD_MAX = 0.6, MUSIC_AHEAD_MARGIN = 0.05, MUSIC_AHEAD_DECAY = 0.08; // decay: seconds of lookahead shed per second
   let musicAhead = MUSIC_AHEAD_MIN;           // seconds of music kept scheduled (adaptive)
   let musicLastTickWall = 0;                  // performance.now() of the last scheduling tick, 0 = none
   function updateMusicAhead() {
@@ -4138,7 +4140,7 @@
     if (gap > 2) return musicAhead;
     const want = gap + MUSIC_AHEAD_MARGIN;
     if (want > musicAhead) musicAhead = Math.min(MUSIC_AHEAD_MAX, want);
-    else musicAhead = Math.max(MUSIC_AHEAD_MIN, musicAhead - MUSIC_AHEAD_DECAY);
+    else musicAhead = Math.max(MUSIC_AHEAD_MIN, musicAhead - MUSIC_AHEAD_DECAY * gap);
     return musicAhead;
   }
 
