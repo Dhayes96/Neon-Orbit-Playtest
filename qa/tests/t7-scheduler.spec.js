@@ -36,9 +36,35 @@ test('T7: steps keep up with the audio clock through repeated 300 ms main-thread
   console.log('t7-scheduler ' + JSON.stringify(res));
   expect(stepsIn, 'steps vs audio clock under jank: ' + JSON.stringify(res)).toBeGreaterThanOrEqual(lo);
   expect(stepsIn, 'steps vs audio clock under jank: ' + JSON.stringify(res)).toBeLessThanOrEqual(hi);
-  expect(gaps, 'grid gaps (dropped steps) under jank: ' + JSON.stringify(res)).toBeLessThanOrEqual(2); // only the first stall, before the lookahead adapts
+  expect(gaps, 'grid gaps (dropped steps) under jank: ' + JSON.stringify(res)).toBeLessThanOrEqual(1); // was 2; the 500 ms start headroom now covers the first stall (0 seen locally), 1 allowed for a loaded box
   expect(w1.ahead, 'lookahead grew to cover the stall').toBeGreaterThan(0.3);
   expect(w1.ahead).toBeLessThanOrEqual(settled.max);
-  expect(settled.ahead, 'lookahead back at its floor after the jank stops').toBeCloseTo(settled.min, 3);
+  // Back near the 140 ms floor: one ordinary ~90 ms headless timer gap legitimately re-raises it to
+  // gap + 50 ms, so "near" is floor + 60 ms, well under the 300+ ms it reached during the jank.
+  expect(settled.ahead, 'lookahead back near its floor after the jank stops').toBeLessThanOrEqual(settled.min + 0.06);
+  expect(settled.ahead).toBeGreaterThanOrEqual(settled.min);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+// T7: the first seconds of a run are the jankiest (CI WebKit stalled 461 ms right after start and
+// dropped 3 steps before the lookahead could adapt). Each run now starts with 500 ms of headroom,
+// so one 450 ms stall just after start drops nothing. Fails with a 140 ms starting lookahead.
+test('T7: a single 450 ms stall right after the run starts drops no steps', async ({ page }) => {
+  const errors = await boot(page);
+  await installProbes(page);
+  await page.click('#startBtn');
+  await page.waitForFunction(() => state === 'playing');
+  await page.waitForFunction(() => audioCtx && audioCtx.state === 'running' && music.on, null, { timeout: 5000 });
+  const n0 = await page.evaluate(() => __qa.steps.length);
+  await page.evaluate(() => { const t = performance.now(); while (performance.now() - t < 450) {} });
+  await page.waitForTimeout(1500);
+  const r = await page.evaluate((n0) => {
+    const w = __qa.steps.slice(Math.max(0, n0 - 1)); let gaps = 0;
+    for (let i = 1; i < w.length; i++) if (w[i].when - w[i - 1].when > 1.5 * w[i - 1].stepDur) gaps++;
+    return { gaps, steps: w.length, ahead: musicAhead };
+  }, n0);
+  console.log('t7-start-stall ' + JSON.stringify(r));
+  expect(r.steps, 'steps scheduled after the stall').toBeGreaterThan(4);
+  expect(r.gaps, 'grid gaps (dropped steps) after a 450 ms start-of-run stall: ' + JSON.stringify(r)).toBe(0);
   expect(errors, errors.join('\n')).toEqual([]);
 });

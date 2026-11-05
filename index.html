@@ -4120,11 +4120,14 @@
   // T7 (RV-14): adaptive lookahead. 140 ms is enough when the 25 ms timer is on time, but on a
   // janky device (or a starved CI box) the timer can fire 200-500 ms late, and every step whose
   // time passed during that gap was dropped (never scheduled into the past), so the music stuttered.
-  // Now the lookahead grows to cover the worst recent timer gap (+50 ms margin, capped at 500 ms)
-  // and decays back to 140 ms by 2 ms per tick (~4.5 s) once the timer is on time again.
+  // Now the lookahead grows to cover the worst recent timer gap (+50 ms margin, capped at 600 ms)
+  // and decays back to 140 ms by 2 ms per tick once the timer is on time again. Each run starts at
+  // 500 ms, because the first seconds of a run are the jankiest (CI WebKit: a 461 ms stall right
+  // after start dropped 3 steps before the lookahead could adapt); on a smooth device it is back
+  // at 140 ms within ~4.5 s.
   // Steps are still placed exactly on the grid; only how far ahead they are queued changes.
   // Pause stays instant: setMusicPaused() cuts the queued tail with the music gain.
-  const MUSIC_AHEAD_MIN = 0.14, MUSIC_AHEAD_MAX = 0.5, MUSIC_AHEAD_MARGIN = 0.05, MUSIC_AHEAD_DECAY = 0.002;
+  const MUSIC_AHEAD_MIN = 0.14, MUSIC_AHEAD_START = 0.5, MUSIC_AHEAD_MAX = 0.6, MUSIC_AHEAD_MARGIN = 0.05, MUSIC_AHEAD_DECAY = 0.002;
   let musicAhead = MUSIC_AHEAD_MIN;           // seconds of music kept scheduled (adaptive)
   let musicLastTickWall = 0;                  // performance.now() of the last scheduling tick, 0 = none
   function updateMusicAhead() {
@@ -4139,7 +4142,7 @@
     return musicAhead;
   }
 
-  // Lookahead pump: keeps 140-500 ms of audio scheduled (T7, adaptive). One interval, always.
+  // Lookahead pump: keeps 140-600 ms of audio scheduled (T7, adaptive). One interval, always.
   function musicTick() {
     if (!music.on || !audioCtx || !music.active) { musicLastTickWall = 0; return; }
     // setInterval keeps firing in a background tab (throttled to ~1/s), and
@@ -4212,6 +4215,7 @@
         music.nextStepTime = audioCtx.currentTime + Math.max(0.06, gameBeatT - nowGame);
       }
       musicLastTickWall = 0;                  // T7: a new run starts with no timer gap measured
+      musicAhead = Math.max(musicAhead, MUSIC_AHEAD_START);   // T7: headroom for start-of-run jank
       music.timer = setInterval(musicTick, 25);
       musicTick();
     } catch {}
