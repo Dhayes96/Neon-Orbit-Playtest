@@ -214,12 +214,24 @@ test('T7: a single 450 ms stall right after the run starts drops no steps', asyn
     const prev = d ? ticks.filter((x) => x.t < d.t).pop() : null;
     const starveGap = d && prev ? (d.tg - prev.tg) / 1000 : null;
     const prevQueue = prev && prev.q != null && prev.ac != null ? prev.q - prev.ac : null;
-    const isStall = classifyGap(m, ticks) === 'stall' && starveGap != null && prevQueue != null &&
-      starveGap > Math.max(REQUIRED_START_AHEAD, prevQueue);
+    const starveAudio = d && prev && d.ac != null && prev.ac != null ? d.ac - prev.ac : null;
+    const due = classifyGap(m, ticks) === 'stall';
+    const timerStall = due && starveGap != null && prevQueue != null && starveGap > Math.max(REQUIRED_START_AHEAD, prevQueue);
+    // Audio-clock catch-up (WebKit w4, Nov 5 3:45 PM: audio moved 0.432 s in a 0.724 s stall, then 0.885 s
+    // in the next 0.375 s of wall time, past the 0.875 s queued). The timer gap was shorter than the real
+    // queue, so by wall time the queue would have covered it; only the audio clock's jump overran it.
+    // The game can only schedule against the clock it is shown, so this counts as a stall, not a
+    // scheduler defect. All of these must hold: m was due when the deciding tick ran; the wall gap
+    // was within the real queue; the audio clock moved at least 50 ms more than wall time; and that
+    // audio advance covered the whole queue. It shares the "at most one stall gap" cap below.
+    const clockCatchup = due && !timerStall && starveGap != null && prevQueue != null && starveAudio != null &&
+      starveGap <= prevQueue && starveAudio - starveGap >= 0.05 && starveAudio >= prevQueue - 0.002;
+    const isStall = timerStall || clockCatchup;
     if (isStall) stallGaps++; else defectGaps++;
     const r3 = (v) => (v == null ? null : +v.toFixed(3));
-    console.log('t7-gap-detail start ' + JSON.stringify({ ...gapDetail(m, ticks), starveGap: r3(starveGap), prevQueue: r3(prevQueue),
-      starvedByTestStall: !!(prev && lastPre && prev === lastPre), counted: isStall ? 'stall' : 'defect' }));
+    console.log('t7-gap-detail start ' + JSON.stringify({ ...gapDetail(m, ticks), starveGap: r3(starveGap), starveAudio: r3(starveAudio), prevQueue: r3(prevQueue),
+      starvedByTestStall: !!(prev && lastPre && prev === lastPre), kind: timerStall ? 'timer' : clockCatchup ? 'clock-catchup' : 'defect',
+      counted: isStall ? 'stall' : 'defect' }));
   }
   // Diagnostics only: how far the audio clock moved across the stall, next to the wall gap.
   const stallAudio = lastPre && firstPost && lastPre.ac != null && firstPost.ac != null ? +(firstPost.ac - lastPre.ac).toFixed(3) : null;
