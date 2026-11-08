@@ -997,7 +997,7 @@
   <div id="abilityStatus"><span id="abilityStatusText"></span></div>
 
   <div id="trackName">Neon Drive</div>
-  <div id="feverBanner">Combo Fever ×2</div>
+  <div id="feverBanner">Combo Fever ×1.5</div>
   <div id="toast"></div>
   <div id="audioHint">Tap once for audio</div>
 
@@ -1076,7 +1076,7 @@
         <div class="howto-item"><span class="glyph">➤</span><span>From <b>Stage 2</b> the <b>target moves</b> — kept in a thumb-friendly zone on phones. A ghost circle shows where it's headed; follow it with your eyes, not your thumb.</span></div>
         <div class="howto-item"><span class="glyph">♫</span><span>The soundtrack <b>evolves every five stages</b> and the background shifts with it. Pick a <b>Music Vibe</b> in Settings — six distinct songs (Cyber Bounce, Blue Pulse, Toxic Breaks, and more). Visual theme and vibe can be set separately.</span></div>
         <div class="howto-item"><span class="glyph">✦</span><span><b>Perfect</b> = 300 pts &amp; refills energy. <b>Good</b> = 150. <b>OK</b> = 75. Late or early taps drain energy.</span></div>
-        <div class="howto-item"><span class="glyph">⚡</span><span>Build combo to chase milestones: <b>25× Combo Fever</b> doubles your score, <b>100× Supernova</b> makes it ×5 and <b>250× Singularity</b> ×10, with <b>Overdrive</b> and <b>Perfect Orbit</b> bonuses along the way. One miss resets the climb. <b>Long rhythm runs</b> show up more from Stage 5.</span></div>
+        <div class="howto-item"><span class="glyph">⚡</span><span>Build combo to chase milestones: <b>25× Combo Fever</b> gives ×1.5 score, <b>100× Supernova</b> ×2 and <b>250× Singularity</b> ×3 (PERFECT hits only: a GOOD or OK drops you back to ×2 until 25 PERFECTs in a row), with <b>Overdrive</b> and <b>Perfect Orbit</b> bonuses along the way. One miss resets the climb. <b>Long rhythm runs</b> show up more from Stage 5.</span></div>
         <div class="howto-item"><span class="glyph">▲</span><span>Each new level gives a brief <b>breather</b>: gameplay pauses, the level and track are announced, then a fresh pattern begins.</span></div>
         <div class="howto-item"><span class="glyph">♥</span><span>Your <b>energy bar</b> drains over time and on misses. When it empties, the run ends.</span></div>
         <div class="howto-item"><span class="glyph">☣</span><span><b>Boss Battles</b> at Stages 20, 30, 40 & 50. Damage the boss by hitting rings — <b>Perfect</b> hits hurt most, <b>Good</b> chips in, <b>OK</b> doesn't. Survive its phases to win energy. Progression pauses until the boss falls.</span></div>
@@ -1692,22 +1692,25 @@
   }
 
   const FEVER_COMBO = 25;
-  const FEVER_MULT  = 2;
-  const FEVER_MULTS = [1, FEVER_MULT, 5, 10];   // by feverLevel: none, Fever, Supernova, Singularity
+  const FEVER_MULT  = 1.5;
+  const FEVER_MULTS = [1, FEVER_MULT, 2, 3];   // by feverLevel: none, Fever x1.5, Supernova x2, Singularity x3
+  // Singularity is PERFECT-only: a GOOD or OK drops it back to Supernova (combo
+  // kept), and SING_REGAIN PERFECTs in a row bring it back.
+  const SING_REGAIN = 25;
   const MILESTONE_EVERY = 10;
   const MIN_NOTE_GAP = 0.20; // seconds — extra rings never spawn closer than this
 
   // Combo milestones the player chases across a long run. Each gives a bonus,
   // a toast, a pulse, and a small visual/audio lift. Fever begins at 25.
   // v0.3.0: three score tiers on one unbroken combo. Spacing comes from a perfect
-  // Arcade run: Fever lands ~27s in; x5 needs ~90s without a miss, x10 ~170s.
+  // Arcade run: Fever lands ~27s in; x2 needs ~90s without a miss, x3 ~170s.
   // Overdrive and Perfect Orbit stay as bonus milestones between the tiers.
   const COMBO_MILESTONES = [
-    { combo: 25,  name: 'Combo Fever',  sub: '×2 SCORE',   bonus: 250,   color: 'c2', fever: 1 },
+    { combo: 25,  name: 'Combo Fever',  sub: '×1.5 SCORE', bonus: 250,   color: 'c2', fever: 1 },
     { combo: 50,  name: 'Overdrive',    sub: 'KEEP GOING', bonus: 750,   color: 'c1' },
-    { combo: 100, name: 'Supernova',    sub: '×5 SCORE',   bonus: 2500,  color: 'c3', fever: 2 },
+    { combo: 100, name: 'Supernova',    sub: '×2 SCORE',   bonus: 2500,  color: 'c3', fever: 2 },
     { combo: 175, name: 'Perfect Orbit',sub: 'FLAWLESS',   bonus: 5000,  color: 'c2' },
-    { combo: 250, name: 'Singularity',  sub: '×10 SCORE',  bonus: 10000, color: 'c1', fever: 3 }
+    { combo: 250, name: 'Singularity',  sub: '×3 · PERFECTS ONLY', bonus: 10000, color: 'c1', fever: 3 }
   ];
 
   /* ---- RHYTHM PATTERN LIBRARY ---------------------------------------------
@@ -1971,6 +1974,7 @@
     },
     vibeUnlocks: { voidMetal: true, cybermetal: false, ascension: false },   // v0.3.0: Void Metal is the starter song
     doomCleared: false,
+    themeUnlocks: { hellgrid: false },   // v0.3.0: Voraxis's reward is the Hellgrid theme
     planetCleared: false,
     architectCleared: false,
     settings: { music: true, musicVolume: 68, sfx: true, haptics: true, tapMode: 'target', musicVibe: 'voidMetal', autoMatchVibe: true, environmentDetail: 'full', audioOffsetMs: 0, tapVoice: 'classic', tapVolume: 100 }
@@ -2048,6 +2052,10 @@
       delete s.vibeUnlocks.westside;
       s.vibeUnlocks.voidMetal = true;   // v0.3.0: the starter song, unlocked for every save
       s.doomCleared = !!parsed.doomCleared;
+      // v0.3.0: Void Metal is free now, so beating Voraxis unlocks the Hellgrid theme.
+      // Players who already cleared Abyss get it straight away.
+      s.themeUnlocks = Object.assign({ hellgrid: false }, parsed.themeUnlocks || {});
+      if (s.doomCleared) s.themeUnlocks.hellgrid = true;
       s.planetCleared = !!parsed.planetCleared;
       s.architectCleared = !!parsed.architectCleared;
       // v2.7: migrate ability ids from every prior lineup to the Boss Core set.
@@ -2834,7 +2842,7 @@
     //    than Hellfire so it works across all difficulties.
     voidMetal: {
       displayName: 'Void Metal', defaultTheme: 'crimsonVoid', unlock: 999, reward: true,
-      desc: 'Unlocked by the Cyber Dragon. Heavy cyber-metal groove.',
+      desc: 'The starter song. Heavy cyber-metal groove.',
       character: { swing: 0.0, bright: 1.05, hat: 1.15, blip: 0, kickBoost: 1.3 },
       phases: [
         { name: 'Forge', prog: [41, 41, 44, 43], quality: [MIN, MIN, MIN, MIN],
@@ -2990,7 +2998,8 @@
   // theme → default vibe (used by auto-match)
   const THEME_DEFAULT_VIBE = {
     cyberPink: 'cyberBounce', electricBlue: 'bluePulse', toxicGreen: 'toxicBreaks',
-    goldRush: 'goldGroove', darkGalaxy: 'darkWave', crimsonVoid: 'crimsonDrive'
+    goldRush: 'goldGroove', darkGalaxy: 'darkWave', crimsonVoid: 'crimsonDrive',
+    hellgrid: 'voidMetal'
   };
 
   // The vibe currently selected (falls back to the classic default).
@@ -4669,8 +4678,10 @@
 
     const grid = $('themeGrid');
     grid.innerHTML = '';
-    for (const t of THEMES) {
-      const locked = save.level < t.unlock;
+    // Reward themes (secret palettes won in a gauntlet) join the grid once unlocked.
+    const rewardThemes = ['hellgrid'].filter(id => save.themeUnlocks && save.themeUnlocks[id]).map(id => SECRET_THEMES[id]);
+    for (const t of THEMES.concat(rewardThemes)) {
+      const locked = !(save.themeUnlocks && save.themeUnlocks[t.id]) && save.level < t.unlock;
       const b = document.createElement('button');
       b.className = 'theme-swatch' + (locked ? ' locked' : '') + (t.id === save.theme ? ' equipped' : '');
       b.innerHTML =
@@ -5350,7 +5361,7 @@
     { glyph: '◎', title: 'Tap in Time',        body: 'Neon rings shrink toward the glowing circle. Tap the instant a ring lands on it — perfect timing scores the most and refills energy. On phones the circle stays in a comfy thumb zone.' },
     { glyph: '➤', title: 'The Target Moves',   body: 'From Level 2 the target moves around the lower screen. A ghost circle shows where it\'s headed — follow it with your eyes, not your thumb.' },
     { glyph: '◉', title: 'Tap Modes',          body: 'Default Target: tap inside the dashed zone in time with the beat. Prefer casual? Switch to Anywhere in Settings. Space / Enter are always timing-only.' },
-    { glyph: '♥', title: 'Energy & Combo',     body: 'Energy drains over time and on misses, refills on clean hits. Chain hits for Combo Fever at 25× (×2 score), Supernova at 100× (×5) and Singularity at 250× (×10). A miss resets the climb.' },
+    { glyph: '♥', title: 'Energy & Combo',     body: 'Energy drains over time and on misses, refills on clean hits. Chain hits for Combo Fever at 25× (×1.5 score), Supernova at 100× (×2) and Singularity at 250× (×3). Singularity needs PERFECT hits: a GOOD or OK drops you to ×2 until 25 PERFECTs in a row. A miss resets the climb.' },
     { glyph: '♫', title: 'Vibe It Your Way',   body: 'Pick a Music Vibe in Settings — six distinct songs, from Cyber Bounce to Crimson Drive. Choose your theme and vibe separately; the soundtrack evolves every five stages.' },
     { glyph: '☣', title: 'Boss Battles',       body: 'Bosses appear at Stages 20, 30, 40 and 50. Keep hitting rings to damage it — Perfects hurt most. Survive its phases to win energy, and defeat each boss once to unlock a powerful Ability you equip in Settings.' }
   ];
@@ -5571,7 +5582,9 @@
   let energy = 100, bpm = 74, nextBeatTime = 0, beatIndex = 0, leadTime = 1.4;
   let pulse = 0, shake = 0;
   let fever = false;
-  let feverLevel = 0;           // 0 none · 1 Combo Fever x2 · 2 Supernova x5 · 3 Singularity x10
+  let feverLevel = 0;           // 0 none · 1 Combo Fever x1.5 · 2 Supernova x2 · 3 Singularity x3
+  let perfectRun = 0;           // PERFECTs in a row (GOOD/OK/miss reset it); gates Singularity
+  let singLost = false;         // Singularity was reached this streak, then dropped by a GOOD/OK
   let runWasDaily = false;
   let diff = DIFFICULTIES[save.difficulty];
   let dailySeed = 0;
@@ -5594,7 +5607,7 @@
   // ---- SECRET DOOM MODE state (v2.6) ----
   // A short, brutal 8-stage gauntlet paced to the Hellfire metal track, ending
   // in the Cyber Dragon. Fully isolated from normal progression: no XP, no best
-  // scores, no boss unlocks — the ONLY persistent effect is the Void Metal vibe.
+  // scores, no boss unlocks — the ONLY persistent effect is the Hellgrid theme.
   let doomMode = false;         // true inside ANY secret gauntlet
   let doomStage = 0;            // 1..cfg.stages
   let doomCfg = null;           // the active SECRET_GAUNTLETS entry
@@ -6050,11 +6063,11 @@
     abyss: {
       id: 'abyss', label: 'ABYSS', stages: 8, diff: () => DOOM_DIFF,
       theme: 'hellgrid', vibe: 'hellfire', boss: () => DOOM_DRAGON,
-      rewardVibe: 'voidMetal', rewardName: 'VOID METAL', clearedFlag: 'doomCleared',
+      rewardTheme: 'hellgrid', rewardName: 'HELLGRID THEME', clearedFlag: 'doomCleared',
       enter: ['THE SIGNAL BREAKS', '#ff2b12', 'HOLD THE RHYTHM'],
       enterTones: [110, 82, 55],
       winTitle: 'THE GRID HOLDS',
-      winSub: 'You outlasted Voraxis. VOID METAL unlocked. Equip it in Settings under Music Vibe.',
+      winSub: 'You outlasted Voraxis. The HELLGRID theme is yours. Equip it in Settings under Theme.',
       failTitle: 'THE SIGNAL FADES',
       failSub: 'Voraxis still circles the Grid. Try the gauntlet again.'
     },
@@ -6769,18 +6782,27 @@
 
     // records
     // SECRET: the Cyber Dragon lives outside normal progression — it never
-    // touches boss records, ability unlocks or XP. Its only reward is Void Metal.
+    // touches boss records, ability unlocks or XP. Its only reward is the Hellgrid theme.
     if (doomMode && doomCfg && def.id === doomCfg.boss().id) {
       bossDefeatedStagesThisRun.add('secretBoss');
       bossDefeatUntil = nowT + 2.0;   // hold the defeat beat, then doomVictory()
-      const rv = doomCfg.rewardVibe;
-      const firstClear = !(save.vibeUnlocks && save.vibeUnlocks[rv]);
-      save.vibeUnlocks = save.vibeUnlocks || {};
-      save.vibeUnlocks[rv] = true;
+      let firstClear;
+      if (doomCfg.rewardTheme) {
+        const rt = doomCfg.rewardTheme;
+        save.themeUnlocks = save.themeUnlocks || {};
+        firstClear = !save.themeUnlocks[rt];
+        save.themeUnlocks[rt] = true;
+      } else {
+        const rv = doomCfg.rewardVibe;
+        firstClear = !(save.vibeUnlocks && save.vibeUnlocks[rv]);
+        save.vibeUnlocks = save.vibeUnlocks || {};
+        save.vibeUnlocks[rv] = true;
+      }
       save[doomCfg.clearedFlag] = true;
       persist();
       bossDefeatNameEl.textContent = def.name + ' FALLS';
-      bossRewardLabelEl.textContent = firstClear ? 'MUSIC VIBE UNLOCKED' : 'ALREADY UNLOCKED';
+      bossRewardLabelEl.textContent = !firstClear ? 'ALREADY UNLOCKED'
+        : (doomCfg.rewardTheme ? 'THEME UNLOCKED' : 'MUSIC VIBE UNLOCKED');
       bossRewardValueEl.textContent = doomCfg.rewardName;
       bossDefeatBanner.classList.add('show');
       applyBossMusic(false);
@@ -7003,6 +7025,7 @@
     maxCombo = Math.max(maxCombo, combo);
     if (runStats) { runStats.hits++; runStats.perfects++; runStats.maxCombo = maxCombo; }
     perfects += 1;
+    notePerfect();
     energy = Math.min(100, energy + 2.2);
     energyBar.style.width = energy + '%';
 
@@ -7459,9 +7482,9 @@
   // ================= 12. SCORING =================
 
   const FEVER_TIERS = [null,
-    { label: 'Fever ×2',        banner: 'Combo Fever ×2' },
-    { label: 'Supernova ×5',    banner: 'Supernova ×5' },
-    { label: 'Singularity ×10', banner: 'Singularity ×10' }];
+    { label: 'Fever ×1.5',      banner: 'Combo Fever ×1.5' },
+    { label: 'Supernova ×2',    banner: 'Supernova ×2' },
+    { label: 'Singularity ×3',  banner: 'Singularity ×3' }];
   function setFever(on) {
     if (!on) {
       feverLevel = 0;
@@ -7485,7 +7508,7 @@
     }
   }
 
-  // Climb to the next score tier. Supernova (x5) and Singularity (x10) are the big
+  // Climb to the next score tier. Supernova (x2) and Singularity (x3) are the big
   // transitions: the deep-space renderer runs the visuals off feverLevel, this adds
   // the banner, HUD, burst, shake, haptics and the musical sting.
   let _feverPopTimer = 0;
@@ -7533,6 +7556,34 @@
     }
   }
 
+  // Singularity is PERFECT-only. A GOOD or OK drops it to Supernova x2 (the combo
+  // carries on); SING_REGAIN PERFECTs in a row climb back with the full transition.
+  function dropSingularity() {
+    if (feverLevel !== 3) return;
+    feverLevel = 2;
+    singLost = true;
+    const tier = FEVER_TIERS[2];
+    feverBanner.textContent = tier.banner;
+    feverBanner.classList.add('lvl2');
+    feverBanner.classList.remove('lvl3');
+    comboLabel.textContent = tier.label;
+    tone(330, 0.12, 'sawtooth', 0.03);
+    tone(247, 0.18, 'sawtooth', 0.026, 0.09);
+    buzz([20, 30, 20]);
+  }
+  function notePerfect() {
+    perfectRun += 1;
+    if (singLost && feverLevel === 2 && perfectRun >= SING_REGAIN) {
+      singLost = false;
+      setFeverLevel(3);
+      showToast('Singularity', theme.c1, 'BACK · ×3');
+    }
+  }
+  function noteImperfect() {
+    perfectRun = 0;
+    dropSingularity();
+  }
+
   function firePulse() {
     screenPulseEl.classList.remove('go');
     void screenPulseEl.offsetWidth; // restart the CSS animation
@@ -7543,6 +7594,8 @@
     combo = 0;
     comboTier = 0;   // re-arm milestone rewards for the next streak
     bossPerfectStreak = 0;
+    perfectRun = 0;
+    singLost = false;
     setFever(false);
     comboEl.textContent = '0x';
   }
@@ -7610,7 +7663,10 @@
     while (comboTier < COMBO_MILESTONES.length && combo >= COMBO_MILESTONES[comboTier].combo) {
       const m = COMBO_MILESTONES[comboTier];
       comboTier++;
-      if (m.fever) setFeverLevel(m.fever);             // 25 Fever x2 · 100 Supernova x5 · 250 Singularity x10
+      // 25 Fever x1.5 · 100 Supernova x2 · 250 Singularity x3. Singularity only opens on a
+      // PERFECT; reached on a GOOD/OK, it waits for SING_REGAIN PERFECTs in a row.
+      if (m.fever === 3 && perfectRun === 0) singLost = true;
+      else if (m.fever) setFeverLevel(m.fever);
       score += m.bonus;
       scoreEl.textContent = score;
       showToast(m.name, theme[m.color] || theme.c1, '+' + m.bonus + ' · ' + m.sub);
@@ -7620,7 +7676,7 @@
       buzz([25, 30, 25, 40, 60]);
       createBurst(tgt.x, tgt.y, theme[m.color] || theme.c1, 60, 1.5);
       shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR, alpha: 1, speed: 880, width: 8, color: theme[m.color] || theme.c1 });
-      if (audioCtx && save.settings.music && !(m.fever >= 2)) {   // x5/x10 play their own sting
+      if (audioCtx && save.settings.music && !(m.fever >= 2)) {   // x2/x3 play their own sting
         const now = audioCtx.currentTime;
         [0, 7, 12, 16, 19].forEach((iv, i) =>
           synthVoice(now + i * 0.05, midiHz(64 + iv), 0.2, { type: 'square', gain: 0.032, cutoff: 3600 }));
@@ -7726,6 +7782,7 @@
     if (bestDiff <= win.perfect) {
       points = 300; text = 'PERFECT';
       perfects += 1;
+      notePerfect();
       if (runStats) runStats.perfects++;
       energy = Math.min(100, energy + 2.2);
       sfxPerfect();
@@ -7736,6 +7793,7 @@
     } else if (bestDiff <= win.good) {
       points = 150; text = 'GOOD';
       if (runStats) runStats.goods++;
+      noteImperfect();
       energy = Math.min(100, energy + 1.2);
       sfxGood();
       buzz(8);
@@ -7744,6 +7802,7 @@
     } else {
       points = 75; text = 'OK';
       if (runStats) runStats.oks++;
+      noteImperfect();
       energy = Math.max(0, energy - 1.5);
       sfxOkHit();
       createBurst(bestNote.tx, bestNote.ty, color, 12, 0.7);
@@ -7758,9 +7817,9 @@
     comboEl.textContent = combo + 'x';
     // Suppress the small hit toast on milestone/level frames so banners read clean.
     const willMilestone = comboTier < COMBO_MILESTONES.length && (combo + 0) >= COMBO_MILESTONES[comboTier].combo;
-    if (!willMilestone) showToast(text, color, fever ? '×2 FEVER' : '');
+    if (!willMilestone) showToast(text, color, fever ? '×' + FEVER_MULTS[Math.max(1, feverLevel)] + ' ' + FEVER_TIERS[Math.max(1, feverLevel)].label.split(' ')[0].toUpperCase() : '');
 
-    checkComboMilestones();          // 25 Fever · 50 Overdrive · 75 Supernova · 100 Perfect Orbit
+    checkComboMilestones();          // 25 Fever · 50 Overdrive · 100 Supernova · 175 Perfect Orbit · 250 Singularity
     registerHit();                   // stage progression (may start a level pause)
 
     const shownBest = Number(bestEl.textContent) || 0;
@@ -8323,9 +8382,9 @@
   // galaxies, bent by gravitational lensing around the target, which is drawn as a
   // black hole: Doppler-beamed accretion disk wrapped over its shadow, a photon ring
   // with light circling it, and clumps of gas that spiral in, stretch, redden and
-  // freeze at the horizon. The combo climb drives it: Combo Fever (x2) turns on the
-  // warp, Supernova (x5) detonates a star right behind the hole (its light is lensed
-  // into a ring of fire), Singularity (x10) implodes the sky into a vortex. Boss-core powers get their own effects here
+  // freeze at the horizon. The combo climb drives it: Combo Fever (x1.5) turns on the
+  // warp, Supernova (x2) detonates a distant star in the background,
+  // Singularity (x3) implodes the sky into a vortex. Boss-core powers get their own effects here
   // too (shockwaves, Prism Guard's light-bending dome, Event Horizon's collapse).
   // VISUAL ONLY. It reads game state (tgt, targetR, theme, pulse, fever, comboTier,
   // bgPulse, bpm, Conductor, state) and never writes any of it, and it never calls
@@ -8654,14 +8713,12 @@
         vec3 hot = vec3(1.0, 0.97, 0.92);
         vec3 c = hot * flash * (exp(-r2 / 6.0) * 4.0 + exp(-r / 10.0) * 0.8);
         vec2 ad = abs(d);
-        c += mix(hot, uC1, 0.3) * flash * 0.9 * (exp(-ad.x / 0.7) * exp(-ad.y / 55.0) + exp(-ad.y / 0.7) * exp(-ad.x / 55.0));
-        float fade = exp(-age / 10.0);
-        float th = 2.5 + rs * 0.14;
-        float shell = exp(-pow((r - rs) / th, 2.0));
-        float fil = texture2D(uNeb, d / (rs + 20.0) * 0.18 + 0.37).g;
-        float cl = texture2D(uNeb, d / (rs + 20.0) * 0.11 + 0.71).r;
-        c += mix(uSNa, uSNb, cl) * shell * (0.25 + 1.6 * fil) * fade * 0.9;
-        c += mix(uSNa, uSNb, 0.5) * exp(-r / (rs * 0.6 + 1.0)) * 0.22 * fade * smoothstep(0.0, 1.5, age);
+        c += mix(hot, uC1, 0.3) * flash * 0.9 * (exp(-ad.x / 0.9) * exp(-ad.y / 110.0) + exp(-ad.y / 0.9) * exp(-ad.x / 110.0));
+        // A star exploding, not a gas cloud: the flash and spikes above, then a soft
+        // coloured glow that swells and is gone in a few seconds. No lingering shell.
+        float fade = exp(-age / 1.8);
+        c += mix(uSNa, uSNb, 0.5) * exp(-r / (rs * 0.5 + 4.0)) * 1.3 * fade;
+        c += uSNb * exp(-r2 / (rs * rs * 0.9 + 40.0)) * 0.5 * fade;
         return c * uSN.w;
       }
 
@@ -9185,10 +9242,12 @@
       const tier = inRun ? comboTier : 0;
       feverMix += ((fever ? 1 : 0) - feverMix) * Math.min(1, dt * 3.5);
       tierMix += (Math.min(tier, 4) - tierMix) * Math.min(1, dt * 2);
-      // ---- combo climb: x2 Fever, x5 Supernova, x10 Singularity ----
+      // ---- combo climb: x1.5 Fever, x2 Supernova, x3 Singularity ----
       const lvl = inRun ? (feverLevel || (fever ? 1 : 0)) : 0;
       if (lvl > lastLvl) {
-        if (lvl >= 2 && lastLvl < 2) { addFx('nova', C3); slPal = pickPalette(); sl = { age: 0, w: 1.4, seed: rnd() }; }
+        // x2 Supernova: the flash and shockwave, and a star blows up somewhere in the
+        // distant sky (its own palette). No lensed ring behind the hole any more.
+        if (lvl >= 2 && lastLvl < 2) { addFx('nova', C3); if (P.cosmos) spawnSupernova(1.3); }
         if (lvl >= 3 && lastLvl < 3) addFx('sing', [0.85, 0.75, 1.0]);
       }
       lastLvl = lvl;
@@ -9224,9 +9283,8 @@
       const ra = (now - rippleWall) / 1000;
       const rAmp = ra < 1.8 ? Math.pow(1 - ra / 1.8, 1.5) : 0;
 
-      // Distant supernovas are rare now: only Perfect Orbit (175x) lights one, in a
-      // palette picked for that explosion. (The x5 tier has its own, behind the hole.)
-      if (tier > lastTier && P.cosmos && tier === 4) spawnSupernova(1.2);
+      // Distant supernovas are rare: only reaching the Supernova tier (100x) lights one,
+      // in a palette picked for that explosion (spawned above with the tier).
       lastTier = tier;
       if (sl) { sl.age += dt; if (sl.age > 30 && snMix < 0.01) sl = null; }
 
@@ -9269,7 +9327,7 @@
         const age = act && abilityId === 'prismGuard' ? t - (abUntil - tune.dur) : 1;
         shieldR = targetR * (1 + 1.05 * (1 - Math.pow(1 - Math.min(1, age / 0.35), 3)));
       }
-      if (sn) { sn.age += dt; if (sn.age > 45 || !P.cosmos) sn = null; }
+      if (sn) { sn.age += dt; if (sn.age > 8 || !P.cosmos) sn = null; }
 
       // Every clean hit feeds the hole a clump of gas.
       if (P.motion && pulse > lastPulse + 0.45 && (state === 'playing' || state === 'bossBattle')) spawnClump('feed');
