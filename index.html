@@ -85,6 +85,10 @@
     }
 
     #game { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+    /* Deep Space: WebGL sky + black hole, drawn under the (transparent) game canvas */
+    #space { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; pointer-events: none; background: #000; }
+    /* Low graphics on: the Deep Space detail controls don't apply */
+    .setting-block.gfx-low #spaceSeg, .setting-block.gfx-low #spaceDesc, .setting-block.gfx-low .toggle-row:not(:first-of-type) { opacity: 0.4; }
 
     /* Screen pulse fired on combo milestones + stage ups */
     #screenPulse {
@@ -291,6 +295,29 @@
       animation: pcShine 2.4s ease-in-out infinite;
     }
     #feverBanner.on { opacity: 1; transform: translateY(0) scale(1); }
+    #feverBanner { white-space: nowrap; }   /* centered with left:50%, so it wrapped on phones */
+    /* v0.3.0 tiers: Supernova burns white-hot; Singularity is a black core with a glowing rim. */
+    #feverBanner.lvl2 {
+      color: #1a0700; font-size: 15px;
+      background: linear-gradient(90deg, #fff6dc, var(--c3), #ffffff, var(--c1), #fff6dc);
+      background-size: 300% 100%;
+      box-shadow: 0 0 40px rgba(255,240,200,0.85), 0 0 80px var(--glow1), inset 0 0 14px rgba(255,255,255,0.8);
+      animation-duration: 0.7s;
+    }
+    #feverBanner.lvl3 {
+      color: #ffffff; font-size: 15px;
+      background: linear-gradient(#05000b, #05000b) padding-box,
+                  linear-gradient(90deg, var(--c1), var(--c2), var(--c3), #ffffff, var(--c1)) border-box;
+      background-size: 100% 100%, 300% 100%;
+      border: 2px solid transparent;
+      text-shadow: 0 0 10px #ffffff, 0 0 22px var(--glow1);
+      box-shadow: 0 0 36px var(--glow2), 0 0 90px var(--glow1), inset 0 0 22px rgba(0,0,0,0.9);
+      animation: feverShift 0.9s linear infinite, singBreathe 1.1s ease-in-out infinite;
+    }
+    #feverBanner.pop { animation: feverPop 520ms cubic-bezier(.2,1.6,.4,1) 1, feverShift 0.8s linear infinite; }
+    @keyframes feverPop { 0% { scale: 1.45; } 100% { scale: 1; } }
+    @keyframes singBreathe { 50% { box-shadow: 0 0 52px var(--glow2), 0 0 120px var(--glow1), inset 0 0 22px rgba(0,0,0,0.9); } }
+    #comboLabel.tier-long { letter-spacing: 0.06em; white-space: nowrap; }
     @keyframes feverShift { to { background-position: 300% 0; } }
     @keyframes pcShine { 0% { left: -60%; } 55%,100% { left: 130%; } }
 
@@ -862,7 +889,7 @@
     .hidden { display: none !important; }
 
     @media (prefers-reduced-motion: reduce) {
-      #feverBanner { animation: none; }
+      #feverBanner, #feverBanner.lvl2, #feverBanner.lvl3, #feverBanner.pop { animation: none; }
       #screenPulse.go { animation: none; }
     }
   
@@ -922,6 +949,7 @@
   </style>
 </head>
 <body>
+  <canvas id="space" aria-hidden="true"></canvas>
   <canvas id="game"></canvas>
   <div id="screenPulse"></div>
 
@@ -969,7 +997,7 @@
   <div id="abilityStatus"><span id="abilityStatusText"></span></div>
 
   <div id="trackName">Neon Drive</div>
-  <div id="feverBanner">Combo Fever ×2</div>
+  <div id="feverBanner">Combo Fever ×1.5</div>
   <div id="toast"></div>
   <div id="audioHint">Tap once for audio</div>
 
@@ -1048,11 +1076,11 @@
         <div class="howto-item"><span class="glyph">➤</span><span>From <b>Stage 2</b> the <b>target moves</b> — kept in a thumb-friendly zone on phones. A ghost circle shows where it's headed; follow it with your eyes, not your thumb.</span></div>
         <div class="howto-item"><span class="glyph">♫</span><span>The soundtrack <b>evolves every five stages</b> and the background shifts with it. Pick a <b>Music Vibe</b> in Settings — six distinct songs (Cyber Bounce, Blue Pulse, Toxic Breaks, and more). Visual theme and vibe can be set separately.</span></div>
         <div class="howto-item"><span class="glyph">✦</span><span><b>Perfect</b> = 300 pts &amp; refills energy. <b>Good</b> = 150. <b>OK</b> = 75. Late or early taps drain energy.</span></div>
-        <div class="howto-item"><span class="glyph">⚡</span><span>Build combo to chase milestones: <b>25× Combo Fever</b> (×2 score), <b>50× Overdrive</b>, <b>75× Supernova</b>, <b>100× Perfect Orbit</b> — each pays a bonus. <b>Long rhythm runs</b> show up more from Stage 5.</span></div>
+        <div class="howto-item"><span class="glyph">⚡</span><span>Build combo to chase milestones: <b>25× Combo Fever</b> gives ×1.5 score, <b>100× Supernova</b> ×2 and <b>250× Singularity</b> ×3 (PERFECT hits only: a GOOD or OK drops you back to ×2 until 25 PERFECTs in a row), with <b>Overdrive</b> and <b>Perfect Orbit</b> bonuses along the way. One miss resets the climb. <b>Long rhythm runs</b> show up more from Stage 5.</span></div>
         <div class="howto-item"><span class="glyph">▲</span><span>Each new level gives a brief <b>breather</b>: gameplay pauses, the level and track are announced, then a fresh pattern begins.</span></div>
         <div class="howto-item"><span class="glyph">♥</span><span>Your <b>energy bar</b> drains over time and on misses. When it empties, the run ends.</span></div>
         <div class="howto-item"><span class="glyph">☣</span><span><b>Boss Battles</b> at Stages 20, 30, 40 & 50. Damage the boss by hitting rings — <b>Perfect</b> hits hurt most, <b>Good</b> chips in, <b>OK</b> doesn't. Survive its phases to win energy. Progression pauses until the boss falls.</span></div>
-        <div class="howto-item"><span class="glyph">✦</span><span>Defeat a boss to <b>capture its core</b> — Hex Saw, Tri-Laser, Prism Guard, or Eclipse Realm. Equip one in Settings, then <b>hold the target</b> (or hold Space) for half a second to unleash it. Rings your core destroys count as <b>PERFECT</b>, and energy drain pauses while it's running.</span></div>
+        <div class="howto-item"><span class="glyph">✦</span><span>Defeat a boss to <b>capture its core</b> — Hex Saw, Tri-Laser, Prism Guard, or Event Horizon. Equip one in Settings, then <b>hold the target</b> (or hold Space) for half a second to unleash it. Rings your core destroys count as <b>PERFECT</b>, and energy drain pauses while it's running.</span></div>
         <div class="howto-item"><span class="glyph">★</span><span>Runs earn <b>XP</b>. Level up to unlock neon <b>themes</b> and <b>Music Vibes</b> in Settings.</span></div>
         <div class="howto-item"><span class="glyph">🏆</span><span>Your <b>Highest Score</b> across all runs is shown on the home screen. Chase your personal best — a leaderboard is coming later.</span></div>
       </div>
@@ -1209,6 +1237,21 @@
       </div>
 
       <div class="setting-block">
+        <div class="setting-title">Deep Space</div>
+        <label class="toggle-row"><span>Low graphics</span><input type="checkbox" class="toggle" id="lowGfxToggle"></label>
+        <div class="seg-desc" style="margin-bottom:10px">Swaps the 3D space background for a simple one and cuts particles. Turn it on if the game stutters. It turns on by itself on devices without a graphics chip.</div>
+        <div class="seg" id="spaceSeg">
+          <button data-sq="lite">Lite</button>
+          <button data-sq="high">High</button>
+          <button data-sq="ultra">Ultra</button>
+        </div>
+        <div class="seg-desc" id="spaceDesc"></div>
+        <label class="toggle-row" style="margin-top:10px"><span>Black hole motion</span><input type="checkbox" class="toggle" id="spaceMotionToggle"></label>
+        <label class="toggle-row"><span>Warp galaxies &amp; supernovas</span><input type="checkbox" class="toggle" id="spaceCosmosToggle"></label>
+        <div class="seg-desc">Motion: matter spiraling in and light circling the ring. Warp: spiral galaxies and supernovas during Combo Fever.</div>
+      </div>
+
+      <div class="setting-block">
         <div class="setting-title">Help</div>
         <button class="btn ghost" id="resetTutorialBtn">Reset Tutorial</button>
         <div class="settings-version" id="settingsVersion">Rhythm Void v1.0 MVP</div>
@@ -1342,7 +1385,7 @@
 
   // ================= 0. META (version / debug / analytics / PWA) =================
 
-  const VERSION = 'v0.2.3';
+  const VERSION = 'v0.3.0';
 
   /* ===================================================================
      v0.1.1 ANONYMOUS TELEMETRY
@@ -1649,17 +1692,25 @@
   }
 
   const FEVER_COMBO = 25;
-  const FEVER_MULT  = 2;
+  const FEVER_MULT  = 1.5;
+  const FEVER_MULTS = [1, FEVER_MULT, 2, 3];   // by feverLevel: none, Fever x1.5, Supernova x2, Singularity x3
+  // Singularity is PERFECT-only: a GOOD or OK drops it back to Supernova (combo
+  // kept), and SING_REGAIN PERFECTs in a row bring it back.
+  const SING_REGAIN = 25;
   const MILESTONE_EVERY = 10;
   const MIN_NOTE_GAP = 0.20; // seconds — extra rings never spawn closer than this
 
   // Combo milestones the player chases across a long run. Each gives a bonus,
   // a toast, a pulse, and a small visual/audio lift. Fever begins at 25.
+  // v0.3.0: three score tiers on one unbroken combo. Spacing comes from a perfect
+  // Arcade run: Fever lands ~27s in; x2 needs ~90s without a miss, x3 ~170s.
+  // Overdrive and Perfect Orbit stay as bonus milestones between the tiers.
   const COMBO_MILESTONES = [
-    { combo: 25,  name: 'Combo Fever',  sub: '×2 SCORE',   bonus: 250,  color: 'c2' },
-    { combo: 50,  name: 'Overdrive',    sub: 'KEEP GOING', bonus: 750,  color: 'c1' },
-    { combo: 75,  name: 'Supernova',    sub: 'UNREAL',     bonus: 1500, color: 'c3' },
-    { combo: 100, name: 'Perfect Orbit',sub: 'FLAWLESS',   bonus: 3000, color: 'c2' }
+    { combo: 25,  name: 'Combo Fever',  sub: '×1.5 SCORE', bonus: 250,   color: 'c2', fever: 1 },
+    { combo: 50,  name: 'Overdrive',    sub: 'KEEP GOING', bonus: 750,   color: 'c1' },
+    { combo: 100, name: 'Supernova',    sub: '×2 SCORE',   bonus: 2500,  color: 'c3', fever: 2 },
+    { combo: 175, name: 'Perfect Orbit',sub: 'FLAWLESS',   bonus: 5000,  color: 'c2' },
+    { combo: 250, name: 'Singularity',  sub: '×3 · PERFECTS ONLY', bonus: 10000, color: 'c1', fever: 3 }
   ];
 
   /* ---- RHYTHM PATTERN LIBRARY ---------------------------------------------
@@ -1810,7 +1861,7 @@
     },
     50: {
       id: 'eclipseSovereign', name: 'ECLIPSE SOVEREIGN', subtitle: 'THE LAST ORBIT',
-      kind: 'eclipse', hp: 640, energyReward: 999, ability: 'eclipseRealm',
+      kind: 'eclipse', hp: 640, energyReward: 999, ability: 'eventHorizon',
       colors: ['#b026ff', '#ffd23d', '#ff2e4d'], barColor: '#ffd23d',
       scale: 1.15,
       music: { kick: 1.45, tense: 0.85, metal: 0.7, sub: 1.15, heavy: true, stab: true }
@@ -1880,14 +1931,14 @@
       flavor: "Built from Vanta Prism's fractured shield shell.",
       desc: 'Hold the target to raise a purple forcefield for 15 seconds of pure invincibility — no misses, no broken combos, every ring resolves as PERFECT and drain stops. It bursts on collapse, clearing the field. Recharges every 6 stages.'
     },
-    eclipseRealm: {
-      name: 'Eclipse Realm', short: 'REALM', type: 'hold', bossName: 'Eclipse Sovereign',
+    eventHorizon: {
+      name: 'Event Horizon', short: 'HORIZON', type: 'hold', bossName: 'Eclipse Sovereign',
       unlockText: 'Defeat Eclipse Sovereign at Stage 50',
-      flavor: "Awakened from Eclipse Sovereign's time-bending core.",
-      desc: 'The pause. Hold the target to step outside the orbit — time stops completely, the field empties and the realm takes over. Hold again to return. Charges over 8 stages; after that it only returns when a boss falls.'
+      flavor: "Eclipse Sovereign's core, collapsed past the point of no return.",
+      desc: 'Hold the target to collapse it into a supermassive black hole for 12 seconds. Every ring in flight falls in at once, and every ring after that is devoured as it closes in: all PERFECT, at double score on top of your combo tier. Drain stops. When it ends, a Hawking flare refills 30 energy. Recharges every 7 stages.'
     }
   };
-  const ABILITY_ORDER = ['hexSaw', 'triLaser', 'prismGuard', 'eclipseRealm'];
+  const ABILITY_ORDER = ['hexSaw', 'triLaser', 'prismGuard', 'eventHorizon'];
 
   // ================= 2. SAVE =================
 
@@ -1921,26 +1972,28 @@
       byDiff:  { chill: null, arcade: null, chaos: null },
       secret:  { abyss: null, planet: null, architect: null }
     },
-    vibeUnlocks: { voidMetal: false, cybermetal: false, ascension: false },
+    vibeUnlocks: { voidMetal: true, cybermetal: false, ascension: false },   // v0.3.0: Void Metal is the starter song
     doomCleared: false,
+    themeUnlocks: { hellgrid: false },   // v0.3.0: Voraxis's reward is the Hellgrid theme
     planetCleared: false,
     architectCleared: false,
-    settings: { music: true, musicVolume: 68, sfx: true, haptics: true, tapMode: 'target', musicVibe: 'cyberBounce', autoMatchVibe: true, environmentDetail: 'full', audioOffsetMs: 0, tapVoice: 'classic', tapVolume: 100 }
+    settings: { music: true, musicVolume: 68, sfx: true, haptics: true, tapMode: 'target', musicVibe: 'voidMetal', autoMatchVibe: true, environmentDetail: 'full', audioOffsetMs: 0, tapVoice: 'classic', tapVolume: 100 }
   });
 
-  const ABILITY_IDS = ['none', 'hexSaw', 'triLaser', 'prismGuard', 'eclipseRealm'];
+  const ABILITY_IDS = ['none', 'hexSaw', 'triLaser', 'prismGuard', 'eventHorizon'];
   // ability id → the boss whose defeat unlocks it
-  const ABILITY_UNLOCK_BOSS = { hexSaw: 'hexatron', triLaser: 'triarch', prismGuard: 'vantaPrism', eclipseRealm: 'eclipseSovereign' };
+  const ABILITY_UNLOCK_BOSS = { hexSaw: 'hexatron', triLaser: 'triarch', prismGuard: 'vantaPrism', eventHorizon: 'eclipseSovereign' };
   // Ability id migration across every historical lineup → v2.7 Boss Core ids.
   const ABILITY_MIGRATE = {
     // v2.0–v2.2 originals
-    orbitBurst: 'hexSaw', pulseGuard: 'triLaser', precisionSurge: 'prismGuard', eclipseRebirth: 'eclipseRealm',
+    orbitBurst: 'hexSaw', pulseGuard: 'triLaser', precisionSurge: 'prismGuard', eclipseRebirth: 'eventHorizon',
     // v2.3–v2.6 lineup
-    sawMode: 'hexSaw', perfectDrive: 'prismGuard', lastOrbit: 'eclipseRealm',
+    sawMode: 'hexSaw', perfectDrive: 'prismGuard', lastOrbit: 'eventHorizon',
     // tolerant aliases named in the v2.7 spec
     hexSaw: 'hexSaw', laser: 'triLaser', triLaser: 'triLaser',
     shield: 'prismGuard', prismGuard: 'prismGuard',
-    timeRealm: 'eclipseRealm', eclipseRealm: 'eclipseRealm'
+    // v0.3.0: Eclipse Realm (time freeze) became Event Horizon; saves carry over.
+    timeRealm: 'eventHorizon', eclipseRealm: 'eventHorizon', eventHorizon: 'eventHorizon'
   };
 
   function loadSave() {
@@ -1968,8 +2021,8 @@
       // v1.5: Music Mode setting removed — always Continuous now.
       if ('musicMode' in s.settings) delete s.settings.musicMode;
       // v1.4: ensure a valid music vibe.
-      if (!s.settings.musicVibe || !['cyberBounce','bluePulse','toxicBreaks','goldGroove','darkWave','crimsonDrive'].includes(s.settings.musicVibe)) {
-        s.settings.musicVibe = 'cyberBounce';
+      if (!s.settings.musicVibe || !['cyberBounce','bluePulse','toxicBreaks','goldGroove','darkWave','crimsonDrive','voidMetal'].includes(s.settings.musicVibe)) {
+        s.settings.musicVibe = 'voidMetal';
       }
       if (typeof s.settings.autoMatchVibe !== 'boolean') s.settings.autoMatchVibe = true;
       // v1.7: music volume slider. Existing v1.6 saves have no musicVolume →
@@ -1997,7 +2050,12 @@
       // v3.3: the West Side realm became Contact; carry the unlock across.
       if (parsed.vibeUnlocks && parsed.vibeUnlocks.westside) s.vibeUnlocks.cybermetal = true;
       delete s.vibeUnlocks.westside;
+      s.vibeUnlocks.voidMetal = true;   // v0.3.0: the starter song, unlocked for every save
       s.doomCleared = !!parsed.doomCleared;
+      // v0.3.0: Void Metal is free now, so beating Voraxis unlocks the Hellgrid theme.
+      // Players who already cleared Abyss get it straight away.
+      s.themeUnlocks = Object.assign({ hellgrid: false }, parsed.themeUnlocks || {});
+      if (s.doomCleared) s.themeUnlocks.hellgrid = true;
       s.planetCleared = !!parsed.planetCleared;
       s.architectCleared = !!parsed.architectCleared;
       // v2.7: migrate ability ids from every prior lineup to the Boss Core set.
@@ -2784,7 +2842,7 @@
     //    than Hellfire so it works across all difficulties.
     voidMetal: {
       displayName: 'Void Metal', defaultTheme: 'crimsonVoid', unlock: 999, reward: true,
-      desc: 'Unlocked by the Cyber Dragon. Heavy cyber-metal groove.',
+      desc: 'The starter song. Heavy cyber-metal groove.',
       character: { swing: 0.0, bright: 1.05, hat: 1.15, blip: 0, kickBoost: 1.3 },
       phases: [
         { name: 'Forge', prog: [41, 41, 44, 43], quality: [MIN, MIN, MIN, MIN],
@@ -2940,7 +2998,8 @@
   // theme → default vibe (used by auto-match)
   const THEME_DEFAULT_VIBE = {
     cyberPink: 'cyberBounce', electricBlue: 'bluePulse', toxicGreen: 'toxicBreaks',
-    goldRush: 'goldGroove', darkGalaxy: 'darkWave', crimsonVoid: 'crimsonDrive'
+    goldRush: 'goldGroove', darkGalaxy: 'darkWave', crimsonVoid: 'crimsonDrive',
+    hellgrid: 'voidMetal'
   };
 
   // The vibe currently selected (falls back to the classic default).
@@ -4619,8 +4678,10 @@
 
     const grid = $('themeGrid');
     grid.innerHTML = '';
-    for (const t of THEMES) {
-      const locked = save.level < t.unlock;
+    // Reward themes (secret palettes won in a gauntlet) join the grid once unlocked.
+    const rewardThemes = ['hellgrid'].filter(id => save.themeUnlocks && save.themeUnlocks[id]).map(id => SECRET_THEMES[id]);
+    for (const t of THEMES.concat(rewardThemes)) {
+      const locked = !(save.themeUnlocks && save.themeUnlocks[t.id]) && save.level < t.unlock;
       const b = document.createElement('button');
       b.className = 'theme-swatch' + (locked ? ' locked' : '') + (t.id === save.theme ? ' equipped' : '');
       b.innerHTML =
@@ -4755,6 +4816,7 @@
     // --- Environment detail segment (v2.0) ---
     const env = save.settings.environmentDetail || 'full';
     document.querySelectorAll('#envSeg button').forEach(b => b.classList.toggle('on', b.dataset.env === env));
+    refreshSpaceSettings();
   }
 
   document.querySelectorAll('#diffSeg button').forEach(b => {
@@ -4775,6 +4837,26 @@
       buzz(12);
       refreshSettings();
     });
+  });
+
+  document.querySelectorAll('#spaceSeg button').forEach(b => {
+    b.addEventListener('click', () => {
+      save.settings.spaceQuality = b.dataset.sq;
+      persist();
+      tone(620, 0.05, 'triangle', 0.04);
+      buzz(12);
+      refreshSettings();
+    });
+  });
+  $('lowGfxToggle').addEventListener('change', (e) => {
+    save.settings.lowGraphics = e.target.checked; persist(); tone(620, 0.05, 'triangle', 0.04); buzz(12);
+    refreshSettings();
+  });
+  $('spaceMotionToggle').addEventListener('change', (e) => {
+    save.settings.spaceMotion = e.target.checked; persist(); tone(620, 0.05, 'triangle', 0.04); buzz(12);
+  });
+  $('spaceCosmosToggle').addEventListener('change', (e) => {
+    save.settings.spaceCosmos = e.target.checked; persist(); tone(620, 0.05, 'triangle', 0.04); buzz(12);
   });
 
   document.querySelectorAll('#tapSeg button').forEach(b => {
@@ -5279,7 +5361,7 @@
     { glyph: '◎', title: 'Tap in Time',        body: 'Neon rings shrink toward the glowing circle. Tap the instant a ring lands on it — perfect timing scores the most and refills energy. On phones the circle stays in a comfy thumb zone.' },
     { glyph: '➤', title: 'The Target Moves',   body: 'From Level 2 the target moves around the lower screen. A ghost circle shows where it\'s headed — follow it with your eyes, not your thumb.' },
     { glyph: '◉', title: 'Tap Modes',          body: 'Default Target: tap inside the dashed zone in time with the beat. Prefer casual? Switch to Anywhere in Settings. Space / Enter are always timing-only.' },
-    { glyph: '♥', title: 'Energy & Combo',     body: 'Energy drains over time and on misses, refills on clean hits. Chain hits for Combo Fever at 25× (double score), then Overdrive, Supernova and Perfect Orbit.' },
+    { glyph: '♥', title: 'Energy & Combo',     body: 'Energy drains over time and on misses, refills on clean hits. Chain hits for Combo Fever at 25× (×1.5 score), Supernova at 100× (×2) and Singularity at 250× (×3). Singularity needs PERFECT hits: a GOOD or OK drops you to ×2 until 25 PERFECTs in a row. A miss resets the climb.' },
     { glyph: '♫', title: 'Vibe It Your Way',   body: 'Pick a Music Vibe in Settings — six distinct songs, from Cyber Bounce to Crimson Drive. Choose your theme and vibe separately; the soundtrack evolves every five stages.' },
     { glyph: '☣', title: 'Boss Battles',       body: 'Bosses appear at Stages 20, 30, 40 and 50. Keep hitting rings to damage it — Perfects hurt most. Survive its phases to win energy, and defeat each boss once to unlock a powerful Ability you equip in Settings.' }
   ];
@@ -5500,6 +5582,9 @@
   let energy = 100, bpm = 74, nextBeatTime = 0, beatIndex = 0, leadTime = 1.4;
   let pulse = 0, shake = 0;
   let fever = false;
+  let feverLevel = 0;           // 0 none · 1 Combo Fever x1.5 · 2 Supernova x2 · 3 Singularity x3
+  let perfectRun = 0;           // PERFECTs in a row (GOOD/OK/miss reset it); gates Singularity
+  let singLost = false;         // Singularity was reached this streak, then dropped by a GOOD/OK
   let runWasDaily = false;
   let diff = DIFFICULTIES[save.difficulty];
   let dailySeed = 0;
@@ -5522,7 +5607,7 @@
   // ---- SECRET DOOM MODE state (v2.6) ----
   // A short, brutal 8-stage gauntlet paced to the Hellfire metal track, ending
   // in the Cyber Dragon. Fully isolated from normal progression: no XP, no best
-  // scores, no boss unlocks — the ONLY persistent effect is the Void Metal vibe.
+  // scores, no boss unlocks — the ONLY persistent effect is the Hellgrid theme.
   let doomMode = false;         // true inside ANY secret gauntlet
   let doomStage = 0;            // 1..cfg.stages
   let doomCfg = null;           // the active SECRET_GAUNTLETS entry
@@ -5558,16 +5643,15 @@
     hexSaw:       { dur: 20, uses: 15, stages: 5, bossCap: 45 },
     triLaser:     { dur: 10, uses: 14, stages: 6, bossCap: 60 },
     prismGuard:   { dur: 15, uses: 999, stages: 6, bossCap: 45, invincible: true },
-    // Eclipse Realm charges like the others (8 stages) the FIRST time, but once
-    // spent it only comes back by defeating a boss.
-    // Eclipse Realm is the game's PAUSE: it has no timer. Hold again to leave.
-    eclipseRealm: { dur: Infinity, uses: 999, stages: 8, bossCap: 0, bossRecharge: true, pause: true }
+    // Event Horizon: 12s supermassive collapse. Devours every ring within `reach`
+    // target radii as a PERFECT at double score. Rarest recharge, biggest boss cap.
+    eventHorizon: { dur: 12, uses: 999, stages: 7, bossCap: 90, reach: 3.2 }
   };
   function abTuning() { return ABILITY_TUNING[abilityId] || null; }
   // Drain pauses while any ability is channeling (spec §8).
   function abilityPausesDrain() { return abActive; }
-  // Eclipse Realm freezes the field while channeling.
-  function realmActive() { return abActive && abilityId === 'eclipseRealm'; }
+  // Event Horizon is open: rings are devoured, stray taps are free.
+  function horizonActive() { return abActive && abilityId === 'eventHorizon'; }
   // Prism Guard makes the player untouchable: no misses, no off-target, no
   // combo breaks — every ring that arrives resolves as a PERFECT.
   function invincibleActive() { return abActive && abilityId === 'prismGuard'; }
@@ -5913,6 +5997,7 @@
       const tune = ABILITY_TUNING[abilityId];
       abActive = false; abUsesLeft = 0; abBossDmgLeft = 0; abUntil = 0;
       abHoldStart = 0; abHoldProgress = 0; abFlash = 0; abUsedThisRun = false;
+      horizonDevouredRun = 0; devours = [];
       abStagesLeft = tune ? tune.stages : 0;
       // Cores start uncharged so the first activation is earned.
       abReady = false;
@@ -5978,11 +6063,11 @@
     abyss: {
       id: 'abyss', label: 'ABYSS', stages: 8, diff: () => DOOM_DIFF,
       theme: 'hellgrid', vibe: 'hellfire', boss: () => DOOM_DRAGON,
-      rewardVibe: 'voidMetal', rewardName: 'VOID METAL', clearedFlag: 'doomCleared',
+      rewardTheme: 'hellgrid', rewardName: 'HELLGRID THEME', clearedFlag: 'doomCleared',
       enter: ['THE SIGNAL BREAKS', '#ff2b12', 'HOLD THE RHYTHM'],
       enterTones: [110, 82, 55],
       winTitle: 'THE GRID HOLDS',
-      winSub: 'You outlasted Voraxis. VOID METAL unlocked. Equip it in Settings under Music Vibe.',
+      winSub: 'You outlasted Voraxis. The HELLGRID theme is yours. Equip it in Settings under Theme.',
       failTitle: 'THE SIGNAL FADES',
       failSub: 'Voraxis still circles the Grid. Try the gauntlet again.'
     },
@@ -6697,18 +6782,27 @@
 
     // records
     // SECRET: the Cyber Dragon lives outside normal progression — it never
-    // touches boss records, ability unlocks or XP. Its only reward is Void Metal.
+    // touches boss records, ability unlocks or XP. Its only reward is the Hellgrid theme.
     if (doomMode && doomCfg && def.id === doomCfg.boss().id) {
       bossDefeatedStagesThisRun.add('secretBoss');
       bossDefeatUntil = nowT + 2.0;   // hold the defeat beat, then doomVictory()
-      const rv = doomCfg.rewardVibe;
-      const firstClear = !(save.vibeUnlocks && save.vibeUnlocks[rv]);
-      save.vibeUnlocks = save.vibeUnlocks || {};
-      save.vibeUnlocks[rv] = true;
+      let firstClear;
+      if (doomCfg.rewardTheme) {
+        const rt = doomCfg.rewardTheme;
+        save.themeUnlocks = save.themeUnlocks || {};
+        firstClear = !save.themeUnlocks[rt];
+        save.themeUnlocks[rt] = true;
+      } else {
+        const rv = doomCfg.rewardVibe;
+        firstClear = !(save.vibeUnlocks && save.vibeUnlocks[rv]);
+        save.vibeUnlocks = save.vibeUnlocks || {};
+        save.vibeUnlocks[rv] = true;
+      }
       save[doomCfg.clearedFlag] = true;
       persist();
       bossDefeatNameEl.textContent = def.name + ' FALLS';
-      bossRewardLabelEl.textContent = firstClear ? 'MUSIC VIBE UNLOCKED' : 'ALREADY UNLOCKED';
+      bossRewardLabelEl.textContent = !firstClear ? 'ALREADY UNLOCKED'
+        : (doomCfg.rewardTheme ? 'THEME UNLOCKED' : 'MUSIC VIBE UNLOCKED');
       bossRewardValueEl.textContent = doomCfg.rewardName;
       bossDefeatBanner.classList.add('show');
       applyBossMusic(false);
@@ -6931,11 +7025,13 @@
     maxCombo = Math.max(maxCombo, combo);
     if (runStats) { runStats.hits++; runStats.perfects++; runStats.maxCombo = maxCombo; }
     perfects += 1;
+    notePerfect();
     energy = Math.min(100, energy + 2.2);
     energyBar.style.width = energy + '%';
 
     const baseMult = 1 + Math.floor(combo / 12) * 0.25;
-    const mult = fever ? baseMult * FEVER_MULT : baseMult;
+    // Event Horizon doubles what it devours, on top of the combo tier.
+    const mult = baseMult * FEVER_MULTS[fever ? Math.max(1, feverLevel) : 0] * (horizonActive() ? 2 : 1);
     score += Math.round(300 * mult);
     scoreEl.textContent = score;
     comboEl.textContent = combo + 'x';
@@ -6995,7 +7091,7 @@
     firePulse(); bgPulse = 1; shake = Math.max(shake, 5);
     buzz([20, 15, 20, 15, 30]);
     abilitySound(abilityId, 'start');
-    if (abilityId === 'eclipseRealm') enterRealm();
+    if (abilityId === 'eventHorizon') horizonCollapse(nowT);
     updateAbilityHud();
     trackEvent('ability_used', { ability: abilityId, stage });
   }
@@ -7007,7 +7103,7 @@
     abActive = false;
     abHoldStart = 0; abHoldProgress = 0;
     if (wasId === 'prismGuard') prismBlast();
-    if (wasId === 'eclipseRealm') exitRealm();
+    if (wasId === 'eventHorizon' && reason !== 'travel') hawkingFlare();
     abilitySound(wasId, 'end');
     updateAbilityHud();
   }
@@ -7044,28 +7140,37 @@
   }
   let prismShards = [];
 
-  // ---- Eclipse Realm: freeze the field + swap the soundtrack ----
-  function enterRealm() {
-    // No circles exist inside the realm — the field is swept clean on entry.
-    // These are silent removals: no score, no combo, no misses.
-    notes = []; lastScheduledHitT = -Infinity;
-    realmMusicOn = true;
-    realmSnap = 0;
-    bgPulse = 1;
-    if (save.settings.sfx) { [220, 165, 110].forEach((f, i) => tone(f, 0.5, 'sine', 0.05, i * 0.08)); }
+  // ---- Event Horizon: collapse, devour, Hawking flare ----
+  let devours = [];                 // swallowed rings, animating into the hole
+  let horizonDevouredRun = 0;       // rings devoured this run (summons the Visitor)
+  const HORIZON_VISITOR_AT = 40;
+  function devourNote(note, t) {
+    note.hit = true;
+    devours.push({ x: note.tx, y: note.ty, r: Math.max(targetR, noteRadius(note, t)), color: note.color, t0: t });
+    if (devours.length > 24) devours.shift();
+    horizonDevouredRun++;
+    awardAbilityPerfect(note.tx, note.ty, '#ffd76b', 'EVENT HORIZON');
   }
-  function exitRealm() {
-    // Re-anchor the beat clock so rings resume cleanly instead of dumping a
-    // backlog the instant reality snaps back.
-    const nowT = clockNow() - startTime;
-    notes = []; lastScheduledHitT = -Infinity;
-    nextBeatTime = nowT + leadTime + 0.35;
-    realmMusicOn = false;
-    realmSnap = 1;                                  // reality-snap effect
-    shake = Math.max(shake, 7);
-    firePulse();
-    if (save.settings.sfx) { tone(880, 0.12, 'square', 0.045); tone(440, 0.2, 'sawtooth', 0.04, 0.06); }
-    buzz([40, 25, 60]);
+  // On activation every ring in flight falls in at once.
+  function horizonCollapse(t) {
+    for (const note of notes) if (!note.hit && !note.missed) devourNote(note, t);
+  }
+  // On expiry the hole flares back out: energy, a shockwave, capped boss damage.
+  function hawkingFlare() {
+    energy = Math.min(100, energy + 30);
+    energyBar.style.width = energy + '%';
+    shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR, alpha: 1, speed: 1100, width: 10, color: '#ffd76b' });
+    createBurst(tgt.x, tgt.y, '#ffd76b', 50, 1.6);
+    createBurst(tgt.x, tgt.y, '#ffffff', 24, 1.2);
+    showToast('HAWKING FLARE', '#ffd76b', '+30 ENERGY');
+    shake = Math.max(shake, 9);
+    buzz([30, 20, 60]);
+    if (bossActive && abBossDmgLeft > 0) {
+      const dmg = Math.min(15, abBossDmgLeft);
+      abBossDmgLeft -= dmg;
+      damageBoss(dmg, true, true);
+    }
+    if (realmPlanet) { realmPlanet = null; showToast('THE VISITOR WITHDRAWS', '#5ef2ff'); }
   }
   let realmMusicOn = false, realmSnap = 0;
 
@@ -7081,6 +7186,14 @@
     } else if (id === 'prismGuard') {
       if (phase === 'start') { [440, 660].forEach((f, i) => tone(f, 0.14, 'triangle', 0.035, i * 0.05)); }
       else { [880, 660, 440].forEach((f, i) => tone(f, 0.16, 'triangle', 0.035, i * 0.04)); }
+    } else if (id === 'eventHorizon') {
+      if (phase === 'start') {
+        [880, 660, 440, 330, 220, 110].forEach((f, i) => tone(f, 0.1, 'sawtooth', 0.03, i * 0.045));
+        tone(55, 0.9, 'sine', 0.09, 0.3);
+      } else {
+        [220, 330, 440, 660, 880, 1320].forEach((f, i) => tone(f, 0.12, 'triangle', 0.035, i * 0.04));
+        tone(65, 0.6, 'sine', 0.07);
+      }
     }
   }
   // Looping mechanical whir while the saw/laser is spinning.
@@ -7103,16 +7216,6 @@
     // paused), the hold is CLEARED outright so a stale timestamp can never
     // fire the instant the core becomes ready. The player must release and
     // deliberately hold again.
-    if (realmActive()) {
-      // EXIT HOLD: hold the target (or Space) again to snap back to reality.
-      if (abHoldStart > 0) {
-        abHoldProgress = Math.min(1, (performance.now() - abHoldStart) / ABILITY_HOLD_MS);
-        if (abHoldProgress >= 1) { endAbility('exit'); abHoldStart = 0; abHoldProgress = 0; }
-      } else {
-        abHoldProgress = 0;
-      }
-      return;   // no channel logic runs while paused
-    }
     if (abHoldStart > 0 && !abActive && canActivateAbility()) {
       abHoldProgress = Math.min(1, (performance.now() - abHoldStart) / ABILITY_HOLD_MS);
       if (abHoldProgress >= 1) activateAbility();
@@ -7143,9 +7246,20 @@
           awardAbilityPerfect(note.tx, note.ty, '#b06bff', 'PRISM GUARD');
         }
       }
-    } else if (abilityId === 'eclipseRealm') {
-      // PAUSE: nothing resolves, nothing spawns, nothing decays. Exiting is
-      // handled by the exit-hold branch above.
+    } else if (abilityId === 'eventHorizon') {
+      // Gravity well: any ring that closes within reach is pulled in and devoured.
+      const reach = targetR * abTuning().reach;
+      for (const note of notes) {
+        if (note.hit || note.missed) continue;
+        if (noteRadius(note, t) <= reach) devourNote(note, t);
+      }
+      // SECRET: swallow enough in one run and something comes looking.
+      if (!realmPlanet && !doomMode && horizonDevouredRun >= HORIZON_VISITOR_AT) {
+        realmPlanet = { x: W * 0.74, y: H * 0.24, r: Math.min(W, H) * 0.085, taps: 0, born: t };
+        showToast('SOMETHING IS OUT THERE', '#5ef2ff');
+        if (save.settings.sfx) { [131, 165, 196].forEach((f, i) => tone(f, 0.5, 'sine', 0.05, i * 0.14)); }
+        buzz([30, 40, 30]);
+      }
     } else if (abilityId === 'hexSaw') {
       // cut rings as they arrive at the saw — each cut is a PERFECT
       for (const note of notes) {
@@ -7173,7 +7287,7 @@
         }
       }
     }
-    // prismGuard resolves reactively (see guardBlock), eclipseRealm freezes in update()
+    // prismGuard also resolves reactively (see guardBlock)
   }
 
   // Prism Guard intercept: called from the miss / off-target paths.
@@ -7199,7 +7313,7 @@
     abUsesLeft = 0; abBossDmgLeft = 0; abUntil = 0;
     prismShards = [];
     realmMusicOn = false; realmMusicMix = 0; realmSnap = 0;
-    realmTimeTotal = 0; realmPlanet = null;
+    realmTimeTotal = 0; realmPlanet = null; devours = [];
     abLoopTimer = 0;
     guardBreakFlash = 0;
     coreCapture = null;
@@ -7367,11 +7481,22 @@
 
   // ================= 12. SCORING =================
 
+  const FEVER_TIERS = [null,
+    { label: 'Fever ×1.5',      banner: 'Combo Fever ×1.5' },
+    { label: 'Supernova ×2',    banner: 'Supernova ×2' },
+    { label: 'Singularity ×3',  banner: 'Singularity ×3' }];
   function setFever(on) {
+    if (!on) {
+      feverLevel = 0;
+      feverBanner.classList.remove('lvl2', 'lvl3', 'pop');
+      feverBanner.textContent = FEVER_TIERS[1].banner;
+      comboLabel.classList.remove('tier-long');
+    }
     if (fever === on) return;
     fever = on;
+    if (on && feverLevel < 1) feverLevel = 1;
     feverBanner.classList.toggle('on', on);
-    comboLabel.textContent = on ? 'FEVER' : 'Combo';
+    comboLabel.textContent = on ? FEVER_TIERS[feverLevel].label : 'Combo';
     if (on) {
       tone(880, 0.08, 'square', 0.035);
       tone(1174, 0.09, 'square', 0.03, 0.07);
@@ -7381,6 +7506,82 @@
       shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR, alpha: 1, speed: 900, width: 10, color: theme.c2 });
       firePulse();
     }
+  }
+
+  // Climb to the next score tier. Supernova (x2) and Singularity (x3) are the big
+  // transitions: the deep-space renderer runs the visuals off feverLevel, this adds
+  // the banner, HUD, burst, shake, haptics and the musical sting.
+  let _feverPopTimer = 0;
+  function setFeverLevel(n) {
+    if (n <= 1) { setFever(n === 1); return; }
+    if (!fever) setFever(true);
+    if (n <= feverLevel) return;
+    feverLevel = n;
+    const tier = FEVER_TIERS[n];
+    feverBanner.textContent = tier.banner;
+    feverBanner.classList.toggle('lvl2', n === 2);
+    feverBanner.classList.toggle('lvl3', n === 3);
+    feverBanner.classList.remove('pop'); void feverBanner.offsetWidth; feverBanner.classList.add('pop');
+    clearTimeout(_feverPopTimer);
+    _feverPopTimer = setTimeout(() => feverBanner.classList.remove('pop'), 600);
+    comboLabel.textContent = tier.label;
+    comboLabel.classList.add('tier-long');
+    feverSting(n);
+    const col = n === 2 ? theme.c3 : '#ffffff';
+    createBurst(tgt.x, tgt.y, col, 90, 1.9);
+    createBurst(tgt.x, tgt.y, theme.c1, 50, 1.4);
+    shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR, alpha: 1, speed: 1300, width: 14, color: col });
+    shake = Math.max(shake, n === 3 ? 14 : 11);
+    buzz(n === 3 ? [60, 40, 30, 40, 30, 40, 120] : [40, 30, 40, 30, 90]);
+    firePulse();
+  }
+  function feverSting(n) {
+    if (!audioCtx || !save.settings.music) return;
+    const now = audioCtx.currentTime;
+    if (n === 2) {
+      // SUPERNOVA: a fast rising run into a bright stacked chord, a sub boom under it
+      [0, 4, 7, 12, 16, 19, 24, 28].forEach((iv, i) =>
+        synthVoice(now + i * 0.035, midiHz(60 + iv), 0.16, { type: 'square', gain: 0.026, cutoff: 4200 }));
+      [0, 7, 12, 16, 19].forEach((iv) =>
+        synthVoice(now + 0.3, midiHz(64 + iv), 0.7, { type: 'sawtooth', gain: 0.02, cutoff: 3000, attack: 0.01 }));
+      synthVoice(now + 0.28, 55, 0.8, { type: 'sine', gain: 0.1 });
+    } else if (n === 3) {
+      // SINGULARITY: everything falls in (a quick descending run), then the drop
+      [36, 31, 26, 21, 17, 12, 7, 0].forEach((iv, i) =>
+        synthVoice(now + i * 0.05, midiHz(60 + iv), 0.09, { type: 'sawtooth', gain: 0.022, cutoff: 2600 }));
+      synthVoice(now + 0.45, 41.2, 1.1, { type: 'sine', gain: 0.12 });
+      synthVoice(now + 0.45, 82.4, 0.5, { type: 'square', gain: 0.035, cutoff: 600 });
+      [0, 7, 12, 15, 19, 24, 31].forEach((iv) =>
+        synthVoice(now + 0.47, midiHz(57 + iv), 1.2, { type: 'sawtooth', gain: 0.016, cutoff: 3400, attack: 0.02 }));
+    }
+  }
+
+  // Singularity is PERFECT-only. A GOOD or OK drops it to Supernova x2 (the combo
+  // carries on); SING_REGAIN PERFECTs in a row climb back with the full transition.
+  function dropSingularity() {
+    if (feverLevel !== 3) return;
+    feverLevel = 2;
+    singLost = true;
+    const tier = FEVER_TIERS[2];
+    feverBanner.textContent = tier.banner;
+    feverBanner.classList.add('lvl2');
+    feverBanner.classList.remove('lvl3');
+    comboLabel.textContent = tier.label;
+    tone(330, 0.12, 'sawtooth', 0.03);
+    tone(247, 0.18, 'sawtooth', 0.026, 0.09);
+    buzz([20, 30, 20]);
+  }
+  function notePerfect() {
+    perfectRun += 1;
+    if (singLost && feverLevel === 2 && perfectRun >= SING_REGAIN) {
+      singLost = false;
+      setFeverLevel(3);
+      showToast('Singularity', theme.c1, 'BACK · ×3');
+    }
+  }
+  function noteImperfect() {
+    perfectRun = 0;
+    dropSingularity();
   }
 
   function firePulse() {
@@ -7393,6 +7594,8 @@
     combo = 0;
     comboTier = 0;   // re-arm milestone rewards for the next streak
     bossPerfectStreak = 0;
+    perfectRun = 0;
+    singLost = false;
     setFever(false);
     comboEl.textContent = '0x';
   }
@@ -7426,6 +7629,7 @@
   function fxScale() {
     const env = (save.settings && save.settings.environmentDetail) || 'full';
     let s = env === 'off' ? 0.35 : env === 'low' ? 0.6 : 1;
+    if (SpaceFX.low) s *= 0.4;   // Low graphics
     // Deep stages: taper the per-event spend so the target stays readable.
     if (stage >= 6) s *= 0.55;
     else if (stage >= 4) s *= 0.8;
@@ -7459,7 +7663,10 @@
     while (comboTier < COMBO_MILESTONES.length && combo >= COMBO_MILESTONES[comboTier].combo) {
       const m = COMBO_MILESTONES[comboTier];
       comboTier++;
-      if (m.combo === FEVER_COMBO) setFever(true);      // 25 → Combo Fever
+      // 25 Fever x1.5 · 100 Supernova x2 · 250 Singularity x3. Singularity only opens on a
+      // PERFECT; reached on a GOOD/OK, it waits for SING_REGAIN PERFECTs in a row.
+      if (m.fever === 3 && perfectRun === 0) singLost = true;
+      else if (m.fever) setFeverLevel(m.fever);
       score += m.bonus;
       scoreEl.textContent = score;
       showToast(m.name, theme[m.color] || theme.c1, '+' + m.bonus + ' · ' + m.sub);
@@ -7469,7 +7676,7 @@
       buzz([25, 30, 25, 40, 60]);
       createBurst(tgt.x, tgt.y, theme[m.color] || theme.c1, 60, 1.5);
       shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR, alpha: 1, speed: 880, width: 8, color: theme[m.color] || theme.c1 });
-      if (audioCtx && save.settings.music) {
+      if (audioCtx && save.settings.music && !(m.fever >= 2)) {   // x2/x3 play their own sting
         const now = audioCtx.currentTime;
         [0, 7, 12, 16, 19].forEach((iv, i) =>
           synthVoice(now + i * 0.05, midiHz(64 + iv), 0.2, { type: 'square', gain: 0.032, cutoff: 3600 }));
@@ -7521,6 +7728,9 @@
       // is read as an ACTIVATION attempt, not a mistake. Without this, trying
       // to hold-activate would cost you a miss every single time.
       if (canActivateAbility()) return;
+      // Event Horizon resolves the rings itself, so a stray tap (or a tap on the
+      // Visitor's craft) costs nothing while it is open.
+      if (horizonActive()) return;
       if (guardBlock('miss')) return;
       if (runStats) runStats.misses++;
       breakCombo();
@@ -7572,6 +7782,7 @@
     if (bestDiff <= win.perfect) {
       points = 300; text = 'PERFECT';
       perfects += 1;
+      notePerfect();
       if (runStats) runStats.perfects++;
       energy = Math.min(100, energy + 2.2);
       sfxPerfect();
@@ -7582,6 +7793,7 @@
     } else if (bestDiff <= win.good) {
       points = 150; text = 'GOOD';
       if (runStats) runStats.goods++;
+      noteImperfect();
       energy = Math.min(100, energy + 1.2);
       sfxGood();
       buzz(8);
@@ -7590,6 +7802,7 @@
     } else {
       points = 75; text = 'OK';
       if (runStats) runStats.oks++;
+      noteImperfect();
       energy = Math.max(0, energy - 1.5);
       sfxOkHit();
       createBurst(bestNote.tx, bestNote.ty, color, 12, 0.7);
@@ -7597,16 +7810,16 @@
     }
 
     const baseMult = 1 + Math.floor(combo / 12) * 0.25;
-    const mult = fever ? baseMult * FEVER_MULT : baseMult;
+    const mult = baseMult * FEVER_MULTS[fever ? Math.max(1, feverLevel) : 0];
     score += Math.round(points * mult);
     pulse = 1;
     scoreEl.textContent = score;
     comboEl.textContent = combo + 'x';
     // Suppress the small hit toast on milestone/level frames so banners read clean.
     const willMilestone = comboTier < COMBO_MILESTONES.length && (combo + 0) >= COMBO_MILESTONES[comboTier].combo;
-    if (!willMilestone) showToast(text, color, fever ? '×2 FEVER' : '');
+    if (!willMilestone) showToast(text, color, fever ? '×' + FEVER_MULTS[Math.max(1, feverLevel)] + ' ' + FEVER_TIERS[Math.max(1, feverLevel)].label.split(' ')[0].toUpperCase() : '');
 
-    checkComboMilestones();          // 25 Fever · 50 Overdrive · 75 Supernova · 100 Perfect Orbit
+    checkComboMilestones();          // 25 Fever · 50 Overdrive · 100 Supernova · 175 Perfect Orbit · 250 Singularity
     registerHit();                   // stage progression (may start a level pause)
 
     const shownBest = Number(bestEl.textContent) || 0;
@@ -7625,11 +7838,10 @@
   // Hold the inner target (or hold Space) ~500ms to activate the equipped boss
   // core. Quick taps/presses always remain plain rhythm hits: the hold timer is
   // tracked separately and never consumes or blocks a tap.
-  // SECRET: while frozen in the realm, tapping the revealed planet four times
-  // carries the player there. Handled before ability holds so it never fights
-  // with the exit-hold gesture.
+  // SECRET: while Event Horizon is open, tapping the Visitor's craft four times
+  // follows it to the Contact gauntlet. Handled before ability holds.
   function realmPlanetTap(e) {
-    if (!realmActive() || !realmPlanet || doomMode) return false;
+    if (!horizonActive() || !realmPlanet || doomMode) return false;
     if (!e || typeof e.clientX !== 'number') return false;
     const { x: px, y: py } = canvasPoint(e);
     if (Math.hypot(px - realmPlanet.x, py - realmPlanet.y) > realmPlanet.r * 1.9) return false;
@@ -7650,8 +7862,7 @@
     if (realmPlanetTap(e)) return;
     if (!(state === 'playing' || state === 'bossBattle')) return;
     if (e && e.target && e.target.closest && e.target.closest('.overlay, button, input, label')) return;
-    // While paused in the realm, a hold is how you LEAVE — allow it through.
-    if (!canActivateAbility() && !realmActive()) return;
+    if (!canActivateAbility()) return;
     // Touch/mouse must begin inside the inner target circle (generous radius).
     if (e && typeof e.clientX === 'number') {
       const { x: px, y: py } = canvasPoint(e);
@@ -7665,8 +7876,7 @@
     abHoldProgress = 0;
     // NOTE: releasing never cancels a channel. The hold that starts an ability
     // is naturally released a moment later, so cancelling here made Prism Guard
-    // and Eclipse Realm impossible to actually use. Eclipse Realm is exited by
-    // performing a NEW hold (see updateAbility), which is what makes it a pause.
+    // impossible to actually use.
   }
   window.addEventListener('pointerdown', abilityHoldBegin, { passive: true });
   window.addEventListener('pointerup', abilityHoldEnd, { passive: true });
@@ -8025,26 +8235,7 @@
       bpm = stageBpmTarget();
 
       updateAbility(dt, t);
-      // ECLIPSE REALM: the field freezes. Rings hold position by sliding their
-      // timing forward with the clock, so nothing advances and nothing can be
-      // missed while the player stands outside the orbit.
-      if (realmActive()) {
-        for (const note of notes) {
-          if (note.hit || note.missed) continue;
-          note.hitTime += dt;
-          note.created += dt;
-        }
-        nextBeatTime += dt;
-        // SECRET: wait long enough inside frozen time and a world drifts in.
-        realmTimeTotal += dt;
-        if (!realmPlanet && !doomMode && realmTimeTotal >= WEST_SIDE_BOSS_DELAY) {
-          realmPlanet = { x: W * 0.74, y: H * 0.24, r: Math.min(W, H) * 0.085, taps: 0, born: t };
-          showToast('SOMETHING IS OUT THERE', '#5ef2ff');
-          if (save.settings.sfx) { [131, 165, 196].forEach((f, i) => tone(f, 0.5, 'sine', 0.05, i * 0.14)); }
-          buzz([30, 40, 30]);
-        }
-      }
-      if (!realmActive()) scheduleNotes(t);
+      scheduleNotes(t);
 
       // execute a pending target move once the field is clear (not during boss)
       if (!inBoss && moveArmed && !notes.some(n => !n.hit && !n.missed)) executeMove(t);
@@ -8116,8 +8307,10 @@
     }
     shockwaves = shockwaves.filter(w => w.alpha > 0);
 
-    // ambient sparks orbit the (moving) target
-    while (sparks.length < 70) {
+    // ambient sparks orbit the (moving) target (fewer in Low graphics)
+    const sparkCap = SpaceFX.low ? 28 : 70;
+    if (sparks.length > sparkCap) sparks.length = sparkCap;
+    while (sparks.length < sparkCap) {
       const a = Math.random() * Math.PI * 2;
       const r = targetR * 2 + Math.random() * spawnR * 0.8;
       sparks.push({
@@ -8184,6 +8377,1341 @@
     return _bgCache.grad;
   }
 
+  // ================= DEEP SPACE FX =================
+  // A WebGL layer under the game canvas: a procedural starfield, nebula and spiral
+  // galaxies, bent by gravitational lensing around the target, which is drawn as a
+  // black hole: Doppler-beamed accretion disk wrapped over its shadow, a photon ring
+  // with light circling it, and clumps of gas that spiral in, stretch, redden and
+  // freeze at the horizon. The combo climb drives it: Combo Fever (x1.5) turns on the
+  // warp, Supernova (x2) detonates a distant star in the background,
+  // Singularity (x3) implodes the sky into a vortex. Boss-core powers get their own effects here
+  // too (shockwaves, Prism Guard's light-bending dome, Event Horizon's collapse).
+  // VISUAL ONLY. It reads game state (tgt, targetR, theme, pulse, fever, comboTier,
+  // bgPulse, bpm, Conductor, state) and never writes any of it, and it never calls
+  // Math.random (gameplay patterns use it), so note patterns are untouched.
+  // If WebGL is missing or the GPU context is lost, the game falls back to 2D.
+  // PERFORMANCE: the lensed sky (about half the per-pixel cost) renders into a cached
+  // texture a few times a second; only the disk, ring and effects draw every frame.
+  // Shaders compile in parallel where supported, so phones don't hitch at boot.
+  // Low graphics (Settings, or automatic on devices without a GPU) skips WebGL entirely.
+  const SPACE_MODE = true;
+  const SpaceFX = (() => {
+    const cv = document.getElementById('space');
+    const TAU = Math.PI * 2;
+    const RIN = 1.22, RH = 0.42;                      // ISCO and horizon, in target radii (disk plane)
+    let gl = null, ok = false, broken = false, listening = false, softGL = false, slowGL = false, slowRun = 0;
+    let pSky = null, pComp = null, vbo = null, nebTex = null, diskTex = null, NCL = 8;
+    let skyTex = null, skyFb = null, skyW = 0, skyH = 0, pending = null, pcExt = null;
+    let frameNo = 0, skyDirty = true, lastCx = -1e9, lastCy = -1e9, skyKey = '';
+    const US = {}, UC = {};
+    let quality = 1, lastWall = 0, ema = 16.7, slow = 0;
+    let lastT = null, diskPhase = 0, ringPhase = 0, inflow = 0, drift = 0;
+    let feverMix = 0, tierMix = 0, lastTier = 0, lastBg = 0, lastPulse = 0, rippleWall = -1e9;
+    let sn = null;                                     // active supernova {x, y, age, w}
+    let clumps = [], clA = null, clB = null, clMin = 1e9, clMax = -1e9;
+    let colKey = '', C1 = [0, 0, 0], C2 = [0, 0, 0], C3 = [0, 0, 0];
+    // Tier transitions + power effects. One-shot effects live in fxList and age on
+    // the game clock, so a pause freezes them mid-flight.
+    const RM = (() => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
+    let fxList = [], lastLvl = 0, snMix = 0, singMix = 0, hzMix = 0, shieldMix = 0, vortexFall = 0;
+    let sl = null;                                     // Supernova tier: the star that blows up right behind the hole
+    let snPal = [[1, 1, 1], [1, 1, 1]], slPal = [[1, 1, 1], [1, 1, 1]], lastPal = -1;
+    let wasActive = false, wasAbility = 'none';
+    const POWER_COL = { hexSaw: '#00f5ff', triLaser: '#ff2e4d', prismGuard: '#b06bff', eventHorizon: '#ffd76b' };
+
+    // Own PRNG: gameplay draws from Math.random, so the renderer must not.
+    let seed = (Date.now() ^ 0x9e3779b9) >>> 0;
+    function rnd() {
+      seed = (seed + 0x6D2B79F5) | 0;
+      let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    }
+
+    function prefs() {
+      const s = save.settings || {};
+      return {
+        q: ['ultra', 'high', 'lite'].includes(s.spaceQuality) ? s.spaceQuality : 'high',
+        motion: s.spaceMotion !== false,
+        cosmos: s.spaceCosmos !== false
+      };
+    }
+
+    const VS = 'attribute vec2 aPos; void main() { gl_Position = vec4(aPos, 0.0, 1.0); }';
+
+    const HASH = `
+      vec3 hash32(vec2 p) {
+        vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+        p3 += dot(p3, p3.yxz + 33.33);
+        return fract((p3.xxy + p3.yzz) * p3.zyx);
+      }`;
+
+    // Tileable (periodic) gradient noise, used once to bake the nebula + disk textures.
+    const NOISE = `
+      precision highp float;
+      uniform float uSize;
+      ${HASH}
+      vec2 grad(vec2 i, float per) {
+        i = mod(i, per);
+        float a = hash32(i + 7.13).x * 6.2831853;
+        return vec2(cos(a), sin(a));
+      }
+      float pn(vec2 x, float per) {
+        vec2 i = floor(x), f = fract(x);
+        vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+        float a = dot(grad(i, per), f);
+        float b = dot(grad(i + vec2(1.0, 0.0), per), f - vec2(1.0, 0.0));
+        float c = dot(grad(i + vec2(0.0, 1.0), per), f - vec2(0.0, 1.0));
+        float d = dot(grad(i + vec2(1.0, 1.0), per), f - vec2(1.0, 1.0));
+        return mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
+      }
+      float fbm(vec2 uv, float per, float oct) {
+        float s = 0.0, a = 0.5;
+        for (int i = 0; i < 8; i++) {
+          if (float(i) >= oct) break;
+          s += a * pn(uv * per, per);
+          per *= 2.0; a *= 0.5;
+        }
+        return s;
+      }`;
+
+    // R = cloud density, G = bright filaments, B = dark dust lanes.
+    const NEB_FS = NOISE + `
+      void main() {
+        vec2 uv = gl_FragCoord.xy / uSize;
+        vec2 q = vec2(fbm(uv, 3.0, 5.0), fbm(uv + vec2(0.37, 0.11), 3.0, 5.0));
+        vec2 r = vec2(fbm(uv + 0.9 * q + vec2(0.17, 0.52), 4.0, 6.0),
+                      fbm(uv + 0.9 * q + vec2(0.83, 0.29), 4.0, 6.0));
+        float cl = smoothstep(-0.22, 0.58, fbm(uv + 0.55 * r, 2.0, 8.0));
+        float f = fbm(uv + 0.45 * r + vec2(0.5), 5.0, 6.0);
+        float fil = pow(clamp(1.0 - abs(f) * 2.4, 0.0, 1.0), 6.0);
+        float du = smoothstep(0.04, 0.34, fbm(uv + 0.5 * q + vec2(0.71, 0.29), 4.0, 6.0));
+        gl_FragColor = vec4(cl, fil, du, 1.0);
+      }`;
+
+    // Band-limited turbulence for the accretion disk (sampled in polar coordinates).
+    const DISK_FS = NOISE + `
+      void main() {
+        vec2 uv = gl_FragCoord.xy / uSize;
+        vec2 w = vec2(fbm(uv, 3.0, 3.0), fbm(uv + vec2(0.5, 0.25), 3.0, 3.0));
+        float a = fbm(uv + 0.25 * w, 4.0, 5.0);
+        float b = fbm(uv + vec2(0.31, 0.67), 8.0, 4.0);
+        float c = 1.0 - abs(fbm(uv + 0.3 * w + vec2(0.13, 0.91), 6.0, 4.0) * 2.0);
+        gl_FragColor = vec4(0.5 + a * 0.9, 0.5 + b * 0.9, clamp(c, 0.0, 1.0), 1.0);
+      }`;
+
+    const MAIN_FS = `
+      precision highp float;
+      #define NCL __NCL__
+      uniform vec2 uRes;
+      uniform vec2 uWH;
+      uniform vec2 uShake;
+      uniform vec2 uCenter;
+      uniform vec2 uRipple;
+      uniform vec4 uA;            // scale, time, target radius, disk phase
+      uniform vec4 uB;            // pulse, fever, beat, bgPulse
+      uniform vec4 uE;            // drift, streak, arena, detail
+      uniform vec4 uF;            // combo tier, inflow, motion on, cosmos on
+      uniform vec4 uG;            // ring phase
+      uniform vec4 uH;            // flash, implode, invert, -
+      uniform vec4 uJ;            // shock radius px, shock strength, singularity mix, event-horizon mix
+      uniform vec4 uK;            // shield radius px, shield mix, vortex fall, -
+      uniform vec2 uClR;          // radial range covered by live clumps (skip the loop outside it)
+      uniform vec3 uShockCol;
+      uniform vec3 uTint;
+      uniform vec3 uC1;
+      uniform vec3 uC2;
+      uniform vec3 uC3;
+      uniform vec4 uSN;           // distant supernova: sky x, sky y, age, strength
+      uniform vec3 uSNa;          //   its palette (varies per explosion)
+      uniform vec3 uSNb;
+      uniform vec4 uSL;           // supernova behind the hole: age, strength, hold, seed
+      uniform vec3 uSLa;
+      uniform vec3 uSLb;
+      uniform sampler2D uSkyTex;  // cached sky (composite pass)
+      uniform vec4 uCl[NCL];      // clumps: radius, angle, brightness, tail length
+      uniform vec4 uCm[NCL];      //         half-width, redshift g, heat, -
+      uniform sampler2D uNeb;
+      uniform sampler2D uDiskTex;
+      #define uScale uA.x
+      #define uTime uA.y
+      #define uR uA.z
+      #define uDisk uA.w
+      #define uPulse uB.x
+      #define uFever uB.y
+      #define uBeat uB.z
+      #define uBgPulse uB.w
+      #define uDrift uE.x
+      #define uStreak uE.y
+      #define uArena uE.z
+      #define uDetail uE.w
+      #define uTier uF.x
+      #define uInflow uF.y
+      #define uMotion uF.z
+      #define uCosmos uF.w
+      #define uRingPh uG.x
+      #define uFlash uH.x
+      #define uImplode uH.y
+      #define uInvert uH.z
+      #define uShockR uJ.x
+      #define uShockS uJ.y
+      #define uSing uJ.z
+      #define uHz uJ.w
+
+      #define TAU 6.2831853
+      #define PI 3.14159265
+      const float RSH  = 0.90;   // shadow (event horizon silhouette), in target radii
+      const float THE  = 1.24;   // Einstein radius (sky)
+      const float KD   = 0.86;   // lensing strength applied to the disk (hugs the shadow)
+      const float RIN  = 1.22;   // inner edge of the accretion disk (ISCO)
+      const float RH   = 0.42;   // event horizon in the disk plane
+      const float ROUT = 3.40;   // outer edge
+      const float COSI = 0.24;   // how far above the disk plane we look from
+      const float TILT = -0.10;  // disk roll
+      const float NEBW = 1500.0; // CSS px per nebula tile
+
+      ${HASH}
+
+      vec3 starTint(float k) {
+        return k < 0.30 ? mix(vec3(0.62, 0.74, 1.00), vec3(0.92, 0.95, 1.00), k / 0.30)
+             : k < 0.75 ? mix(vec3(0.92, 0.95, 1.00), vec3(1.00, 0.90, 0.74), (k - 0.30) / 0.45)
+             :            mix(vec3(1.00, 0.90, 0.74), vec3(1.00, 0.66, 0.48), (k - 0.75) / 0.25);
+      }
+
+      float gRout = ROUT;        // disk outer edge (grows in Singularity / Event Horizon)
+      float gStarK = 1.0;        // background star brightness (vortex replaces them)
+
+      float wrapPi(float a) { return a - TAU * floor((a + PI) / TAU); }
+
+      // 0 inside a hex cell, rising to 1 on its edge (Prism Guard's facets).
+      float hexEdge(vec2 p) {
+        vec2 sv = vec2(1.0, 1.7320508);
+        vec4 hc = floor(vec4(p, p - vec2(0.5, 1.0)) / sv.xyxy) + 0.5;
+        vec4 h = vec4(p - hc.xy * sv, p - (hc.zw + 0.5) * sv);
+        vec2 q = dot(h.xy, h.xy) < dot(h.zw, h.zw) ? h.xy : h.zw;
+        q = abs(q);
+        return smoothstep(0.40, 0.5, max(dot(q, sv * 0.5), q.x));
+      }
+
+      // Singularity / Event Horizon: stars fall into the hole along log spirals.
+      // Log-polar cells: square on screen, shrinking toward the hole, so streaks
+      // shorten and crowd together as they fall (and never cross the horizon).
+      vec3 vortex(vec2 pc, float th) {
+        float a = atan(pc.y, pc.x);
+        float lr = log(max(th, 1.0) / uR);
+        vec3 acc = vec3(0.0);
+        for (int L = 0; L < 2; L++) {
+          float N = L == 0 ? 90.0 : 150.0;
+          float kv = N / TAU * 0.25;                 // radial cells are 4x taller: room for long trails
+          vec2 g = vec2((a + 1.4 * lr) / TAU * N, lr * kv + uK.z * (L == 0 ? 1.0 : 1.35));
+          vec2 id = floor(g);
+          id.x = mod(id.x, N);
+          vec3 h = hash32(id + float(L) * 17.0 + 3.1);
+          if (h.x > (L == 0 ? 0.24 : 0.18)) continue;
+          vec2 f = fract(g) - vec2(0.5 + (h.y - 0.5) * 0.5, 0.2 + h.z * 0.1);
+          float cu = TAU * th / N;                   // px per cell, across
+          float cv = cu * 4.0;                       // px per cell, along the fall
+          float tv = clamp(f.y, 0.0, 0.45);          // trail stretches outward, behind the fall
+          vec2 dd = vec2(f.x * cu, (f.y - tv) * cv);
+          float sz = max(0.55 + 0.9 * h.y, 0.62 / uScale);
+          float b = exp(-dot(dd, dd) / (sz * sz)) * (1.0 - tv / 0.45 * 0.8);
+          acc += mix(starTint(h.z), vec3(0.75, 0.85, 1.0), 0.4) * b * (0.5 + 0.7 * h.y);
+        }
+        // brightest near the hole, fading toward the screen edges
+        return acc * (0.55 + 0.45 * (1.0 - smoothstep(uR * 3.0, max(uWH.x, uWH.y) * 0.9, th)));
+      }
+
+
+      // One layer of stars. sp is the (lensed) sky position in CSS px.
+      vec3 stars(vec2 sp, float cell, float seed, float dens, float smin, float smax, float glow, float spike, float speed) {
+        sp.y -= uDrift * speed;                      // stars fall slowly down the screen
+        vec2 g = sp / cell;
+        vec2 id = floor(g);
+        vec3 h = hash32(id + seed);
+        if (h.x > dens) return vec3(0.0);
+        vec3 h2 = hash32(id.yx * 1.31 + seed * 2.17 + 4.7);
+        vec2 d = (fract(g) - 0.5 - (h.yz - 0.5) * 0.56) * cell;
+        float L = uStreak * speed;                   // warp trail during Combo Fever
+        float ty = clamp(-d.y, 0.0, L);
+        d.y += ty;
+        float tt = ty / (L + 0.001);
+        float trail = 1.0 - tt * 0.85;
+        float sz = mix(smin, smax, h2.x * h2.x * h2.x);
+        float px = 0.62 / uScale;                    // never smaller than ~1 device pixel
+        float szE = max(sz, px);
+        float r2 = dot(d, d);
+        float b = exp(-r2 / (szE * szE)) * (sz * sz) / (szE * szE);
+        b += glow * 0.16 * exp(-sqrt(r2) / (sz * 2.6 + 0.6));
+        if (spike > 0.0) {
+          vec2 ad = abs(d);
+          float w = 0.40 + px;
+          b += spike * 0.45 * (exp(-ad.x / w) * exp(-ad.y / (sz * 9.0)) + exp(-ad.y / w) * exp(-ad.x / (sz * 9.0)));
+        }
+        float tw = 0.72 + 0.28 * sin(uTime * (0.8 + h2.y * 2.6) + h2.z * TAU);
+        vec3 c = starTint(h2.z);
+        // relativistic colour in the warp: blue-white heads, trails reddening behind
+        c = mix(c, mix(vec3(0.72, 0.84, 1.0), vec3(1.0, 0.48, 0.38), tt), uFever * 0.6 * step(0.01, L));
+        return c * b * tw * (0.25 + 0.75 * h2.y) * trail;
+      }
+
+      vec3 galaxy(vec2 sp) {                         // tiny distant ellipticals
+        sp.y -= uDrift * 0.25;
+        float cell = 540.0;
+        vec2 g = sp / cell;
+        vec2 id = floor(g);
+        vec3 h = hash32(id + 91.7);
+        if (h.x > 0.24) return vec3(0.0);
+        vec3 h2 = hash32(id * 2.3 + 5.1);
+        vec2 d = (fract(g) - 0.5 - (h.yz - 0.5) * 0.5) * cell;
+        float a = h2.x * TAU;
+        d = vec2(cos(a) * d.x - sin(a) * d.y, sin(a) * d.x + cos(a) * d.y);
+        d.y /= 0.22 + 0.5 * h2.y;
+        float sz = 4.0 + 9.0 * h2.z;
+        float r = length(d);
+        float b = exp(-r / sz * 2.0) * 0.45 + exp(-r * r / (sz * sz * 0.05)) * 0.5;
+        return mix(vec3(1.0, 0.86, 0.72), uC3, 0.25) * b * 0.32;
+      }
+
+      vec3 spiralGalaxy(vec2 sp) {                   // big, slow, far: depth behind the stars
+        sp.y -= uDrift * 0.16;
+        float cell = 430.0;
+        vec2 g = sp / cell;
+        vec2 id = floor(g);
+        vec3 h = hash32(id + 47.3);
+        if (h.x > 0.55) return vec3(0.0);
+        vec3 h2 = hash32(id * 3.7 + 19.1);
+        vec2 d = (fract(g) - 0.5 - (h.yz - 0.5) * 0.2) * cell;
+        float size = 24.0 + 42.0 * h2.x;
+        if (dot(d, d) > size * size * 6.0) return vec3(0.0);
+        float ro = h2.y * TAU;
+        d = vec2(cos(ro) * d.x - sin(ro) * d.y, sin(ro) * d.x + cos(ro) * d.y);
+        d.y /= 0.3 + 0.65 * h2.z;                    // inclination
+        float r = length(d) / size;
+        float a = atan(d.y, d.x);
+        float arms = h.z > 0.5 ? 2.0 : 3.0;
+        float wind = 2.0 + 1.6 * h.y;
+        float arm = pow(0.5 + 0.5 * cos(arms * (a + wind * log(r + 0.04))), 2.5);
+        float dk = exp(-r * 3.4);
+        float bulge = exp(-r * r * 38.0);
+        float n = texture2D(uNeb, d / size * 0.07 + h.yz).g;
+        vec3 armCol = mix(vec3(0.55, 0.70, 1.0), uC1, 0.30);
+        vec3 coreCol = vec3(1.0, 0.86, 0.66);
+        return coreCol * (bulge * 1.4 + dk * 0.25)
+             + armCol * dk * (0.2 + 1.3 * arm) * (0.6 + 0.8 * n)
+             + uC2 * dk * arm * 0.3 * smoothstep(0.25, 0.8, r);      // star-forming knots out on the arms
+      }
+
+      vec3 supernova(vec2 sp) {
+        vec2 d = vec2(sp.x, sp.y - uDrift * 0.12) - uSN.xy;
+        float age = uSN.z;
+        float rs = 6.0 + 62.0 * pow(age, 0.55);      // expanding remnant shell, px
+        float flash = exp(-age * 1.8) * (1.0 + 5.0 * exp(-age * 10.0));
+        float reach = max(rs * 1.6 + 24.0, 200.0 * min(1.0, flash));
+        float r2 = dot(d, d);
+        if (r2 > reach * reach) return vec3(0.0);
+        float r = sqrt(r2);
+        vec3 hot = vec3(1.0, 0.97, 0.92);
+        vec3 c = hot * flash * (exp(-r2 / 6.0) * 4.0 + exp(-r / 10.0) * 0.8);
+        vec2 ad = abs(d);
+        c += mix(hot, uC1, 0.3) * flash * 0.9 * (exp(-ad.x / 0.9) * exp(-ad.y / 110.0) + exp(-ad.y / 0.9) * exp(-ad.x / 110.0));
+        // A star exploding, not a gas cloud: the flash and spikes above, then a soft
+        // coloured glow that swells and is gone in a few seconds. No lingering shell.
+        float fade = exp(-age / 1.8);
+        c += mix(uSNa, uSNb, 0.5) * exp(-r / (rs * 0.5 + 4.0)) * 1.3 * fade;
+        c += uSNb * exp(-r2 / (rs * rs * 0.9 + 40.0)) * 0.5 * fade;
+        return c * uSN.w;
+      }
+
+      // The Supernova tier's star detonates directly behind the black hole. It is drawn
+      // in the source plane, so the lens bends it on its own: the flash becomes an
+      // Einstein ring hugging the horizon, and the expanding shell blooms outward as a
+      // ring of fire that lingers (uSL.z) for as long as the tier holds.
+      vec3 lensedNova(vec2 q) {
+        float age = uSL.x;
+        float r = length(q);
+        float rs = uR * min(2.4, 0.12 + 1.5 * sqrt(age));
+        float flash = exp(-age * 2.0) * (1.0 + 4.0 * exp(-age * 9.0));
+        vec3 hot = vec3(1.0, 0.97, 0.92);
+        vec3 c = hot * flash * (exp(-r * r / (uR * uR * 0.08)) * 3.0 + exp(-r / (uR * 0.5)) * 0.6);
+        float fade = max(exp(-age / 6.0), 0.28 * uSL.z);
+        float th = uR * (0.06 + 0.10 * rs / uR);
+        float sh = exp(-pow((r - rs) / th, 2.0));
+        float ang = atan(q.y, q.x);
+        float fil = texture2D(uNeb, vec2(ang / TAU * 3.0 + uSL.w, r / uR * 0.15 + uTime * 0.01)).g;
+        float cl = texture2D(uNeb, vec2(ang / TAU * 2.0 + 0.3 + uSL.w, r / uR * 0.09)).r;
+        c += mix(uSLa, uSLb, cl) * sh * (0.35 + 1.5 * fil) * fade * 1.1;
+        c += mix(uSLa, uSLb, 0.5) * exp(-r / (rs * 0.7 + 1.0)) * 0.18 * fade * smoothstep(0.0, 1.0, age);
+        return c * uSL.y;
+      }
+
+      vec3 sky(vec2 sp) {
+        vec3 n = texture2D(uNeb, (sp + vec2(0.0, -uDrift * 0.12)) / NEBW).rgb;
+        float cl = n.r, fil = n.g, du = n.b;
+        vec3 deep = mix(uC2, vec3(0.22, 0.10, 0.55), 0.45);
+        vec3 neb = deep * pow(cl, 1.6) * 0.15
+                 + uC1 * pow(cl, 2.2) * fil * 0.40
+                 + mix(uC1, uC3, 0.5) * pow(cl, 4.0) * 0.10;
+        neb *= 1.0 - du * 0.78;
+        neb *= (1.0 + uBeat * 2.6 + uBgPulse * 0.35 + uFever * 0.45 + uTier * 0.12) * (1.0 - 0.5 * uArena);
+        float dim = 1.0 - du * 0.7;
+        vec3 st = stars(sp, 7.0, 1.3, 0.50, 0.30, 0.52, 0.0, 0.0, 0.35) * (0.25 + 1.5 * cl) * dim;
+        st += stars(sp, 19.0, 7.7, 0.55, 0.38, 0.78, 0.5, 0.0, 0.55) * (0.55 + 0.45 * dim);
+        if (uDetail > 0.5) st += stars(sp, 47.0, 13.1, 0.55, 0.55, 1.15, 1.0, 0.0, 0.80) * (0.8 + 0.2 * dim);
+        st += stars(sp, 150.0, 21.9, 0.42, 0.80, 1.90, 1.6, 1.0, 1.00) * 1.35;
+        if (uFever > 0.02) st += stars(sp, 11.0, 31.7, 0.24, 0.32, 0.66, 0.3, 0.0, 0.65) * uFever * (0.55 + 0.25 * dim);
+        st *= gStarK;
+        if (uDetail > 0.5) st += galaxy(sp) * dim;
+        if (uCosmos > 0.5 && uDetail > 0.5) st += spiralGalaxy(sp) * (0.24 + 0.45 * uFever + 0.08 * uTier) * (0.6 + 0.4 * dim);
+        if (uSN.w > 0.0) st += supernova(sp);
+        return vec3(0.0030, 0.0040, 0.0095) + neb + st;
+      }
+
+      // Accretion disk at disk-plane point q (x = across, y = depth, in target radii).
+      vec4 disk(vec2 q) {
+        float rho = length(q);
+        if (rho > gRout || rho < RH) return vec4(0.0);
+        float psi = atan(q.y, q.x);
+        float om = min(pow(RIN / rho, 1.5), 2.6);    // Keplerian: inner gas laps the outer gas
+        float u = (psi + uDisk * om) / TAU;
+        vec3 n1 = texture2D(uDiskTex, vec2(u, rho * 0.46 + 0.13)).rgb;
+        vec3 n2 = texture2D(uDiskTex, vec2(u * 2.0 + 0.37, rho * 0.95 + 0.61)).rgb;
+        float n3 = texture2D(uDiskTex, vec2(u * 3.0 + 0.11, rho * rho * 0.11 + uInflow)).b;   // drifts inward
+        float turb = 0.22 + 1.2 * n1.r * (0.45 + 0.85 * n2.g) + 0.6 * n3 * n3 * n2.b;
+        float tIn = smoothstep(RIN, RIN + 0.16, rho);
+        float tOut = 1.0 - smoothstep(gRout * 0.42, gRout, rho);
+        float e = tIn * tOut * pow(RIN / rho, 2.3) * turb;
+        float v = 0.55 * sqrt(RIN / max(rho, RIN * 0.8));
+        float D = 1.0 / (1.0 - v * (q.x / rho) * 0.85); // relativistic beaming: right side approaches
+        float beam = clamp(D * D * D, 0.22, 2.7);
+        float x = clamp((rho - RIN) / (gRout - RIN), 0.0, 1.0);
+        vec3 hot = vec3(1.0, 0.96, 0.90);
+        vec3 c = mix(hot, uC1, smoothstep(0.0, 0.22, x));
+        c = mix(c, uC2, smoothstep(0.22, 0.72, x));
+        c = mix(c, hot, clamp((D - 1.0) * 0.8, 0.0, 0.45));
+        if (uSing > 0.01) {                          // Singularity: the disk shimmers through the theme
+          vec3 cyc = mix(mix(uC1, uC2, 0.5 + 0.5 * sin(psi * 2.0 + uTime * 1.6)), uC3, 0.5 + 0.5 * sin(psi * 3.0 - uTime * 1.1));
+          c = mix(c, mix(cyc, hot, 0.25), 0.5 * uSing * smoothstep(0.05, 0.4, x));
+        }
+        vec3 rgb = c * e * beam * (1.9 + uPulse * 2.4 + uFever * 0.9 + uSing * 0.6 + uHz * 1.3);
+        float a = clamp(e * 1.6, 0.0, 0.94);
+        if (uMotion > 0.5) {
+          float g = sqrt(max(0.0, 1.0 - RH / rho));  // gravitational redshift
+          vec3 red = vec3(1.0, 0.32, 0.16);
+          // plunging region: past the ISCO gas spirals in, thin, fast and reddening
+          if (rho < RIN + 0.1) {
+            float sw = texture2D(uDiskTex, vec2(u * 2.0 - log(rho) * 0.55, rho * 0.8 + uInflow * 2.5)).r;
+            float pl = (1.0 - smoothstep(RIN - 0.05, RIN + 0.1, rho)) * pow(sw, 3.0) * g * 2.4;
+            rgb += mix(red * 0.9, mix(uC1, hot, 0.3), g * g) * pl * beam * (1.0 + uPulse);
+            a = max(a, clamp(pl * 0.8, 0.0, 0.7));
+          }
+          // clumps of infalling matter, tidally stretched along the orbit they fell in on
+          if (rho > uClR.x && rho < uClR.y)
+          for (int i = 0; i < NCL; i++) {
+            vec4 k = uCl[i];
+            if (k.z < 0.002) continue;
+            vec4 m = uCm[i];
+            if (abs(rho - k.x) > m.x * 4.0 + k.x * 0.23) continue;
+            float dp = wrapPi(psi - k.y);
+            float dr = rho - k.x - max(dp, 0.0) * k.x * 0.07;
+            if (abs(dr) > m.x * 4.0) continue;
+            float tq = dp > 0.0 ? dp / k.w : dp / (k.w * 0.18 + 0.02);
+            float ce = exp(-dr * dr / (m.x * m.x)) * exp(-tq * tq) * k.z;
+            vec3 cc = mix(red * 0.55, mix(hot, uC1, 0.35 - m.z * 0.3), m.y);
+            rgb += cc * ce * beam * 2.4;
+            a = max(a, clamp(ce * 1.2, 0.0, 0.9));
+          }
+        }
+        return vec4(rgb, a);
+      }
+
+      void main() {
+        float R = uR;
+#ifdef PASS_SKY
+        // ---- SKY PASS (cached): the whole sky, bent by the hole's gravity ----
+        vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uScale;
+        vec2 pc = p - uCenter;
+        float th = max(length(pc), 0.001);
+        vec2 dir = pc / th;
+        gStarK = 1.0 - 0.75 * max(uSing, uHz);
+        // Thin-lens deflection. It strengthens in the Singularity, and during an
+        // implosion the Einstein ring balloons across the screen.
+        float the = THE * R * (1.0 + 0.30 * uSing + 0.85 * uHz + 2.6 * uImplode);
+        float beta = th - the * the / th;
+        vec2 sp = uCenter + dir * beta;
+        vec3 col = sky(sp);
+        if (uSL.y > 0.0) col += lensedNova(sp - uCenter);
+        col += uTint * 0.30 * clamp(1.0 - th / (max(uWH.x, uWH.y) * 0.8), 0.0, 1.0);
+        gl_FragColor = vec4(sqrt(col / (1.0 + col)), 1.0);   // HDR packed into 8 bits
+#else
+        // ---- COMPOSITE PASS (every frame) ----
+        vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uScale - uShake;
+        vec2 pc = p - uCenter;
+        float th = max(length(pc), 0.001);
+        float thR = th / R;
+        vec2 dir = pc / th;
+        gRout = ROUT * (1.0 + 0.15 * uSing + 0.45 * uHz);
+
+        // Cached sky, displaced in screen space by milestone ripples, transition
+        // shockwaves and Prism Guard's light-bending dome.
+        float disp = 0.0;
+        if (uRipple.y > 0.002) {
+          float w = (th - uRipple.x) / (R * 1.4);
+          disp += uRipple.y * R * 0.32 * sin(w * 5.0) * exp(-w * w);
+        }
+        if (uShockS > 0.002) {
+          float w = (th - uShockR) / (R * 0.9);
+          disp -= uShockS * R * 0.9 * w * exp(-w * w);
+        }
+        vec2 q = uCenter + dir * max(th + disp, 0.0);
+        float shR = uK.x, shM = uK.y;
+        if (shM > 0.001 && th < shR) {
+          float u = th / shR;
+          q = uCenter + (q - uCenter) * mix(1.0, 0.70 + 0.30 * u * u, shM);
+        }
+        vec3 sv = texture2D(uSkyTex, vec2(q.x, uWH.y - q.y) / uWH).rgb;
+        vec3 s2 = sv * sv;
+        vec3 col = s2 / max(vec3(1.0) - s2, vec3(0.004));
+        col *= (1.0 + uBeat * 1.6 + uBgPulse * 0.25) * (1.0 - 0.3 * uArena);
+        if (max(uSing, uHz) > 0.01) col += vortex(pc, th) * max(uSing, uHz) * 0.8;
+        col += uTint * 0.5 * uBgPulse * clamp(1.0 - th / (max(uWH.x, uWH.y) * 0.8), 0.0, 1.0);
+
+        float aa = 1.4 / (uScale * R);
+        float hole = smoothstep(RSH - aa, RSH + aa, thR);
+        col *= hole;
+
+        float cs = cos(TILT), sn = sin(TILT);
+        vec2 d = vec2(cs * pc.x - sn * pc.y, sn * pc.x + cs * pc.y) / R;
+
+        if (abs(d.x) < gRout * 1.05 && (abs(d.y) < gRout * COSI + 0.15 || thR < 1.9 + 0.5 * uHz)) {
+          // far half of the disk: its light is bent over the top and under the bottom
+          float sphi = abs(d.y) / thR;
+          float k = KD * pow(sphi, 0.65);
+          vec2 s = d / thR * (thR - k / thR);
+          float zs = -s.y / COSI;
+          float wF = smoothstep(-0.12, 0.12, zs) * hole;
+          vec4 dkF = vec4(0.0);
+          if (wF > 0.001) dkF = disk(vec2(s.x, zs)) * wF;
+          // near half: in front of the hole, crossing the shadow
+          float zn = -d.y / COSI;
+          float wN = 1.0 - smoothstep(-0.12, 0.12, zn);
+          vec4 dkN = vec4(0.0);
+          if (wN > 0.001) dkN = disk(vec2(d.x, zn)) * wN;
+          vec4 dk = dkF + dkN;                       // one premultiplied layer: no seam
+          col = col * (1.0 - min(dk.a, 0.96)) + dk.rgb;
+        }
+
+        // Photon ring: crisp n=1 ring, fainter n=2 sub-ring inside it, soft glow, with
+        // light circling the hole (brightest where the disk spins toward us).
+        if (thR > 0.55 && thR < 1.6) {
+        float ang = atan(pc.y, pc.x);
+        float crescent = 0.62 + 0.38 * cos(ang);
+        float spots = 0.0;
+        if (uMotion > 0.5) {
+          for (int j = 0; j < 3; j++) {
+            float dd = wrapPi(ang - (uRingPh + float(j) * TAU / 3.0));
+            float tq = dd < 0.0 ? dd / 0.9 : dd / 0.12;
+            spots += exp(-tq * tq);
+          }
+        }
+        float shim = 0.8 + 0.4 * texture2D(uDiskTex, vec2(ang / TAU * 2.0 - uRingPh * 0.08, 0.37 + uTime * 0.02)).r;
+        float px = 1.0 / (uScale * R);
+        float g1 = (thR - RSH * 1.012) / (thR > RSH ? 0.05 : 0.016);
+        float c1 = (thR - RSH * 1.012) / max(0.012, 0.8 * px);
+        float c2 = (thR - RSH * 0.990) / max(0.006, 0.6 * px);
+        float ringI = exp(-g1 * g1) * 0.55 + exp(-c1 * c1) * 0.9 + exp(-c2 * c2) * 0.35;
+        col += mix(vec3(1.0), uC1, 0.4) * ringI * crescent * (0.6 + 0.9 * spots) * shim * (0.75 + uPulse * 1.7 + uFever * 0.4);
+        col += mix(vec3(1.0), uC1, 0.5) * 0.035 * smoothstep(RSH * 0.55, RSH, thR) * (1.0 - hole) * crescent;
+        }
+        col += uC1 * (0.035 + uPulse * 0.07) * exp(-max(thR - RSH, 0.0) * 1.6) * hole;
+
+        // Prism Guard's rim: a thin prismatic edge (red/green/blue split) and faint hex facets.
+        if (shM > 0.001) {
+          float e = (th - shR) / max(1.5, shR * 0.012);
+          vec3 rim = vec3(exp(-pow(e + 0.9, 2.0)), exp(-e * e), exp(-pow(e - 0.9, 2.0)));
+          vec3 shC = vec3(0.76, 0.52, 1.0);
+          col += (rim * 0.85 + shC * exp(-abs(e) * 0.22) * 0.08) * shM * (0.85 + 0.25 * sin(uTime * 5.0));
+          if (th < shR) col += shC * hexEdge(pc / (shR * 0.16)) * 0.10 * shM * (th / shR);
+        }
+        // Transition shockwave (chromatic wavefront), white-hot flash, implosion squeeze.
+        if (uShockS > 0.002) {
+          float ws = max(3.0, R * 0.10);
+          float e0 = (th - uShockR) / ws;
+          vec3 ring = vec3(exp(-pow(e0 + 0.7, 2.0)), exp(-e0 * e0), exp(-pow(e0 - 0.7, 2.0)));
+          col += (ring * 0.6 + uShockCol * exp(-e0 * e0 * 0.3) * 0.8) * uShockS * 1.4;
+        }
+        col += vec3(1.0, 0.96, 0.92) * uFlash * (0.5 + 2.0 * exp(-th / (R * 3.0)));
+        col *= 1.0 - uImplode * 0.65 * smoothstep(R * 1.5, max(uWH.x, uWH.y) * 0.6, th);
+
+        col = 1.0 - exp(-col * 1.3);                 // filmic roll-off keeps highlights from clipping
+        col = mix(col, 1.0 - col, uInvert);          // one negative frame as the Singularity hits
+        vec2 v = p / uWH - 0.5;
+        col *= 1.0 - 0.42 * dot(v, v);
+        col += (hash32(gl_FragCoord.xy + fract(uTime * 7.0) * 113.0).x - 0.5) / 255.0;   // dither: no banding
+        gl_FragColor = vec4(col, 1.0);
+#endif
+      }`;
+    const SKY_SRC = '#define PASS_SKY 1\n' + MAIN_FS;
+    const COMP_SRC = MAIN_FS;
+
+    function compile(type, src) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) {
+        const log = gl.getShaderInfoLog(s);
+        gl.deleteShader(s);
+        throw new Error('[space] shader: ' + log);
+      }
+      return s;
+    }
+    // Compile + link without waiting. With KHR_parallel_shader_compile the browser
+    // builds them in the background and we poll; without it, finishing blocks once.
+    function startProgram(fs) {
+      const p = gl.createProgram();
+      const v = gl.createShader(gl.VERTEX_SHADER), f = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(v, VS); gl.compileShader(v);
+      gl.shaderSource(f, fs); gl.compileShader(f);
+      gl.attachShader(p, v); gl.attachShader(p, f);
+      gl.bindAttribLocation(p, 0, 'aPos');
+      gl.linkProgram(p);
+      return { p, v, f };
+    }
+    function programReady(P) { return !pcExt || gl.getProgramParameter(P.p, pcExt.COMPLETION_STATUS_KHR); }
+    function finishProgram(P) {
+      if (!gl.getProgramParameter(P.p, gl.LINK_STATUS)) {
+        const log = (gl.getShaderInfoLog(P.f) || '') + (gl.getProgramInfoLog(P.p) || '');
+        throw new Error('[space] shader: ' + log);
+      }
+      gl.deleteShader(P.v); gl.deleteShader(P.f);
+      return P.p;
+    }
+    function quad() {
+      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      gl.enableVertexAttribArray(0);
+      gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    }
+    function bake(prog, n) {
+      const tex = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, tex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, n, n, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.REPEAT);
+      const fb = gl.createFramebuffer();
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0);
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('[space] framebuffer incomplete');
+      gl.viewport(0, 0, n, n);
+      gl.useProgram(prog);
+      quad();
+      gl.uniform1f(gl.getUniformLocation(prog, 'uSize'), n);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.deleteFramebuffer(fb);
+      return tex;
+    }
+    const UNIFORMS = ['uRes', 'uWH', 'uShake', 'uCenter', 'uRipple', 'uA', 'uB', 'uE', 'uF', 'uG',
+                      'uTint', 'uC1', 'uC2', 'uC3', 'uSN', 'uSNa', 'uSNb', 'uSL', 'uSLa', 'uSLb', 'uCl', 'uCm',
+                      'uNeb', 'uDiskTex', 'uSkyTex', 'uH', 'uJ', 'uK', 'uShockCol', 'uClR'];
+    function startSetup() {
+      pcExt = gl.getExtension('KHR_parallel_shader_compile');
+      const maxVec = gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS) || 64;
+      NCL = maxVec >= 56 ? 8 : 4;
+      pending = {
+        neb: startProgram(NEB_FS), disk: startProgram(DISK_FS),
+        sky: startProgram(SKY_SRC.replace('__NCL__', String(NCL))),
+        comp: startProgram(COMP_SRC.replace('__NCL__', String(NCL)))
+      };
+    }
+    function finishSetup() {
+      for (const k in pending) if (!programReady(pending[k])) return false;   // still compiling
+      const P = {};
+      for (const k in pending) P[k] = finishProgram(pending[k]);
+      pending = null;
+      vbo = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+      const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 2048;
+      nebTex = bake(P.neb, Math.min(2048, maxTex));
+      diskTex = bake(P.disk, 512);
+      gl.deleteProgram(P.neb); gl.deleteProgram(P.disk);
+      pSky = P.sky; pComp = P.comp;
+      for (const n of UNIFORMS) { US[n] = gl.getUniformLocation(pSky, n); UC[n] = gl.getUniformLocation(pComp, n); }
+      clA = new Float32Array(NCL * 4); clB = new Float32Array(NCL * 4);
+      clumps = [];
+      for (let i = 0; i < NCL; i++) clumps.push({ on: false });
+      skyTex = null; skyFb = null; skyW = skyH = 0; skyDirty = true;
+      ok = true;
+      return true;
+    }
+    function ensureSkyTarget(w, h) {
+      if (skyTex && skyW === w && skyH === h) return;
+      if (!skyTex) { skyTex = gl.createTexture(); skyFb = gl.createFramebuffer(); }
+      gl.bindTexture(gl.TEXTURE_2D, skyTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, skyFb);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, skyTex, 0);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      skyW = w; skyH = h; skyDirty = true;
+    }
+    function fail(e) {
+      console.warn('[space] falling back to 2D:', e && e.message ? e.message : e);
+      ok = false; broken = true;
+      if (cv) cv.style.display = 'none';
+    }
+    function init() {
+      if (!cv) { broken = true; return; }
+      try {
+        const opts = { alpha: false, antialias: false, depth: false, stencil: false, premultipliedAlpha: false,
+                       preserveDrawingBuffer: false, powerPreference: 'high-performance' };
+        gl = cv.getContext('webgl', opts) || cv.getContext('experimental-webgl', opts);
+        if (!gl) return fail('no WebGL');
+        if (!listening) {
+          listening = true;
+          cv.addEventListener('webglcontextlost', (e) => { e.preventDefault(); ok = false; pending = null; }, false);
+          cv.addEventListener('webglcontextrestored', () => { ok = false; pending = null; skyTex = null; }, false);
+        }
+        // No GPU (software renderer: CI machines, some VMs and old PCs)? Low graphics
+        // turns on by itself there, unless the player chose otherwise.
+        try {
+          const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+          const ren = String(dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+          softGL = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(ren);
+        } catch (e) { softGL = false; }
+      } catch (e) { fail(e); }
+    }
+    function hide() {
+      if (cv && cv.style.display !== 'none') cv.style.display = 'none';
+      lastT = null;
+    }
+    function hexRgb(h) {
+      const s = String(h || '#000').replace('#', '');
+      const f = s.length === 3 ? s.split('').map((c) => c + c).join('') : s;
+      const n = parseInt(f, 16) || 0;
+      return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+    }
+
+    // ---- infalling matter (simulated here, drawn inside the disk shader) ----
+    function spawnClump(kind) {
+      const c = clumps.find((k) => !k.on);
+      if (!c) return;
+      const amb = kind === 'amb';
+      c.on = true; c.kind = kind; c.age = 0;
+      c.r0 = amb ? 2.0 + rnd() * 1.2 : RIN + 0.3 + rnd() * 0.7;
+      c.r = c.r0;
+      c.a = rnd() * TAU - Math.PI;
+      c.T = amb ? 6 + rnd() * 6 : 1.4 + rnd() * 0.9;   // time to sink to the ISCO
+      c.b0 = amb ? 0.55 + rnd() * 0.45 : 0.8 + rnd() * 0.5;
+      c.b = 0; c.g = 1; c.len = 0.12; c.w = 0.07; c.heat = 0;
+    }
+    function stepClumps(dt, spin, maxOn, ambTarget) {
+      let on = 0, amb = 0;
+      for (const c of clumps) {
+        if (!c.on) continue;
+        c.age += dt;
+        if (c.r > RIN) {
+          const prog = (c.r0 - c.r) / Math.max(1e-3, c.r0 - RIN);
+          c.r = Math.max(RIN, c.r - dt * (c.r0 - RIN) / c.T * (0.5 + prog));   // sinks faster as it goes
+          c.b = c.b0 * Math.min(1, c.age / 0.6);
+        } else {
+          // Plunge. Seen from far away it never quite crosses: it slows, smears round
+          // the hole, reddens and fades (time dilation + gravitational redshift).
+          c.r = RH + (c.r - RH) * Math.exp(-dt * 1.4);
+          c.b *= Math.exp(-dt * 0.8);
+        }
+        c.g = Math.sqrt(Math.max(0, 1 - RH / c.r));
+        c.a -= dt * spin * 1.7 * Math.pow(RIN / c.r, 1.5) * c.g * c.g;
+        if (c.a < -Math.PI) c.a += TAU;
+        c.len = Math.min(2.2, 0.12 + 0.35 * Math.pow(RIN / c.r, 2.2));   // tidal stretching
+        c.w = 0.095 * Math.sqrt(c.r / RIN) / (1 + c.len * 0.7);
+        c.heat = Math.min(1, (c.r0 - c.r) / Math.max(1e-3, c.r0 - RH));
+        if (c.r <= RIN && c.b < 0.015) c.on = false;
+        if (c.on) { on++; if (c.kind === 'amb') amb++; }
+      }
+      // too many for this quality level: retire the faintest
+      while (on > maxOn) {
+        let f = null;
+        for (const c of clumps) if (c.on && (!f || c.b < f.b)) f = c;
+        f.on = false; on--;
+      }
+      if (amb < ambTarget && on < maxOn) spawnClump('amb');
+      clMin = 1e9; clMax = -1e9;
+      for (const c of clumps) if (c.on) {
+        const pad = c.w * 4 + c.r * 0.23;
+        clMin = Math.min(clMin, c.r - pad); clMax = Math.max(clMax, c.r + pad);
+      }
+      for (let i = 0; i < clumps.length; i++) {
+        const c = clumps[i], j = i * 4;
+        const vis = c.on ? c.b * Math.pow(c.g, 1.5) : 0;
+        clA[j] = c.r || 0; clA[j + 1] = c.a || 0; clA[j + 2] = vis; clA[j + 3] = c.len || 0.1;
+        clB[j] = c.w || 0.05; clB[j + 1] = c.g || 0; clB[j + 2] = c.heat || 0; clB[j + 3] = 0;
+      }
+    }
+
+    function addFx(kind, col) {
+      fxList.push({ kind, age: 0, col: col || [1, 1, 1] });
+      if (fxList.length > 8) fxList.shift();
+    }
+
+    // Each explosion gets its own colors: the theme's, or one of a few gas palettes.
+    function pickPalette() {
+      const pals = [[C2, C3], [C1, [1.0, 0.86, 0.6]], [[0.30, 0.90, 1.0], [0.25, 0.40, 1.0]],
+                    [[1.0, 0.72, 0.30], [1.0, 0.30, 0.22]], [[0.72, 0.42, 1.0], [1.0, 0.42, 0.80]],
+                    [[0.42, 1.0, 0.62], [0.20, 0.80, 0.95]]];
+      let i = Math.floor(rnd() * pals.length);
+      if (i === lastPal) i = (i + 1 + Math.floor(rnd() * (pals.length - 1))) % pals.length;
+      lastPal = i;
+      return pals[i];
+    }
+    function spawnSupernova(strength) {
+      snPal = pickPalette();
+      let best = null;
+      for (let i = 0; i < 10; i++) {
+        const x = W * (0.12 + rnd() * 0.76), y = H * (0.16 + rnd() * 0.66);
+        const dd = Math.hypot(x - tgt.x, y - tgt.y);
+        if (!best || dd > best.dd) best = { x, y, dd };
+        if (dd > targetR * 4) break;
+      }
+      sn = { x: best.x, y: best.y - drift * 0.12, age: 0, w: strength };
+    }
+
+    // Draw one frame of space. Returns false if WebGL is unavailable (caller draws the 2D fallback).
+    // Low graphics: explicit choice wins; unset means "on when there is no GPU".
+    // slowGL is the safety net for no-GPU devices that don't say so (some browsers hide
+    // the renderer name): set when setup or sustained frames are far too slow.
+    function isLow() {
+      const v = save.settings && save.settings.lowGraphics;
+      return v === true || (v !== false && (softGL || slowGL));
+    }
+    function render(t, pv, shakeX, shakeY) {
+      if (broken) return false;
+      if (save.settings && save.settings.lowGraphics === true) { hide(); return false; }
+      if (!gl) { init(); if (!gl) return false; }
+      if (gl.isContextLost && gl.isContextLost()) return false;
+      if (isLow()) { hide(); return false; }
+      if (!ok) {
+        try {
+          if (!pending) startSetup();
+          const t0 = performance.now();
+          if (!finishSetup()) return false;            // 2D stand-in until the shaders are ready
+          if (performance.now() - t0 > 1500 && save.settings.lowGraphics !== false) {
+            slowGL = true; console.info('[space] shader setup took', Math.round(performance.now() - t0), 'ms: Low graphics');
+          }
+        } catch (e) { fail(e); return false; }
+      }
+      if (cv.style.display === 'none') { cv.style.display = ''; skyDirty = true; }
+      const P = prefs();
+      const env = save.settings.environmentDetail || 'full';
+
+      // Adaptive resolution: if frames keep running long during play, shed GPU load.
+      const now = performance.now();
+      // (frame gaps are clamped, so a tab switch can't spike it but a slow GPU still shows)
+      const fd = lastWall ? Math.min(now - lastWall, 250) : 16.7;
+      ema += (fd - ema) * 0.08;
+      lastWall = now;
+      // Safety net: frames averaging over 45 ms for ~3 s (no GPU in practice) switch to
+      // Low graphics, unless the player turned it off on purpose.
+      if (ema > 45 && save.settings.lowGraphics !== false) {
+        slowRun += fd;
+        if (slowRun > 3000) { slowGL = true; console.info('[space] frames too slow for WebGL: Low graphics'); hide(); return false; }
+      } else slowRun = Math.max(0, slowRun - fd * 2);
+      if (inRunState() && state !== 'paused' && ema > 21 && quality > 0.55) {
+        if (++slow > 150) { quality = Math.max(0.55, quality - 0.15); slow = 0; ema = 16.7; console.info('[space] quality ->', quality.toFixed(2)); }
+      } else if (slow > 0) slow--;
+
+      const dev = window.devicePixelRatio || 1;
+      const soft = false;
+      const base = P.q === 'ultra' ? Math.min(dev, 3) : P.q === 'high' ? Math.min(dev, 2) : 1;
+      const sc = Math.max(0.5, base * quality);
+      const w = Math.max(1, Math.round(W * sc)), h = Math.max(1, Math.round(H * sc));
+      if (cv.width !== w || cv.height !== h) {
+        cv.width = w; cv.height = h;
+        cv.style.width = W + 'px'; cv.style.height = H + 'px';
+      }
+
+      // Motion runs on the game clock, so the hole freezes with a paused run.
+      let dt = lastT === null ? 0 : t - lastT;
+      lastT = t;
+      dt = (dt > 0 && dt < 1) ? Math.min(dt, 0.05) : 0;
+      const inRun = inRunState();
+      const tier = inRun ? comboTier : 0;
+      feverMix += ((fever ? 1 : 0) - feverMix) * Math.min(1, dt * 3.5);
+      tierMix += (Math.min(tier, 4) - tierMix) * Math.min(1, dt * 2);
+      // ---- combo climb: x1.5 Fever, x2 Supernova, x3 Singularity ----
+      const lvl = inRun ? (feverLevel || (fever ? 1 : 0)) : 0;
+      if (lvl > lastLvl) {
+        // x2 Supernova: the flash and shockwave, and a star blows up somewhere in the
+        // distant sky (its own palette). No lensed ring behind the hole any more.
+        if (lvl >= 2 && lastLvl < 2) { addFx('nova', C3); if (P.cosmos) spawnSupernova(1.3); }
+        if (lvl >= 3 && lastLvl < 3) addFx('sing', [0.85, 0.75, 1.0]);
+      }
+      lastLvl = lvl;
+      // ---- boss-core powers: ignition shock, Event Horizon collapse / Hawking flare ----
+      const act = inRun && abActive && abilityId !== 'none';
+      if (act && !wasActive) {
+        addFx('power', hexRgb(POWER_COL[abilityId] || theme.c1));
+        if (abilityId === 'eventHorizon') addFx('collapse', [1, 0.85, 0.45]);
+      }
+      if (!act && wasActive) {
+        if (wasAbility === 'eventHorizon') addFx('hawking', [1, 0.86, 0.5]);
+        if (wasAbility === 'prismGuard') addFx('burst', hexRgb(POWER_COL.prismGuard));
+      }
+      wasActive = act; wasAbility = abilityId;
+      const k3 = Math.min(1, dt * 3);
+      const singHold = fxList.some((f) => f.kind === 'sing' && f.age < 0.45);
+      snMix += ((lvl >= 2 ? 1 : 0) - snMix) * k3;
+      singMix += ((lvl >= 3 && !singHold ? 1 : 0) - singMix) * Math.min(1, dt * 2.2);
+      hzMix += ((act && abilityId === 'eventHorizon' ? 1 : 0) - hzMix) * k3;
+      shieldMix += ((act && abilityId === 'prismGuard' ? 1 : 0) - shieldMix) * Math.min(1, dt * 6);
+
+      const spin = (0.55 + bpm / 220) * (1 + feverMix * 0.8) * (1 + 0.5 * snMix + 0.3 * singMix + 0.7 * hzMix);
+      diskPhase += dt * spin * 1.7;
+      ringPhase = (ringPhase + dt * spin * 2.5) % TAU;
+      inflow = (inflow + dt * 0.05 * spin) % 1;
+      drift += dt * (7 + feverMix * (75 + tierMix * 12) * (1 + 0.35 * snMix) * (1 - 0.6 * singMix));
+      vortexFall += dt * (1.6 + 0.8 * hzMix);
+      if (vortexFall > 1e4) vortexFall -= 1e4;
+      if (diskPhase > 1e5) diskPhase -= 1e5;
+      if (drift > 1e6) drift = 0;
+      if (bgPulse > lastBg + 0.25) rippleWall = now;
+      lastBg = bgPulse;
+      const ra = (now - rippleWall) / 1000;
+      const rAmp = ra < 1.8 ? Math.pow(1 - ra / 1.8, 1.5) : 0;
+
+      // Distant supernovas are rare: only reaching the Supernova tier (100x) lights one,
+      // in a palette picked for that explosion (spawned above with the tier).
+      lastTier = tier;
+      if (sl) { sl.age += dt; if (sl.age > 30 && snMix < 0.01) sl = null; }
+
+      // One-shot effects: flash, implosion, negative frame, shockwave.
+      let flash = 0, implode = 0, invert = 0, shR = 0, shS = 0, shCol = [1, 1, 1];
+      const span = Math.max(W, H) * 1.15;
+      const shock = (a, dur, col) => {
+        const s = a < dur ? Math.pow(1 - a / dur, 1.4) : 0;
+        if (s > shS) { shS = s; shR = a * span / dur; shCol = col; }
+      };
+      for (const f of fxList) {
+        f.age += dt;
+        const a = f.age;
+        if (f.kind === 'nova') { flash = Math.max(flash, 0.9 * Math.exp(-a / 0.16)); shock(a, 1.25, f.col); }
+        else if (f.kind === 'sing') {
+          if (a < 0.45) implode = Math.max(implode, Math.pow(a / 0.45, 2));
+          else if (a < 0.6) implode = Math.max(implode, 1 - (a - 0.45) / 0.15);
+          if (a >= 0.45) {
+            const b = a - 0.45;
+            flash = Math.max(flash, Math.exp(-b / 0.22));
+            if (b < 0.11) invert = 1;
+            shock(b, 1.3, f.col);
+          }
+        }
+        else if (f.kind === 'power') { flash = Math.max(flash, 0.35 * Math.exp(-a / 0.12)); shock(a, 0.9, f.col); }
+        else if (f.kind === 'collapse') {
+          if (a < 0.3) implode = Math.max(implode, 0.7 * Math.pow(a / 0.3, 2));
+          else if (a < 0.45) implode = Math.max(implode, 0.7 * (1 - (a - 0.3) / 0.15));
+        }
+        else if (f.kind === 'hawking') { flash = Math.max(flash, 0.85 * Math.exp(-a / 0.25)); shock(a, 1.2, f.col); }
+        else if (f.kind === 'burst') shock(a, 0.8, f.col);
+      }
+      fxList = fxList.filter((f) => f.age < 2.6);
+      if (RM) { flash *= 0.4; invert = 0; }      // reduced motion: no negative frame, softer flashes
+
+      // Prism Guard's dome unfolds from the photon ring.
+      let shieldR = 0;
+      if (shieldMix > 0.001) {
+        const tune = ABILITY_TUNING.prismGuard;
+        const age = act && abilityId === 'prismGuard' ? t - (abUntil - tune.dur) : 1;
+        shieldR = targetR * (1 + 1.05 * (1 - Math.pow(1 - Math.min(1, age / 0.35), 3)));
+      }
+      if (sn) { sn.age += dt; if (sn.age > 8 || !P.cosmos) sn = null; }
+
+      // Every clean hit feeds the hole a clump of gas.
+      if (P.motion && pulse > lastPulse + 0.45 && (state === 'playing' || state === 'bossBattle')) spawnClump('feed');
+      lastPulse = pulse;
+      const maxOn = !P.motion ? 0 : (P.q === 'lite' || soft) ? 3 : NCL;
+      stepClumps(dt, spin, maxOn, !P.motion ? 0 : P.q === 'lite' ? 1 : 3);
+
+      if (colKey !== theme.id) { colKey = theme.id; C1 = hexRgb(theme.c1); C2 = hexRgb(theme.c2); C3 = hexRgb(theme.c3); }
+      const beat = (Conductor.ready() && env !== 'off') ? Math.pow(1 - Conductor.barPhase(), 8) * 0.05 : 0;
+      const tint = pv ? pv.tint : [0, 0, 0];
+
+      // Sky cadence: every frame while something big is moving through it, every
+      // 2nd frame in the Fever warp, otherwise every 4th frame (stars drift slowly).
+      frameNo++;
+      const key = theme.id + '|' + P.q + '|' + P.cosmos;
+      if (key !== skyKey) { skyKey = key; skyDirty = true; }
+      const moved = Math.abs(tgt.x - lastCx) > 0.25 || Math.abs(tgt.y - lastCy) > 0.25;
+      const busy = implode > 0 || (singMix > 0.01 && singMix < 0.99) || (hzMix > 0.01 && hzMix < 0.99)
+                || (sl && sl.age < 3) || (sn && sn.age < 3);
+      const every = busy ? 1 : feverMix > 0.05 ? 2 : 4;
+      ensureSkyTarget(w, h);
+      const drawSky = skyDirty || moved || frameNo % every === 0;
+      if (drawSky) { lastCx = tgt.x; lastCy = tgt.y; skyDirty = false; }
+
+      const V = {
+        beat, pulse: Math.min(1.5, pulse + beatBreath()), streak: feverMix * (30 + tierMix * 8) * (1 + 0.4 * snMix),
+        detail: P.q === 'lite' ? 0 : 1
+      };
+      const upload = (U, sky) => {
+        gl.uniform1i(U.uNeb, 0); gl.uniform1i(U.uDiskTex, 1); gl.uniform1i(U.uSkyTex, 2);
+        gl.uniform2f(U.uRes, w, h);
+        gl.uniform2f(U.uWH, W, H);
+        gl.uniform2f(U.uShake, sky ? 0 : (shakeX || 0), sky ? 0 : (shakeY || 0));
+        gl.uniform2f(U.uCenter, tgt.x, tgt.y);
+        gl.uniform2f(U.uRipple, ra * Math.max(W, H) * 0.9, rAmp);
+        gl.uniform4f(U.uA, w / W, t % 3600, targetR, diskPhase);
+        // beat, milestone pulse and boss-arena dimming change every frame, so the
+        // composite applies them over the cached sky
+        gl.uniform4f(U.uB, V.pulse, feverMix, sky ? 0 : beat, sky ? 0 : bgPulse);
+        gl.uniform4f(U.uE, drift, V.streak, sky ? 0 : arenaMix, V.detail);
+        gl.uniform4f(U.uF, tierMix, inflow, P.motion ? 1 : 0, P.cosmos ? 1 : 0);
+        gl.uniform4f(U.uG, ringPhase, 0, 0, 0);
+        gl.uniform3f(U.uTint, tint[0] / 255, tint[1] / 255, tint[2] / 255);
+        gl.uniform3f(U.uC1, C1[0], C1[1], C1[2]);
+        gl.uniform3f(U.uC2, C2[0], C2[1], C2[2]);
+        gl.uniform3f(U.uC3, C3[0], C3[1], C3[2]);
+        gl.uniform4f(U.uSN, sn ? sn.x : 0, sn ? sn.y : 0, sn ? sn.age : 0, sn ? sn.w : 0);
+        gl.uniform3f(U.uSNa, snPal[0][0], snPal[0][1], snPal[0][2]);
+        gl.uniform3f(U.uSNb, snPal[1][0], snPal[1][1], snPal[1][2]);
+        gl.uniform4f(U.uSL, sl ? sl.age : 0, sl && P.cosmos ? sl.w : 0, snMix, sl ? sl.seed : 0);
+        gl.uniform3f(U.uSLa, slPal[0][0], slPal[0][1], slPal[0][2]);
+        gl.uniform3f(U.uSLb, slPal[1][0], slPal[1][1], slPal[1][2]);
+        gl.uniform4fv(U.uCl, clA);
+        gl.uniform4fv(U.uCm, clB);
+        gl.uniform4f(U.uH, flash, implode, invert, 0);
+        gl.uniform4f(U.uJ, shR, shS, singMix, hzMix);
+        gl.uniform4f(U.uK, shieldR, shieldMix, vortexFall, 0);
+        gl.uniform3f(U.uShockCol, shCol[0], shCol[1], shCol[2]);
+        gl.uniform2f(U.uClR, clMin, clMax);
+      };
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, nebTex);
+      gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, diskTex);
+      if (drawSky) {
+        gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, null);   // never sample what we draw into
+        gl.bindFramebuffer(gl.FRAMEBUFFER, skyFb);
+        gl.viewport(0, 0, w, h);
+        gl.useProgram(pSky);
+        quad();
+        upload(US, true);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, w, h);
+      gl.useProgram(pComp);
+      quad();
+      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, skyTex);
+      upload(UC, false);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      return true;
+    }
+    return {
+      render,
+      get ok() { return ok; },
+      get active() { return ok && !broken && !isLow(); },
+      get low() { return broken || isLow(); },
+      get softGL() { return softGL; },
+      get ringPhase() { return ringPhase; },
+      get motion() { return prefs().motion; }
+    };
+  })();
+
+  // Light circling the photon ring: three comets with fading tails riding the target
+  // ring, brightest on the side where the disk spins toward us. Drawn on the game
+  // canvas so it stays crisp on top of the ring; no shadowBlur, so it is cheap.
+  function drawPhotonRingFX(x, y, r, p, t) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    ctx.globalAlpha = Math.max(0.2, 0.55 - p * 0.25);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.1 + p * 1.2;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
+    if (SpaceFX.motion && !SpaceFX.low) {
+      const ph = SpaceFX.active ? SpaceFX.ringPhase : t * 2.5;
+      const seg = 6, tail = 0.95;
+      for (let k = 0; k < 3; k++) {
+        const head = ph + k * Math.PI * 2 / 3;
+        for (let s = 0; s < seg; s++) {
+          const a1 = head - tail * s / seg, a0 = head - tail * (s + 1) / seg;
+          const doppler = 0.55 + 0.45 * Math.cos(a1);
+          ctx.globalAlpha = Math.min(1, (1 - s / seg) * 0.95 * doppler);
+          ctx.lineWidth = (2.3 + p * 2) * (1 - s / seg * 0.6);
+          ctx.strokeStyle = s < 2 ? '#ffffff' : theme.c1;
+          ctx.beginPath(); ctx.arc(x, y, r, a0, a1); ctx.stroke();
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  // ---- Deep Space settings (Lite / High / Ultra + effect toggles) ----
+  const SPACE_DESC = {
+    ultra: 'Full screen resolution. The sharpest, and the heaviest on your phone.',
+    high: 'Matches the game layer. Sharp, and steady on most phones.',
+    lite: 'Base resolution, fewer stars, less infall. For older phones.'
+  };
+  function refreshSpaceSettings() {
+    const s = save.settings;
+    const q = ['ultra', 'high', 'lite'].includes(s.spaceQuality) ? s.spaceQuality : 'high';
+    const lo = document.getElementById('lowGfxToggle'); if (lo) lo.checked = SpaceFX.low;
+    const blk = document.getElementById('spaceSeg'); if (blk) blk.closest('.setting-block').classList.toggle('gfx-low', SpaceFX.low);
+    document.querySelectorAll('#spaceSeg button').forEach((b) => b.classList.toggle('on', b.dataset.sq === q));
+    const d = document.getElementById('spaceDesc'); if (d) d.textContent = SPACE_DESC[q];
+    const m = document.getElementById('spaceMotionToggle'); if (m) m.checked = s.spaceMotion !== false;
+    const c = document.getElementById('spaceCosmosToggle'); if (c) c.checked = s.spaceCosmos !== false;
+  }
+
+  // 2D stand-in for the black hole, only used when WebGL is unavailable.
+  function drawBlackHole2D(x, y, t, p) {
+    const R = targetR;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const g = ctx.createRadialGradient(x, y, R * 0.9, x, y, R * 3.2);
+    g.addColorStop(0, hexToRgba(theme.c1, 0.45 + p * 0.3));
+    g.addColorStop(0.2, hexToRgba(theme.c2, 0.16));
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(x, y, R * 3.2, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.55 + p * 0.3;
+    ctx.strokeStyle = hexToRgba(theme.c1, 0.6);
+    ctx.lineWidth = R * 0.18;
+    ctx.beginPath(); ctx.ellipse(x, y, R * 2.4, R * 0.42, -0.1, 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+    ctx.save();
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // ================= BOSS CORE POWERS — deep-space look =================
+  // Each core ignites with a shockwave from the hole (SpaceFX), then draws its own
+  // effect here on the game canvas. All additive strokes, no shadowBlur: crisp and
+  // cheap on phones.
+  function powerAge(t) {
+    const tune = abTuning();
+    return tune && isFinite(tune.dur) ? Math.max(0, t - (abUntil - tune.dur)) : 1;
+  }
+  function easeOut3(k) { k = Math.min(1, Math.max(0, k)); return 1 - Math.pow(1 - k, 3); }
+
+  // HEX SAW: six plasma blades orbit the event horizon, unfolding out of the photon ring.
+  function drawHexSawFX(t, x, y) {
+    const e = easeOut3(powerAge(t) / 0.28);
+    const R0 = targetR * (1.0 + 0.42 * e);
+    const rot = t * 9;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 6; k++) {
+      const a0 = rot + k * Math.PI / 3;
+      for (let s = 4; s >= 0; s--) {                 // motion-blur echoes behind each blade
+        const a = a0 - s * 0.07, fade = 1 - s / 5;
+        ctx.globalAlpha = 0.85 * fade * e;
+        ctx.strokeStyle = s === 0 ? '#ffffff' : (s < 2 ? '#00f5ff' : '#ff2bd6');
+        ctx.lineWidth = (s === 0 ? 2.2 : 4.5) * (0.6 + 0.4 * fade);
+        ctx.beginPath(); ctx.arc(0, 0, R0 + s * 1.5, a, a + 0.42); ctx.stroke();
+      }
+      const tip = a0 + 0.42;
+      ctx.globalAlpha = e; ctx.fillStyle = '#ffffff';
+      ctx.beginPath(); ctx.arc(Math.cos(tip) * R0, Math.sin(tip) * R0, 2.6, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.lineWidth = 1.4;                              // Hexatron's frames, counter-rotating
+    ctx.globalAlpha = 0.55 * e; ctx.strokeStyle = '#00f5ff';
+    drawPolygon(0, 0, R0 * 0.86, 6, -t * 2.6); ctx.stroke();
+    ctx.globalAlpha = 0.35 * e; ctx.strokeStyle = '#ff2bd6';
+    drawPolygon(0, 0, R0 * 1.12, 6, t * 1.4 + Math.PI / 6); ctx.stroke();
+    ctx.restore();
+  }
+
+  // TRI-LASER: three beams fired from the photon ring, igniting outward, with plasma
+  // knots racing along them and a flare at the source.
+  function drawTriLaserFX(t, x, y) {
+    const reach = Math.max(W, H) * 1.2 * easeOut3(powerAge(t) / 0.22);
+    const rot = t * 1.5, r0 = targetR * 0.95;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 3; i++) {
+      const a = rot + i / 3 * Math.PI * 2, cx = Math.cos(a), cy = Math.sin(a);
+      const x0 = cx * r0, y0 = cy * r0, x1 = cx * reach, y1 = cy * reach;
+      const g = ctx.createLinearGradient(x0, y0, x1, y1);
+      g.addColorStop(0, 'rgba(255,96,116,0.95)');
+      g.addColorStop(0.35, 'rgba(255,46,77,0.55)');
+      g.addColorStop(1, 'rgba(255,46,77,0)');
+      const gc = ctx.createLinearGradient(x0, y0, x1, y1);
+      gc.addColorStop(0, 'rgba(255,255,255,0.95)');
+      gc.addColorStop(0.55, 'rgba(255,220,228,0)');
+      ctx.strokeStyle = g;
+      ctx.globalAlpha = 0.22; ctx.lineWidth = 22 + Math.sin(t * 14 + i) * 3;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.globalAlpha = 0.75; ctx.lineWidth = 7;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.strokeStyle = gc; ctx.globalAlpha = 0.95; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+      ctx.fillStyle = '#ffd6de';
+      for (let k = 0; k < 4; k++) {
+        const p = (t * 1.6 + k / 4 + i * 0.13) % 1;
+        const rr = r0 + (reach - r0) * p * p;
+        ctx.globalAlpha = (1 - p) * 0.9;
+        ctx.beginPath(); ctx.arc(cx * rr, cy * rr, 3.2 * (1 - p) + 1, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    const fl = ctx.createRadialGradient(0, 0, 0, 0, 0, targetR * 1.7);
+    fl.addColorStop(0, 'rgba(255,120,140,0.22)');
+    fl.addColorStop(1, 'rgba(255,46,77,0)');
+    ctx.globalAlpha = 1; ctx.fillStyle = fl;
+    ctx.beginPath(); ctx.arc(0, 0, targetR * 1.7, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.6; ctx.strokeStyle = '#ffd23d'; ctx.lineWidth = 1.6;   // Triarch's reactor
+    drawPolygon(0, 0, targetR * 0.5, 3, -rot * 1.6); ctx.stroke();
+    ctx.restore();
+  }
+
+  // PRISM GUARD: the light-bending dome is drawn by SpaceFX; here, purple lightning
+  // crawls its rim and nodes of charge ride around it.
+  function drawPrismGuardFX(t, x, y) {
+    const R = targetR * (1 + 1.05 * easeOut3(powerAge(t) / 0.35));
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineJoin = 'round';
+    const arcs = save.settings.environmentDetail === 'off' ? 2 : 4;
+    for (let k = 0; k < arcs; k++) {
+      const seed = Math.floor(t * 2.5 + k * 7);
+      const base = (t * (0.9 + k * 0.35) + k * 1.9) % (Math.PI * 2);
+      const span = 0.55 + ((seed * 37) % 40) / 100;
+      for (let pass = 0; pass < 2; pass++) {
+        ctx.strokeStyle = pass ? '#f3e2ff' : (k % 2 ? 'rgba(200,140,255,0.5)' : 'rgba(150,80,255,0.5)');
+        ctx.lineWidth = pass ? 1.3 : 4.5;
+        ctx.globalAlpha = pass ? 0.95 : 0.6;
+        ctx.beginPath();
+        for (let i = 0; i <= 7; i++) {
+          const a = base + span * i / 7;
+          const rr = R * (1 + Math.sin(seed * 12.9898 + i * 78.233) * 0.045);
+          if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+        }
+        ctx.stroke();
+      }
+    }
+    ctx.fillStyle = '#ecd2ff';
+    for (let i = 0; i < 6; i++) {
+      const a = -t * 1.6 + i / 6 * Math.PI * 2;
+      ctx.globalAlpha = 0.9;
+      ctx.beginPath(); ctx.arc(Math.cos(a) * R, Math.sin(a) * R, 2.4 + Math.sin(t * 9 + i) * 1.0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // EVENT HORIZON: the hole goes supermassive (SpaceFX). Here: the gravity well's edge,
+  // drawn as dashes falling inward, plus a gold countdown arc hugging the photon ring.
+  function drawEventHorizonFX(t, x, y) {
+    const tune = ABILITY_TUNING.eventHorizon;
+    const e = easeOut3(powerAge(t) / 0.4);
+    const reach = targetR * tune.reach;
+    const left = Math.max(0, Math.min(1, (abUntil - t) / tune.dur));
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (let k = 0; k < 3; k++) {                     // three rings of dashes sinking toward the hole
+      const p = (t * 0.55 + k / 3) % 1;
+      const rr = reach * (1 - 0.55 * p);
+      ctx.globalAlpha = 0.42 * e * Math.sin(Math.PI * p);
+      ctx.strokeStyle = '#ffd76b';
+      ctx.lineWidth = 1.6;
+      ctx.setLineDash([6, 10]);
+      ctx.lineDashOffset = -t * 60 * (k + 1);
+      ctx.beginPath(); ctx.arc(0, 0, rr, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.setLineDash([]);
+    ctx.globalAlpha = 0.85 * e;
+    ctx.strokeStyle = '#ffd76b'; ctx.lineWidth = 2.4;
+    ctx.beginPath(); ctx.arc(0, 0, targetR * 1.16, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2); ctx.stroke();
+    ctx.restore();
+  }
+
+  // Rings swallowed by Event Horizon: each collapses into the hole, twisting and
+  // stretching as it falls (spaghettification), fading as it reddens.
+  function drawDevours(t) {
+    if (!devours.length) return;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (const d of devours) {
+      const k = (t - d.t0) / 0.42;
+      if (k >= 1 || k < 0) continue;
+      const r = targetR * 0.25 + (d.r - targetR * 0.25) * Math.pow(1 - k, 2);
+      const twist = k * 4.2;
+      const arcLen = (Math.PI * 2 / 3) * (1 - 0.75 * k);
+      ctx.globalAlpha = 1 - k;
+      ctx.strokeStyle = k < 0.6 ? d.color : '#ff6a3c';
+      ctx.lineWidth = 5 * (1 - k) + 1;
+      for (let i = 0; i < 3; i++) {
+        const a = twist + i * Math.PI * 2 / 3;
+        ctx.beginPath(); ctx.arc(d.x, d.y, r, a, a + arcLen); ctx.stroke();
+      }
+    }
+    ctx.restore();
+    devours = devours.filter((d) => t - d.t0 < 0.42 && t >= d.t0);
+  }
+
+  function drawPowerFX(t, x, y) {
+    if (abActive) {
+      if (abilityId === 'hexSaw') drawHexSawFX(t, x, y);
+      else if (abilityId === 'triLaser') drawTriLaserFX(t, x, y);
+      else if (abilityId === 'prismGuard') drawPrismGuardFX(t, x, y);
+      else if (abilityId === 'eventHorizon') drawEventHorizonFX(t, x, y);
+    }
+    drawDevours(t);
+  }
+
+  // SECRET: the Visitor's craft. It comes looking once Event Horizon has swallowed
+  // enough rings in a run; tap it four times while the horizon is open to follow it.
+  function drawVisitorCraft(t) {
+    const pl = realmPlanet;
+    if (!pl) return;
+    const age = Math.min(1, (t - pl.born) / 2.2);
+    const pr = pl.r * age;
+    ctx.save();
+    ctx.globalAlpha = age;
+    ctx.translate(pl.x, pl.y + Math.sin(t * 1.6) * pr * 0.08);
+    ctx.globalCompositeOperation = 'lighter';
+    const ug = ctx.createRadialGradient(0, pr * 0.35, 0, 0, pr * 0.35, pr * 2.4);
+    ug.addColorStop(0, 'rgba(94,242,255,0.45)');
+    ug.addColorStop(0.55, 'rgba(183,107,255,0.18)');
+    ug.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = ug;
+    ctx.beginPath(); ctx.ellipse(0, pr * 0.35, pr * 2.4, pr * 0.9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = 'rgba(10,16,30,0.96)';
+    ctx.strokeStyle = '#5ef2ff'; ctx.shadowColor = '#5ef2ff'; ctx.shadowBlur = 16; ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-pr * 1.15, 0);
+    ctx.quadraticCurveTo(-pr * 0.55, pr * 0.5, 0, pr * 0.55);
+    ctx.quadraticCurveTo(pr * 0.55, pr * 0.5, pr * 1.15, 0);
+    ctx.quadraticCurveTo(pr * 0.55, -pr * 0.34, 0, -pr * 0.38);
+    ctx.quadraticCurveTo(-pr * 0.55, -pr * 0.34, -pr * 1.15, 0);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(94,242,255,0.28)';
+    ctx.beginPath(); ctx.ellipse(0, -pr * 0.36, pr * 0.42, pr * 0.34, 0, Math.PI, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 10;
+    for (let i = 0; i < 6; i++) {
+      const ang = t * 1.4 + i / 6 * Math.PI * 2;
+      ctx.fillStyle = (i % 2) ? '#e8fbff' : '#b76bff';
+      ctx.beginPath(); ctx.arc(Math.cos(ang) * pr * 0.95, Math.sin(ang) * pr * 0.2, 2.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = i < pl.taps ? '#5ef2ff' : 'rgba(255,255,255,0.22)';
+      ctx.beginPath(); ctx.arc(-pr * 0.6 + i * pr * 0.4, pr * 1.05, 3.2, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function drawBackground(t) {
     const pv = phaseVisual();
 
@@ -8193,6 +9721,32 @@
     const arenaTarget = bossActive ? 1 : 0;
     arenaMix += (arenaTarget - arenaMix) * 0.05;
     if (arenaMix < 0.004 && !bossActive) arenaMix = 0;
+
+    // DEEP SPACE (v0.3.0): no grid. Clear the game canvas to transparent and let
+    // the WebGL sky (stars, nebula, lensing, black hole) show through from below.
+    if (SPACE_MODE) {
+      const m = ctx.getTransform();                // screen shake offset, so the sky shakes too
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.restore();
+      if (!SpaceFX.render(t, pv, m.e / DPR, m.f / DPR)) drawStarfieldBg(t);
+      if (arenaMix > 0.01) drawBossArena(t, arenaMix);
+      if (sparks.length) {                          // orbiting debris around the hole
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        let curColor = null;
+        for (const s of sparks) {
+          if (s.color !== curColor) { ctx.fillStyle = s.color; curColor = s.color; }
+          ctx.globalAlpha = s.alpha * 0.8;
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.size * 0.8, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+      return;
+    }
 
     // STARFIELD REALMS (v3.3): jet black, no grid, only stars. Handled before
     // anything else so no themed gradient or grid can bleed through.
@@ -8385,8 +9939,8 @@
     const cols = activeBoss ? activeBoss.colors : ['#00f5ff', '#ff2bd6', '#ffffff'];
     const kind = activeBoss ? activeBoss.kind : 'hex';
     // Starfield realms stay pure void: only the boss halo is drawn over the
-    // stars, never a horizon, skyline or reflective floor.
-    if (doomMode && doomCfg && doomCfg.bgStyle === 'starfield') {
+    // stars, never a horizon, skyline or reflective floor. (Deep Space: always.)
+    if (SPACE_MODE || (doomMode && doomCfg && doomCfg.bgStyle === 'starfield')) {
       const bx0 = bossX(), by0 = bossY();
       ctx.save();
       ctx.globalAlpha = mix;
@@ -9287,9 +10841,17 @@
       ctx.restore();
     }
 
-    ring(x, y, targetR + p * 18, theme.c1, 5 + p * 7, 0.86 - p * 0.45);
-    ring(x, y, targetR * 0.72, theme.c2, 2, 0.5);
-    ring(x, y, targetR * 1.28, theme.c3, 1.5, 0.25);
+    if (SPACE_MODE) {
+      // The target is the black hole's photon ring: same radius, width and hit
+      // flare as before, so timing reads exactly the same.
+      if (!SpaceFX.active) drawBlackHole2D(x, y, t, p);
+      ring(x, y, targetR + p * 18, theme.c1, 5 + p * 7, 0.86 - p * 0.45);
+      drawPhotonRingFX(x, y, targetR + p * 18, p, t);   // white-hot core + light circling the ring
+    } else {
+      ring(x, y, targetR + p * 18, theme.c1, 5 + p * 7, 0.86 - p * 0.45);
+      ring(x, y, targetR * 0.72, theme.c2, 2, 0.5);
+      ring(x, y, targetR * 1.28, theme.c3, 1.5, 0.25);
+    }
 
     // ---- BOSS CORE target visuals (v2.7) ----
     // Universal hold-progress ring: shows for ANY equipped core while charging.
@@ -9310,140 +10872,7 @@
       ctx.restore();
     }
 
-    // HEX SAW — Hexatron homage: cyan/magenta hex teeth + counter-rotating
-    // hex frames + a small hex core glyph inside the target.
-    if (abilityId === 'hexSaw' && abActive) {
-      ctx.save(); ctx.translate(x, y);
-      ctx.save(); ctx.rotate(t * 9);
-      ctx.strokeStyle = '#00f5ff'; ctx.shadowColor = '#00f5ff'; ctx.shadowBlur = 18; ctx.lineWidth = 3.5;
-      const teeth = 12, rr = targetR * 1.4;
-      ctx.beginPath();
-      for (let i = 0; i <= teeth; i++) {
-        const a = i / teeth * Math.PI * 2;
-        const rad = rr * (i % 2 ? 1 : 0.78);
-        const px = Math.cos(a) * rad, py = Math.sin(a) * rad;
-        if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-      }
-      ctx.closePath(); ctx.stroke();
-      ctx.restore();
-      // counter-rotating hex frames (Hexatron's nested rings)
-      ctx.save(); ctx.rotate(-t * 3.2);
-      ctx.strokeStyle = '#ff2bd6'; ctx.shadowColor = '#ff2bd6'; ctx.shadowBlur = 12; ctx.lineWidth = 2;
-      drawPolygon(0, 0, targetR * 1.05, 6, 0); ctx.stroke();
-      ctx.restore();
-      ctx.save(); ctx.rotate(t * 1.8);
-      ctx.strokeStyle = '#00f5ff'; ctx.shadowColor = '#00f5ff'; ctx.shadowBlur = 10; ctx.lineWidth = 1.6;
-      drawPolygon(0, 0, targetR * 0.62, 6, Math.PI / 6); ctx.stroke();
-      ctx.restore();
-      // core glyph
-      ctx.fillStyle = '#7dff68'; ctx.shadowColor = '#7dff68'; ctx.shadowBlur = 16;
-      ctx.beginPath(); ctx.arc(0, 0, targetR * 0.14, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-    }
-
-    // TRI-LASER — Triarch homage: three crimson beams spanning the screen from
-    // a rotating triangular reactor.
-    if (abilityId === 'triLaser' && abActive) {
-      const reach = Math.max(W, H) * 1.2;
-      const rot = t * 1.5;
-      ctx.save(); ctx.translate(x, y);
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = 0; i < 3; i++) {
-        const a = rot + i / 3 * Math.PI * 2;
-        const g = ctx.createLinearGradient(0, 0, Math.cos(a) * reach, Math.sin(a) * reach);
-        g.addColorStop(0, 'rgba(255,46,77,0.95)');
-        g.addColorStop(0.5, 'rgba(255,79,163,0.5)');
-        g.addColorStop(1, 'rgba(255,46,77,0)');
-        ctx.strokeStyle = g; ctx.shadowColor = '#ff2e4d'; ctx.shadowBlur = 20;
-        ctx.lineWidth = 7 + Math.sin(t * 12 + i) * 2;
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * reach, Math.sin(a) * reach); ctx.stroke();
-        // hot inner core of the beam
-        ctx.strokeStyle = 'rgba(255,255,255,0.75)'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * reach * 0.5, Math.sin(a) * reach * 0.5); ctx.stroke();
-      }
-      ctx.globalCompositeOperation = 'source-over';
-      // rotating triangle reactor inside the orb
-      ctx.save(); ctx.rotate(-rot * 1.6);
-      ctx.strokeStyle = '#ffd23d'; ctx.shadowColor = '#ffd23d'; ctx.shadowBlur = 14; ctx.lineWidth = 2.5;
-      drawPolygon(0, 0, targetR * 0.55, 3, 0); ctx.stroke();
-      ctx.restore();
-      ctx.fillStyle = '#ff2e4d'; ctx.shadowColor = '#ff2e4d'; ctx.shadowBlur = 18;
-      ctx.beginPath(); ctx.arc(0, 0, targetR * 0.13, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-    }
-
-    // PRISM GUARD — a purple forcefield dome crackling with electricity.
-    // Reads instantly as "you are untouchable right now".
-    if (abilityId === 'prismGuard' && abActive) {
-      const R = targetR * 2.05;
-      ctx.save(); ctx.translate(x, y);
-
-      // 1) filled energy dome (soft, never hides incoming rings)
-      const dome = ctx.createRadialGradient(0, 0, R * 0.25, 0, 0, R);
-      dome.addColorStop(0, 'rgba(176,107,255,0.05)');
-      dome.addColorStop(0.72, 'rgba(176,107,255,0.16)');
-      dome.addColorStop(1, 'rgba(214,150,255,0.34)');
-      ctx.fillStyle = dome;
-      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.fill();
-
-      // 2) hard rim, pulsing
-      const rim = 0.65 + Math.sin(t * 5) * 0.2;
-      ctx.strokeStyle = 'rgba(200,130,255,' + rim.toFixed(2) + ')';
-      ctx.shadowColor = '#b06bff'; ctx.shadowBlur = 26; ctx.lineWidth = 3.5;
-      ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 1.2; ctx.shadowBlur = 10;
-      ctx.beginPath(); ctx.arc(0, 0, R * 0.955, 0, Math.PI * 2); ctx.stroke();
-
-      // 3) PURPLE ELECTRICITY — jagged arcs crawling around the rim.
-      ctx.globalCompositeOperation = 'lighter';
-      const arcs = save.settings.environmentDetail === 'off' ? 2 : 4;
-      for (let k = 0; k < arcs; k++) {
-        // each arc walks the rim at its own speed and re-seeds every ~0.4s
-        const seed = Math.floor(t * 2.5 + k * 7);
-        const base = (t * (0.9 + k * 0.35) + k * 1.9) % (Math.PI * 2);
-        const span = 0.55 + ((seed * 37) % 40) / 100;
-        const segs = 7;
-        ctx.strokeStyle = k % 2 ? 'rgba(226,178,255,0.95)' : 'rgba(160,80,255,0.9)';
-        ctx.shadowColor = '#c07bff'; ctx.shadowBlur = 16;
-        ctx.lineWidth = k % 2 ? 1.6 : 2.4;
-        ctx.beginPath();
-        for (let i = 0; i <= segs; i++) {
-          const p = i / segs;
-          const a = base + span * p;
-          // deterministic jitter so the bolt looks electric, not noisy
-          const jitter = Math.sin(seed * 12.9898 + i * 78.233) * 0.5;
-          const rr = R * (1 + jitter * 0.085);
-          const px = Math.cos(a) * rr, py = Math.sin(a) * rr;
-          if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
-        }
-        ctx.stroke();
-      }
-      // 4) occasional bolt lancing across the dome interior
-      if (Math.sin(t * 7.3) > 0.72) {
-        const a0 = t * 3.1, a1 = a0 + Math.PI * (0.6 + Math.sin(t * 2) * 0.25);
-        ctx.strokeStyle = 'rgba(240,210,255,0.85)';
-        ctx.shadowColor = '#d9a6ff'; ctx.shadowBlur = 18; ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        const steps = 6;
-        for (let i = 0; i <= steps; i++) {
-          const p = i / steps;
-          const ax = Math.cos(a0) * R * (1 - p) + Math.cos(a1) * R * p;
-          const ay = Math.sin(a0) * R * (1 - p) + Math.sin(a1) * R * p;
-          const off = (i === 0 || i === steps) ? 0 : Math.sin(t * 40 + i * 3) * R * 0.1;
-          if (i === 0) ctx.moveTo(ax, ay); else ctx.lineTo(ax + off, ay - off);
-        }
-        ctx.stroke();
-      }
-      ctx.globalCompositeOperation = 'source-over';
-
-      // 5) node sparks riding the rim
-      for (let i = 0; i < 6; i++) {
-        const a = -t * 1.6 + i / 6 * Math.PI * 2;
-        ctx.fillStyle = '#e2b2ff'; ctx.shadowColor = '#b06bff'; ctx.shadowBlur = 14;
-        ctx.beginPath(); ctx.arc(Math.cos(a) * R, Math.sin(a) * R, 2.6 + Math.sin(t * 9 + i) * 1.1, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.restore();
-    }
+    drawPowerFX(t, x, y);   // Hex Saw / Tri-Laser / Prism Guard / Event Horizon, deep-space looks
     // shield-break refraction flash
     if (guardBreakFlash > 0) {
       ctx.save();
@@ -9471,55 +10900,35 @@
       ctx.restore();
     }
 
-    // ECLIPSE REALM — Eclipse Sovereign homage: purple/gold halo + faint clock
-    // orbits around the target while time is held.
-    if (abilityId === 'eclipseRealm' && abActive) {
-      ctx.save(); ctx.translate(x, y);
-      ctx.globalAlpha = 0.55 + Math.sin(t * 2) * 0.15;
-      ctx.strokeStyle = '#ffd23d'; ctx.shadowColor = '#ffd23d'; ctx.shadowBlur = 26; ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.arc(0, 0, targetR * 1.9, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = '#b026ff'; ctx.shadowColor = '#b026ff'; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(0, 0, targetR * 2.25, 0, Math.PI * 2); ctx.stroke();
-      // clock hands
-      ctx.globalAlpha = 0.4;
-      ctx.strokeStyle = '#ffd23d'; ctx.lineWidth = 2;
+    if (!SPACE_MODE) {   // tick ring + inner glow would sit inside the event horizon
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(spin);
       for (let i = 0; i < 12; i++) {
-        const a = i / 12 * Math.PI * 2;
+        const a = i * Math.PI * 2 / 12;
+        const inner = targetR + 16;
+        const outer = targetR + 32 + Math.sin(t * 3 + i) * 8;
+        ctx.strokeStyle = i % 2 ? theme.c2 : theme.c1;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = ctx.strokeStyle;
+        ctx.shadowBlur = 16;
+        ctx.globalAlpha = 0.72;
         ctx.beginPath();
-        ctx.moveTo(Math.cos(a) * targetR * 2.0, Math.sin(a) * targetR * 2.0);
-        ctx.lineTo(Math.cos(a) * targetR * 2.18, Math.sin(a) * targetR * 2.18);
+        ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
+        ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
         ctx.stroke();
       }
       ctx.restore();
-    }
 
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(spin);
-    for (let i = 0; i < 12; i++) {
-      const a = i * Math.PI * 2 / 12;
-      const inner = targetR + 16;
-      const outer = targetR + 32 + Math.sin(t * 3 + i) * 8;
-      ctx.strokeStyle = i % 2 ? theme.c2 : theme.c1;
-      ctx.lineWidth = 3;
-      ctx.shadowColor = ctx.strokeStyle;
-      ctx.shadowBlur = 16;
-      ctx.globalAlpha = 0.72;
+      ctx.save();
+      ctx.fillStyle = fever ? hexToRgba(theme.c2, 0.08) : 'rgba(255,255,255,0.03)';
+      ctx.shadowColor = fever ? theme.c2 : '#ffffff';
+      ctx.shadowBlur = fever ? 40 : 28;
       ctx.beginPath();
-      ctx.moveTo(Math.cos(a) * inner, Math.sin(a) * inner);
-      ctx.lineTo(Math.cos(a) * outer, Math.sin(a) * outer);
-      ctx.stroke();
+      ctx.arc(x, y, targetR * 0.48 + p * 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
-    ctx.restore();
-
-    ctx.save();
-    ctx.fillStyle = fever ? hexToRgba(theme.c2, 0.08) : 'rgba(255,255,255,0.03)';
-    ctx.shadowColor = fever ? theme.c2 : '#ffffff';
-    ctx.shadowBlur = fever ? 40 : 28;
-    ctx.beginPath();
-    ctx.arc(x, y, targetR * 0.48 + p * 9, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
   }
 
   function drawNotes(t) {
@@ -9585,116 +10994,13 @@
     ctx.save();
     ctx.translate(sx, sy);
     drawBackground(t);
-    if (realmActive() || realmSnap > 0) drawRealmOverlay(t);
+    if (realmPlanet) drawVisitorCraft(t);
     if (bossActive) drawBoss(t);      // boss sits behind the notes/target
     drawGhost(t);
     drawNotes(t);
     drawTarget(t);
     drawParticles();
     drawCoreCapture(t);
-    ctx.restore();
-  }
-
-  // ECLIPSE REALM overlay — the world outside the orbit: cosmic dim, purple/gold
-  // eclipse halo, suspended particles and faint clock orbits. Drawn over the
-  // background so gameplay rings stay fully readable on top.
-  function drawRealmOverlay(t) {
-    const on = realmActive();
-    const a = on ? 1 : Math.max(0, realmSnap);
-    if (a <= 0) return;
-    const cx = W / 2, cy = H * 0.42;
-    ctx.save();
-    // dim the world into cosmic silhouette
-    ctx.globalAlpha = a * 0.62;
-    ctx.fillStyle = '#05010f';
-    ctx.fillRect(0, 0, W, H);
-    ctx.globalAlpha = a;
-    ctx.globalCompositeOperation = 'lighter';
-    // eclipse halo
-    const halo = ctx.createRadialGradient(cx, cy, Math.min(W, H) * 0.12, cx, cy, Math.max(W, H) * 0.6);
-    halo.addColorStop(0, 'rgba(255,210,61,0.22)');
-    halo.addColorStop(0.35, 'rgba(176,38,255,0.18)');
-    halo.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = halo;
-    ctx.fillRect(0, 0, W, H);
-    // eclipse ring
-    ctx.strokeStyle = 'rgba(255,210,61,0.55)'; ctx.lineWidth = 2.5;
-    ctx.shadowColor = '#ffd23d'; ctx.shadowBlur = 24;
-    ctx.beginPath(); ctx.arc(cx, cy, Math.min(W, H) * 0.2, 0, Math.PI * 2); ctx.stroke();
-    // faint clock orbits
-    if (save.settings.environmentDetail !== 'off') {
-      ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(176,38,255,0.22)'; ctx.lineWidth = 1;
-      for (let i = 1; i <= 3; i++) {
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, Math.min(W, H) * (0.26 + i * 0.09), Math.min(W, H) * (0.26 + i * 0.09) * 0.34, t * 0.05 * i, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      // suspended frozen motes
-      for (let i = 0; i < 26; i++) {
-        const px = ((i * 137) % 100) / 100 * W;
-        const py = ((i * 71) % 100) / 100 * H;
-        ctx.globalAlpha = a * (0.18 + 0.14 * Math.sin(i * 2.1));
-        ctx.fillStyle = i % 3 ? '#ffd23d' : '#b026ff';
-        ctx.fillRect(px, py, 2.4, 2.4);
-      }
-    }
-    // SECRET: a craft holding station in the deep, once it has revealed itself
-    if (on && realmPlanet) {
-      const pl = realmPlanet;
-      const age = Math.min(1, (t - pl.born) / 2.2);
-      const pr = pl.r * age;
-      ctx.save();
-      ctx.globalAlpha = a * age;
-      ctx.translate(pl.x, pl.y + Math.sin(t * 1.6) * pr * 0.08);
-
-      // beam + glow
-      ctx.globalCompositeOperation = 'lighter';
-      const ug = ctx.createRadialGradient(0, pr * 0.35, 0, 0, pr * 0.35, pr * 2.4);
-      ug.addColorStop(0, 'rgba(94,242,255,0.45)');
-      ug.addColorStop(0.55, 'rgba(183,107,255,0.18)');
-      ug.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = ug;
-      ctx.beginPath(); ctx.ellipse(0, pr * 0.35, pr * 2.4, pr * 0.9, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
-
-      // saucer body
-      ctx.fillStyle = 'rgba(10,16,30,0.96)';
-      ctx.strokeStyle = '#5ef2ff'; ctx.shadowColor = '#5ef2ff'; ctx.shadowBlur = 16; ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-pr * 1.15, 0);
-      ctx.quadraticCurveTo(-pr * 0.55, pr * 0.5, 0, pr * 0.55);
-      ctx.quadraticCurveTo(pr * 0.55, pr * 0.5, pr * 1.15, 0);
-      ctx.quadraticCurveTo(pr * 0.55, -pr * 0.34, 0, -pr * 0.38);
-      ctx.quadraticCurveTo(-pr * 0.55, -pr * 0.34, -pr * 1.15, 0);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      // dome
-      ctx.fillStyle = 'rgba(94,242,255,0.28)';
-      ctx.beginPath(); ctx.ellipse(0, -pr * 0.36, pr * 0.42, pr * 0.34, 0, Math.PI, Math.PI * 2); ctx.fill();
-      // rim lights
-      ctx.shadowBlur = 10;
-      for (let i = 0; i < 6; i++) {
-        const ang = t * 1.4 + i / 6 * Math.PI * 2;
-        ctx.fillStyle = (i % 2) ? '#e8fbff' : '#b76bff';
-        ctx.beginPath(); ctx.arc(Math.cos(ang) * pr * 0.95, Math.sin(ang) * pr * 0.2, 2.2, 0, Math.PI * 2); ctx.fill();
-      }
-
-      // tap pips
-      ctx.shadowBlur = 0;
-      for (let i = 0; i < 4; i++) {
-        ctx.fillStyle = i < pl.taps ? '#5ef2ff' : 'rgba(255,255,255,0.22)';
-        ctx.beginPath(); ctx.arc(-pr * 0.6 + i * pr * 0.4, pr * 1.05, 3.2, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    // reality-snap shock on resume
-    if (!on && realmSnap > 0) {
-      ctx.globalAlpha = realmSnap * 0.7;
-      ctx.strokeStyle = '#fff'; ctx.shadowColor = '#ffd23d'; ctx.shadowBlur = 30;
-      ctx.lineWidth = 3 + (1 - realmSnap) * 10;
-      ctx.beginPath(); ctx.arc(tgt.x, tgt.y, targetR * (1 + (1 - realmSnap) * 7), 0, Math.PI * 2); ctx.stroke();
-    }
     ctx.restore();
   }
 
