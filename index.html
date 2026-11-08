@@ -87,6 +87,8 @@
     #game { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
     /* Deep Space: WebGL sky + black hole, drawn under the (transparent) game canvas */
     #space { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; pointer-events: none; background: #000; }
+    /* Low graphics on: the Deep Space detail controls don't apply */
+    .setting-block.gfx-low #spaceSeg, .setting-block.gfx-low #spaceDesc, .setting-block.gfx-low .toggle-row:not(:first-of-type) { opacity: 0.4; }
 
     /* Screen pulse fired on combo milestones + stage ups */
     #screenPulse {
@@ -1236,6 +1238,8 @@
 
       <div class="setting-block">
         <div class="setting-title">Deep Space</div>
+        <label class="toggle-row"><span>Low graphics</span><input type="checkbox" class="toggle" id="lowGfxToggle"></label>
+        <div class="seg-desc" style="margin-bottom:10px">Swaps the 3D space background for a simple one and cuts particles. Turn it on if the game stutters. It turns on by itself on devices without a graphics chip.</div>
         <div class="seg" id="spaceSeg">
           <button data-sq="lite">Lite</button>
           <button data-sq="high">High</button>
@@ -4833,6 +4837,10 @@
       refreshSettings();
     });
   });
+  $('lowGfxToggle').addEventListener('change', (e) => {
+    save.settings.lowGraphics = e.target.checked; persist(); tone(620, 0.05, 'triangle', 0.04); buzz(12);
+    refreshSettings();
+  });
   $('spaceMotionToggle').addEventListener('change', (e) => {
     save.settings.spaceMotion = e.target.checked; persist(); tone(620, 0.05, 'triangle', 0.04); buzz(12);
   });
@@ -7568,6 +7576,7 @@
   function fxScale() {
     const env = (save.settings && save.settings.environmentDetail) || 'full';
     let s = env === 'off' ? 0.35 : env === 'low' ? 0.6 : 1;
+    if (SpaceFX.low) s *= 0.4;   // Low graphics
     // Deep stages: taper the per-event spend so the target stays readable.
     if (stage >= 6) s *= 0.55;
     else if (stage >= 4) s *= 0.8;
@@ -8239,8 +8248,10 @@
     }
     shockwaves = shockwaves.filter(w => w.alpha > 0);
 
-    // ambient sparks orbit the (moving) target
-    while (sparks.length < 70) {
+    // ambient sparks orbit the (moving) target (fewer in Low graphics)
+    const sparkCap = SpaceFX.low ? 28 : 70;
+    if (sparks.length > sparkCap) sparks.length = sparkCap;
+    while (sparks.length < sparkCap) {
       const a = Math.random() * Math.PI * 2;
       const r = targetR * 2 + Math.random() * spawnR * 0.8;
       sparks.push({
@@ -8313,31 +8324,39 @@
   // black hole: Doppler-beamed accretion disk wrapped over its shadow, a photon ring
   // with light circling it, and clumps of gas that spiral in, stretch, redden and
   // freeze at the horizon. The combo climb drives it: Combo Fever (x2) turns on the
-  // warp, Supernova (x5) detonates a star and ignites relativistic jets, Singularity
-  // (x10) implodes the sky into a vortex. Boss-core powers get their own effects here
+  // warp, Supernova (x5) detonates a star right behind the hole (its light is lensed
+  // into a ring of fire), Singularity (x10) implodes the sky into a vortex. Boss-core powers get their own effects here
   // too (shockwaves, Prism Guard's light-bending dome, Event Horizon's collapse).
   // VISUAL ONLY. It reads game state (tgt, targetR, theme, pulse, fever, comboTier,
   // bgPulse, bpm, Conductor, state) and never writes any of it, and it never calls
   // Math.random (gameplay patterns use it), so note patterns are untouched.
   // If WebGL is missing or the GPU context is lost, the game falls back to 2D.
+  // PERFORMANCE: the lensed sky (about half the per-pixel cost) renders into a cached
+  // texture a few times a second; only the disk, ring and effects draw every frame.
+  // Shaders compile in parallel where supported, so phones don't hitch at boot.
+  // Low graphics (Settings, or automatic on devices without a GPU) skips WebGL entirely.
   const SPACE_MODE = true;
   const SpaceFX = (() => {
     const cv = document.getElementById('space');
     const TAU = Math.PI * 2;
     const RIN = 1.22, RH = 0.42;                      // ISCO and horizon, in target radii (disk plane)
     let gl = null, ok = false, broken = false, listening = false, softGL = false;
-    let pMain = null, vbo = null, nebTex = null, diskTex = null, NCL = 8;
-    const U = {};
+    let pSky = null, pComp = null, vbo = null, nebTex = null, diskTex = null, NCL = 8;
+    let skyTex = null, skyFb = null, skyW = 0, skyH = 0, pending = null, pcExt = null;
+    let frameNo = 0, skyDirty = true, lastCx = -1e9, lastCy = -1e9, skyKey = '';
+    const US = {}, UC = {};
     let quality = 1, lastWall = 0, ema = 16.7, slow = 0;
     let lastT = null, diskPhase = 0, ringPhase = 0, inflow = 0, drift = 0;
     let feverMix = 0, tierMix = 0, lastTier = 0, lastBg = 0, lastPulse = 0, rippleWall = -1e9;
     let sn = null;                                     // active supernova {x, y, age, w}
-    let clumps = [], clA = null, clB = null;
+    let clumps = [], clA = null, clB = null, clMin = 1e9, clMax = -1e9;
     let colKey = '', C1 = [0, 0, 0], C2 = [0, 0, 0], C3 = [0, 0, 0];
     // Tier transitions + power effects. One-shot effects live in fxList and age on
     // the game clock, so a pause freezes them mid-flight.
     const RM = (() => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
-    let fxList = [], lastLvl = 0, snMix = 0, singMix = 0, jetMix = 0, hzMix = 0, shieldMix = 0, vortexFall = 0;
+    let fxList = [], lastLvl = 0, snMix = 0, singMix = 0, hzMix = 0, shieldMix = 0, vortexFall = 0;
+    let sl = null;                                     // Supernova tier: the star that blows up right behind the hole
+    let snPal = [[1, 1, 1], [1, 1, 1]], slPal = [[1, 1, 1], [1, 1, 1]], lastPal = -1;
     let wasActive = false, wasAbility = 'none';
     const POWER_COL = { hexSaw: '#00f5ff', triLaser: '#ff2e4d', prismGuard: '#b06bff', eventHorizon: '#ffd76b' };
 
@@ -8353,7 +8372,7 @@
     function prefs() {
       const s = save.settings || {};
       return {
-        q: ['ultra', 'high', 'lite'].includes(s.spaceQuality) ? s.spaceQuality : 'ultra',
+        q: ['ultra', 'high', 'lite'].includes(s.spaceQuality) ? s.spaceQuality : 'high',
         motion: s.spaceMotion !== false,
         cosmos: s.spaceCosmos !== false
       };
@@ -8435,15 +8454,22 @@
       uniform vec4 uE;            // drift, streak, arena, detail
       uniform vec4 uF;            // combo tier, inflow, motion on, cosmos on
       uniform vec4 uG;            // ring phase
-      uniform vec4 uH;            // flash, implode, invert, jets
+      uniform vec4 uH;            // flash, implode, invert, -
       uniform vec4 uJ;            // shock radius px, shock strength, singularity mix, event-horizon mix
       uniform vec4 uK;            // shield radius px, shield mix, vortex fall, -
+      uniform vec2 uClR;          // radial range covered by live clumps (skip the loop outside it)
       uniform vec3 uShockCol;
       uniform vec3 uTint;
       uniform vec3 uC1;
       uniform vec3 uC2;
       uniform vec3 uC3;
-      uniform vec4 uSN;           // supernova: sky x, sky y, age, strength
+      uniform vec4 uSN;           // distant supernova: sky x, sky y, age, strength
+      uniform vec3 uSNa;          //   its palette (varies per explosion)
+      uniform vec3 uSNb;
+      uniform vec4 uSL;           // supernova behind the hole: age, strength, hold, seed
+      uniform vec3 uSLa;
+      uniform vec3 uSLb;
+      uniform sampler2D uSkyTex;  // cached sky (composite pass)
       uniform vec4 uCl[NCL];      // clumps: radius, angle, brightness, tail length
       uniform vec4 uCm[NCL];      //         half-width, redshift g, heat, -
       uniform sampler2D uNeb;
@@ -8468,7 +8494,6 @@
       #define uFlash uH.x
       #define uImplode uH.y
       #define uInvert uH.z
-      #define uJet uH.w
       #define uShockR uJ.x
       #define uShockS uJ.y
       #define uSing uJ.z
@@ -8635,9 +8660,31 @@
         float shell = exp(-pow((r - rs) / th, 2.0));
         float fil = texture2D(uNeb, d / (rs + 20.0) * 0.18 + 0.37).g;
         float cl = texture2D(uNeb, d / (rs + 20.0) * 0.11 + 0.71).r;
-        c += mix(uC2, uC3, cl) * shell * (0.25 + 1.6 * fil) * fade * 0.9;
-        c += mix(uC1, uC2, 0.5) * exp(-r / (rs * 0.6 + 1.0)) * 0.22 * fade * smoothstep(0.0, 1.5, age);
+        c += mix(uSNa, uSNb, cl) * shell * (0.25 + 1.6 * fil) * fade * 0.9;
+        c += mix(uSNa, uSNb, 0.5) * exp(-r / (rs * 0.6 + 1.0)) * 0.22 * fade * smoothstep(0.0, 1.5, age);
         return c * uSN.w;
+      }
+
+      // The Supernova tier's star detonates directly behind the black hole. It is drawn
+      // in the source plane, so the lens bends it on its own: the flash becomes an
+      // Einstein ring hugging the horizon, and the expanding shell blooms outward as a
+      // ring of fire that lingers (uSL.z) for as long as the tier holds.
+      vec3 lensedNova(vec2 q) {
+        float age = uSL.x;
+        float r = length(q);
+        float rs = uR * min(2.4, 0.12 + 1.5 * sqrt(age));
+        float flash = exp(-age * 2.0) * (1.0 + 4.0 * exp(-age * 9.0));
+        vec3 hot = vec3(1.0, 0.97, 0.92);
+        vec3 c = hot * flash * (exp(-r * r / (uR * uR * 0.08)) * 3.0 + exp(-r / (uR * 0.5)) * 0.6);
+        float fade = max(exp(-age / 6.0), 0.28 * uSL.z);
+        float th = uR * (0.06 + 0.10 * rs / uR);
+        float sh = exp(-pow((r - rs) / th, 2.0));
+        float ang = atan(q.y, q.x);
+        float fil = texture2D(uNeb, vec2(ang / TAU * 3.0 + uSL.w, r / uR * 0.15 + uTime * 0.01)).g;
+        float cl = texture2D(uNeb, vec2(ang / TAU * 2.0 + 0.3 + uSL.w, r / uR * 0.09)).r;
+        c += mix(uSLa, uSLb, cl) * sh * (0.35 + 1.5 * fil) * fade * 1.1;
+        c += mix(uSLa, uSLb, 0.5) * exp(-r / (rs * 0.7 + 1.0)) * 0.18 * fade * smoothstep(0.0, 1.0, age);
+        return c * uSL.y;
       }
 
       vec3 sky(vec2 sp) {
@@ -8701,6 +8748,7 @@
             a = max(a, clamp(pl * 0.8, 0.0, 0.7));
           }
           // clumps of infalling matter, tidally stretched along the orbit they fell in on
+          if (rho > uClR.x && rho < uClR.y)
           for (int i = 0; i < NCL; i++) {
             vec4 k = uCl[i];
             if (k.z < 0.002) continue;
@@ -8720,36 +8768,55 @@
       }
 
       void main() {
+        float R = uR;
+#ifdef PASS_SKY
+        // ---- SKY PASS (cached): the whole sky, bent by the hole's gravity ----
+        vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uScale;
+        vec2 pc = p - uCenter;
+        float th = max(length(pc), 0.001);
+        vec2 dir = pc / th;
+        gStarK = 1.0 - 0.75 * max(uSing, uHz);
+        // Thin-lens deflection. It strengthens in the Singularity, and during an
+        // implosion the Einstein ring balloons across the screen.
+        float the = THE * R * (1.0 + 0.30 * uSing + 0.85 * uHz + 2.6 * uImplode);
+        float beta = th - the * the / th;
+        vec2 sp = uCenter + dir * beta;
+        vec3 col = sky(sp);
+        if (uSL.y > 0.0) col += lensedNova(sp - uCenter);
+        col += uTint * 0.30 * clamp(1.0 - th / (max(uWH.x, uWH.y) * 0.8), 0.0, 1.0);
+        gl_FragColor = vec4(sqrt(col / (1.0 + col)), 1.0);   // HDR packed into 8 bits
+#else
+        // ---- COMPOSITE PASS (every frame) ----
         vec2 p = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y) / uScale - uShake;
         vec2 pc = p - uCenter;
         float th = max(length(pc), 0.001);
-        float R = uR;
         float thR = th / R;
         vec2 dir = pc / th;
-
         gRout = ROUT * (1.0 + 0.15 * uSing + 0.45 * uHz);
-        gStarK = 1.0 - 0.75 * max(uSing, uHz);
-        // Thin-lens deflection of the whole sky around the hole. It strengthens in the
-        // Singularity, and during an implosion the Einstein ring balloons across the screen.
-        float the = THE * R * (1.0 + 0.30 * uSing + 0.85 * uHz + 2.6 * uImplode);
-        float beta = th - the * the / th;
-        if (uRipple.y > 0.002) {                     // gravitational wave on milestones
+
+        // Cached sky, displaced in screen space by milestone ripples, transition
+        // shockwaves and Prism Guard's light-bending dome.
+        float disp = 0.0;
+        if (uRipple.y > 0.002) {
           float w = (th - uRipple.x) / (R * 1.4);
-          beta += uRipple.y * R * 0.32 * sin(w * 5.0) * exp(-w * w);
+          disp += uRipple.y * R * 0.32 * sin(w * 5.0) * exp(-w * w);
         }
-        if (uShockS > 0.002) {                       // transition shockwave refracts the sky as it passes
+        if (uShockS > 0.002) {
           float w = (th - uShockR) / (R * 0.9);
-          beta -= uShockS * R * 0.9 * w * exp(-w * w);
+          disp -= uShockS * R * 0.9 * w * exp(-w * w);
         }
-        vec2 sp = uCenter + dir * beta;
+        vec2 q = uCenter + dir * max(th + disp, 0.0);
         float shR = uK.x, shM = uK.y;
-        if (shM > 0.001 && th < shR) {               // Prism Guard: a dome of bent light magnifies the sky
+        if (shM > 0.001 && th < shR) {
           float u = th / shR;
-          sp = uCenter + (sp - uCenter) * mix(1.0, 0.70 + 0.30 * u * u, shM);
+          q = uCenter + (q - uCenter) * mix(1.0, 0.70 + 0.30 * u * u, shM);
         }
-        vec3 col = sky(sp);
+        vec3 sv = texture2D(uSkyTex, vec2(q.x, uWH.y - q.y) / uWH).rgb;
+        vec3 s2 = sv * sv;
+        vec3 col = s2 / max(vec3(1.0) - s2, vec3(0.004));
+        col *= (1.0 + uBeat * 1.6 + uBgPulse * 0.25) * (1.0 - 0.3 * uArena);
         if (max(uSing, uHz) > 0.01) col += vortex(pc, th) * max(uSing, uHz) * 0.8;
-        col += uTint * (0.30 + 0.5 * uBgPulse) * clamp(1.0 - th / (max(uWH.x, uWH.y) * 0.8), 0.0, 1.0);
+        col += uTint * 0.5 * uBgPulse * clamp(1.0 - th / (max(uWH.x, uWH.y) * 0.8), 0.0, 1.0);
 
         float aa = 1.4 / (uScale * R);
         float hole = smoothstep(RSH - aa, RSH + aa, thR);
@@ -8758,24 +8825,7 @@
         float cs = cos(TILT), sn = sin(TILT);
         vec2 d = vec2(cs * pc.x - sn * pc.y, sn * pc.x + cs * pc.y) / R;
 
-        // Relativistic jets (Supernova tier and Event Horizon): twin beams from the poles,
-        // knots racing outward on a slow helix. The jet tilted toward us is beamed brighter.
-        if (uJet > 0.01) {
-          float sj = -d.y, sa = abs(sj);
-          if (sa > 0.5 && abs(d.x) < 0.3 + sa * 0.12) {
-            float w = 0.045 + sa * 0.03;
-            float hel = sin(sa * 1.6 - uTime * 6.5) * 0.035 * sa;
-            float core = exp(-pow((d.x - hel) / w, 2.0));
-            float sheath = exp(-pow(d.x / (w * 2.8), 2.0)) * 0.3;
-            float knots = 0.5 + 0.5 * pow(0.5 + 0.5 * sin(sa * 2.4 - uTime * 10.0), 3.0);
-            float along = smoothstep(0.5, 1.3, sa) * exp(-sa / (5.0 + 3.0 * uHz));
-            vec3 jc = mix(vec3(1.0, 0.98, 0.95), mix(uC1, uC3, 0.5), clamp(sa / 5.0, 0.0, 0.85));
-            col += jc * (core * knots + sheath) * along * (sj > 0.0 ? 1.0 : 0.35) * uJet * hole
-                 * (1.3 + uPulse * 1.0 + uBeat * 6.0);
-          }
-        }
-
-        if (abs(d.y) < 1.95 && abs(d.x) < gRout * 1.05) {
+        if (abs(d.x) < gRout * 1.05 && (abs(d.y) < gRout * COSI + 0.15 || thR < 1.9 + 0.5 * uHz)) {
           // far half of the disk: its light is bent over the top and under the bottom
           float sphi = abs(d.y) / thR;
           float k = KD * pow(sphi, 0.65);
@@ -8841,7 +8891,10 @@
         col *= 1.0 - 0.42 * dot(v, v);
         col += (hash32(gl_FragCoord.xy + fract(uTime * 7.0) * 113.0).x - 0.5) / 255.0;   // dither: no banding
         gl_FragColor = vec4(col, 1.0);
+#endif
       }`;
+    const SKY_SRC = '#define PASS_SKY 1\n' + MAIN_FS;
+    const COMP_SRC = MAIN_FS;
 
     function compile(type, src) {
       const s = gl.createShader(type);
@@ -8854,15 +8907,26 @@
       }
       return s;
     }
-    function program(fs) {
+    // Compile + link without waiting. With KHR_parallel_shader_compile the browser
+    // builds them in the background and we poll; without it, finishing blocks once.
+    function startProgram(fs) {
       const p = gl.createProgram();
-      const v = compile(gl.VERTEX_SHADER, VS), f = compile(gl.FRAGMENT_SHADER, fs);
+      const v = gl.createShader(gl.VERTEX_SHADER), f = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(v, VS); gl.compileShader(v);
+      gl.shaderSource(f, fs); gl.compileShader(f);
       gl.attachShader(p, v); gl.attachShader(p, f);
       gl.bindAttribLocation(p, 0, 'aPos');
       gl.linkProgram(p);
-      gl.deleteShader(v); gl.deleteShader(f);
-      if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('[space] link: ' + gl.getProgramInfoLog(p));
-      return p;
+      return { p, v, f };
+    }
+    function programReady(P) { return !pcExt || gl.getProgramParameter(P.p, pcExt.COMPLETION_STATUS_KHR); }
+    function finishProgram(P) {
+      if (!gl.getProgramParameter(P.p, gl.LINK_STATUS)) {
+        const log = (gl.getShaderInfoLog(P.f) || '') + (gl.getProgramInfoLog(P.p) || '');
+        throw new Error('[space] shader: ' + log);
+      }
+      gl.deleteShader(P.v); gl.deleteShader(P.f);
+      return P.p;
     }
     function quad() {
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
@@ -8890,32 +8954,53 @@
       gl.deleteFramebuffer(fb);
       return tex;
     }
-    function setup() {
+    const UNIFORMS = ['uRes', 'uWH', 'uShake', 'uCenter', 'uRipple', 'uA', 'uB', 'uE', 'uF', 'uG',
+                      'uTint', 'uC1', 'uC2', 'uC3', 'uSN', 'uSNa', 'uSNb', 'uSL', 'uSLa', 'uSLb', 'uCl', 'uCm',
+                      'uNeb', 'uDiskTex', 'uSkyTex', 'uH', 'uJ', 'uK', 'uShockCol', 'uClR'];
+    function startSetup() {
+      pcExt = gl.getExtension('KHR_parallel_shader_compile');
+      const maxVec = gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS) || 64;
+      NCL = maxVec >= 56 ? 8 : 4;
+      pending = {
+        neb: startProgram(NEB_FS), disk: startProgram(DISK_FS),
+        sky: startProgram(SKY_SRC.replace('__NCL__', String(NCL))),
+        comp: startProgram(COMP_SRC.replace('__NCL__', String(NCL)))
+      };
+    }
+    function finishSetup() {
+      for (const k in pending) if (!programReady(pending[k])) return false;   // still compiling
+      const P = {};
+      for (const k in pending) P[k] = finishProgram(pending[k]);
+      pending = null;
       vbo = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-      // No GPU (software renderer: CI machines, some VMs and old PCs)? Run a light
-      // version so frames stay quick and taps stay on time.
-      try {
-        const dbg = gl.getExtension('WEBGL_debug_renderer_info');
-        const ren = String(dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
-        softGL = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(ren);
-      } catch (e) { softGL = false; }
-      const maxVec = gl.getParameter(gl.MAX_FRAGMENT_UNIFORM_VECTORS) || 64;
-      NCL = maxVec >= 48 ? 8 : 4;
-      pMain = program(MAIN_FS.replace('__NCL__', String(NCL)));
-      const pNeb = program(NEB_FS), pDisk = program(DISK_FS);
       const maxTex = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 2048;
-      nebTex = bake(pNeb, Math.min(2048, maxTex));
-      diskTex = bake(pDisk, 512);
-      gl.deleteProgram(pNeb); gl.deleteProgram(pDisk);
-      for (const n of ['uRes', 'uWH', 'uShake', 'uCenter', 'uRipple', 'uA', 'uB', 'uE', 'uF', 'uG',
-                       'uTint', 'uC1', 'uC2', 'uC3', 'uSN', 'uCl', 'uCm', 'uNeb', 'uDiskTex',
-                       'uH', 'uJ', 'uK', 'uShockCol']) U[n] = gl.getUniformLocation(pMain, n);
+      nebTex = bake(P.neb, Math.min(2048, maxTex));
+      diskTex = bake(P.disk, 512);
+      gl.deleteProgram(P.neb); gl.deleteProgram(P.disk);
+      pSky = P.sky; pComp = P.comp;
+      for (const n of UNIFORMS) { US[n] = gl.getUniformLocation(pSky, n); UC[n] = gl.getUniformLocation(pComp, n); }
       clA = new Float32Array(NCL * 4); clB = new Float32Array(NCL * 4);
       clumps = [];
       for (let i = 0; i < NCL; i++) clumps.push({ on: false });
+      skyTex = null; skyFb = null; skyW = skyH = 0; skyDirty = true;
       ok = true;
+      return true;
+    }
+    function ensureSkyTarget(w, h) {
+      if (skyTex && skyW === w && skyH === h) return;
+      if (!skyTex) { skyTex = gl.createTexture(); skyFb = gl.createFramebuffer(); }
+      gl.bindTexture(gl.TEXTURE_2D, skyTex);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, skyFb);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, skyTex, 0);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      skyW = w; skyH = h; skyDirty = true;
     }
     function fail(e) {
       console.warn('[space] falling back to 2D:', e && e.message ? e.message : e);
@@ -8931,11 +9016,21 @@
         if (!gl) return fail('no WebGL');
         if (!listening) {
           listening = true;
-          cv.addEventListener('webglcontextlost', (e) => { e.preventDefault(); ok = false; }, false);
-          cv.addEventListener('webglcontextrestored', () => { try { setup(); } catch (err) { fail(err); } }, false);
+          cv.addEventListener('webglcontextlost', (e) => { e.preventDefault(); ok = false; pending = null; }, false);
+          cv.addEventListener('webglcontextrestored', () => { ok = false; pending = null; skyTex = null; }, false);
         }
-        setup();
+        // No GPU (software renderer: CI machines, some VMs and old PCs)? Low graphics
+        // turns on by itself there, unless the player chose otherwise.
+        try {
+          const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+          const ren = String(dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+          softGL = /swiftshader|llvmpipe|softpipe|software|basic render/i.test(ren);
+        } catch (e) { softGL = false; }
       } catch (e) { fail(e); }
+    }
+    function hide() {
+      if (cv && cv.style.display !== 'none') cv.style.display = 'none';
+      lastT = null;
     }
     function hexRgb(h) {
       const s = String(h || '#000').replace('#', '');
@@ -8988,6 +9083,11 @@
         f.on = false; on--;
       }
       if (amb < ambTarget && on < maxOn) spawnClump('amb');
+      clMin = 1e9; clMax = -1e9;
+      for (const c of clumps) if (c.on) {
+        const pad = c.w * 4 + c.r * 0.23;
+        clMin = Math.min(clMin, c.r - pad); clMax = Math.max(clMax, c.r + pad);
+      }
       for (let i = 0; i < clumps.length; i++) {
         const c = clumps[i], j = i * 4;
         const vis = c.on ? c.b * Math.pow(c.g, 1.5) : 0;
@@ -9001,7 +9101,18 @@
       if (fxList.length > 8) fxList.shift();
     }
 
+    // Each explosion gets its own colors: the theme's, or one of a few gas palettes.
+    function pickPalette() {
+      const pals = [[C2, C3], [C1, [1.0, 0.86, 0.6]], [[0.30, 0.90, 1.0], [0.25, 0.40, 1.0]],
+                    [[1.0, 0.72, 0.30], [1.0, 0.30, 0.22]], [[0.72, 0.42, 1.0], [1.0, 0.42, 0.80]],
+                    [[0.42, 1.0, 0.62], [0.20, 0.80, 0.95]]];
+      let i = Math.floor(rnd() * pals.length);
+      if (i === lastPal) i = (i + 1 + Math.floor(rnd() * (pals.length - 1))) % pals.length;
+      lastPal = i;
+      return pals[i];
+    }
     function spawnSupernova(strength) {
+      snPal = pickPalette();
       let best = null;
       for (let i = 0; i < 10; i++) {
         const x = W * (0.12 + rnd() * 0.76), y = H * (0.16 + rnd() * 0.66);
@@ -9013,12 +9124,24 @@
     }
 
     // Draw one frame of space. Returns false if WebGL is unavailable (caller draws the 2D fallback).
+    // Low graphics: explicit choice wins; unset means "on when there is no GPU".
+    function isLow() {
+      const v = save.settings && save.settings.lowGraphics;
+      return v === true || (v !== false && softGL);
+    }
     function render(t, pv, shakeX, shakeY) {
-      if (!ok) {
-        if (!broken && !gl) init();
-        if (!ok) return false;
-      }
+      if (broken) return false;
+      if (save.settings && save.settings.lowGraphics === true) { hide(); return false; }
+      if (!gl) { init(); if (!gl) return false; }
       if (gl.isContextLost && gl.isContextLost()) return false;
+      if (isLow()) { hide(); return false; }
+      if (!ok) {
+        try {
+          if (!pending) startSetup();
+          if (!finishSetup()) return false;            // 2D stand-in until the shaders are ready
+        } catch (e) { fail(e); return false; }
+      }
+      if (cv.style.display === 'none') { cv.style.display = ''; skyDirty = true; }
       const P = prefs();
       const env = save.settings.environmentDetail || 'full';
 
@@ -9031,8 +9154,8 @@
       } else if (slow > 0) slow--;
 
       const dev = window.devicePixelRatio || 1;
-      const soft = softGL && !window.__spaceFullOnSoftGL;     // (the override is for screenshot tooling)
-      const base = soft ? 0.5 : P.q === 'ultra' ? Math.min(dev, 3) : P.q === 'high' ? Math.min(dev, 2) : 1;
+      const soft = false;
+      const base = P.q === 'ultra' ? Math.min(dev, 3) : P.q === 'high' ? Math.min(dev, 2) : 1;
       const sc = Math.max(0.5, base * quality);
       const w = Math.max(1, Math.round(W * sc)), h = Math.max(1, Math.round(H * sc));
       if (cv.width !== w || cv.height !== h) {
@@ -9051,7 +9174,7 @@
       // ---- combo climb: x2 Fever, x5 Supernova, x10 Singularity ----
       const lvl = inRun ? (feverLevel || (fever ? 1 : 0)) : 0;
       if (lvl > lastLvl) {
-        if (lvl >= 2 && lastLvl < 2) { addFx('nova', C3); if (P.cosmos) spawnSupernova(2.2); }
+        if (lvl >= 2 && lastLvl < 2) { addFx('nova', C3); slPal = pickPalette(); sl = { age: 0, w: 1.4, seed: rnd() }; }
         if (lvl >= 3 && lastLvl < 3) addFx('sing', [0.85, 0.75, 1.0]);
       }
       lastLvl = lvl;
@@ -9072,7 +9195,6 @@
       singMix += ((lvl >= 3 && !singHold ? 1 : 0) - singMix) * Math.min(1, dt * 2.2);
       hzMix += ((act && abilityId === 'eventHorizon' ? 1 : 0) - hzMix) * k3;
       shieldMix += ((act && abilityId === 'prismGuard' ? 1 : 0) - shieldMix) * Math.min(1, dt * 6);
-      jetMix += ((lvl >= 2 || hzMix > 0.5 ? 1 : 0) - jetMix) * Math.min(1, dt * 2.5);
 
       const spin = (0.55 + bpm / 220) * (1 + feverMix * 0.8) * (1 + 0.5 * snMix + 0.3 * singMix + 0.7 * hzMix);
       diskPhase += dt * spin * 1.7;
@@ -9088,13 +9210,11 @@
       const ra = (now - rippleWall) / 1000;
       const rAmp = ra < 1.8 ? Math.pow(1 - ra / 1.8, 1.5) : 0;
 
-      // Bonus milestones light distant supernovas: Overdrive (50x) small, Perfect Orbit (175x) larger.
-      // (The x5 Supernova tier sets off its own, much bigger one above.)
-      if (tier > lastTier && P.cosmos) {
-        if (tier === 2) spawnSupernova(0.8);
-        else if (tier === 4) spawnSupernova(1.2);
-      }
+      // Distant supernovas are rare now: only Perfect Orbit (175x) lights one, in a
+      // palette picked for that explosion. (The x5 tier has its own, behind the hole.)
+      if (tier > lastTier && P.cosmos && tier === 4) spawnSupernova(1.2);
       lastTier = tier;
+      if (sl) { sl.age += dt; if (sl.age > 30 && snMix < 0.01) sl = null; }
 
       // One-shot effects: flash, implosion, negative frame, shockwave.
       let flash = 0, implode = 0, invert = 0, shR = 0, shS = 0, shCol = [1, 1, 1];
@@ -9147,40 +9267,80 @@
       const beat = (Conductor.ready() && env !== 'off') ? Math.pow(1 - Conductor.barPhase(), 8) * 0.05 : 0;
       const tint = pv ? pv.tint : [0, 0, 0];
 
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-      gl.viewport(0, 0, w, h);
-      gl.useProgram(pMain);
-      quad();
+      // Sky cadence: every frame while something big is moving through it, every
+      // 2nd frame in the Fever warp, otherwise every 4th frame (stars drift slowly).
+      frameNo++;
+      const key = theme.id + '|' + P.q + '|' + P.cosmos;
+      if (key !== skyKey) { skyKey = key; skyDirty = true; }
+      const moved = Math.abs(tgt.x - lastCx) > 0.25 || Math.abs(tgt.y - lastCy) > 0.25;
+      const busy = implode > 0 || (singMix > 0.01 && singMix < 0.99) || (hzMix > 0.01 && hzMix < 0.99)
+                || (sl && sl.age < 3) || (sn && sn.age < 3);
+      const every = busy ? 1 : feverMix > 0.05 ? 2 : 4;
+      ensureSkyTarget(w, h);
+      const drawSky = skyDirty || moved || frameNo % every === 0;
+      if (drawSky) { lastCx = tgt.x; lastCy = tgt.y; skyDirty = false; }
+
+      const V = {
+        beat, pulse: Math.min(1.5, pulse + beatBreath()), streak: feverMix * (30 + tierMix * 8) * (1 + 0.4 * snMix),
+        detail: P.q === 'lite' ? 0 : 1
+      };
+      const upload = (U, sky) => {
+        gl.uniform1i(U.uNeb, 0); gl.uniform1i(U.uDiskTex, 1); gl.uniform1i(U.uSkyTex, 2);
+        gl.uniform2f(U.uRes, w, h);
+        gl.uniform2f(U.uWH, W, H);
+        gl.uniform2f(U.uShake, sky ? 0 : (shakeX || 0), sky ? 0 : (shakeY || 0));
+        gl.uniform2f(U.uCenter, tgt.x, tgt.y);
+        gl.uniform2f(U.uRipple, ra * Math.max(W, H) * 0.9, rAmp);
+        gl.uniform4f(U.uA, w / W, t % 3600, targetR, diskPhase);
+        // beat, milestone pulse and boss-arena dimming change every frame, so the
+        // composite applies them over the cached sky
+        gl.uniform4f(U.uB, V.pulse, feverMix, sky ? 0 : beat, sky ? 0 : bgPulse);
+        gl.uniform4f(U.uE, drift, V.streak, sky ? 0 : arenaMix, V.detail);
+        gl.uniform4f(U.uF, tierMix, inflow, P.motion ? 1 : 0, P.cosmos ? 1 : 0);
+        gl.uniform4f(U.uG, ringPhase, 0, 0, 0);
+        gl.uniform3f(U.uTint, tint[0] / 255, tint[1] / 255, tint[2] / 255);
+        gl.uniform3f(U.uC1, C1[0], C1[1], C1[2]);
+        gl.uniform3f(U.uC2, C2[0], C2[1], C2[2]);
+        gl.uniform3f(U.uC3, C3[0], C3[1], C3[2]);
+        gl.uniform4f(U.uSN, sn ? sn.x : 0, sn ? sn.y : 0, sn ? sn.age : 0, sn ? sn.w : 0);
+        gl.uniform3f(U.uSNa, snPal[0][0], snPal[0][1], snPal[0][2]);
+        gl.uniform3f(U.uSNb, snPal[1][0], snPal[1][1], snPal[1][2]);
+        gl.uniform4f(U.uSL, sl ? sl.age : 0, sl && P.cosmos ? sl.w : 0, snMix, sl ? sl.seed : 0);
+        gl.uniform3f(U.uSLa, slPal[0][0], slPal[0][1], slPal[0][2]);
+        gl.uniform3f(U.uSLb, slPal[1][0], slPal[1][1], slPal[1][2]);
+        gl.uniform4fv(U.uCl, clA);
+        gl.uniform4fv(U.uCm, clB);
+        gl.uniform4f(U.uH, flash, implode, invert, 0);
+        gl.uniform4f(U.uJ, shR, shS, singMix, hzMix);
+        gl.uniform4f(U.uK, shieldR, shieldMix, vortexFall, 0);
+        gl.uniform3f(U.uShockCol, shCol[0], shCol[1], shCol[2]);
+        gl.uniform2f(U.uClR, clMin, clMax);
+      };
       gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, nebTex);
       gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, diskTex);
-      gl.uniform1i(U.uNeb, 0); gl.uniform1i(U.uDiskTex, 1);
-      gl.uniform2f(U.uRes, w, h);
-      gl.uniform2f(U.uWH, W, H);
-      gl.uniform2f(U.uShake, shakeX || 0, shakeY || 0);
-      gl.uniform2f(U.uCenter, tgt.x, tgt.y);
-      gl.uniform2f(U.uRipple, ra * Math.max(W, H) * 0.9, rAmp);
-      gl.uniform4f(U.uA, w / W, t % 3600, targetR, diskPhase);
-      gl.uniform4f(U.uB, Math.min(1.5, pulse + beatBreath()), feverMix, beat, bgPulse);
-      gl.uniform4f(U.uE, drift, feverMix * (30 + tierMix * 8) * (1 + 0.4 * snMix), arenaMix, (P.q === 'lite' || soft) ? 0 : 1);
-      gl.uniform4f(U.uF, tierMix, inflow, P.motion ? 1 : 0, P.cosmos ? 1 : 0);
-      gl.uniform4f(U.uG, ringPhase, 0, 0, 0);
-      gl.uniform3f(U.uTint, tint[0] / 255, tint[1] / 255, tint[2] / 255);
-      gl.uniform3f(U.uC1, C1[0], C1[1], C1[2]);
-      gl.uniform3f(U.uC2, C2[0], C2[1], C2[2]);
-      gl.uniform3f(U.uC3, C3[0], C3[1], C3[2]);
-      gl.uniform4f(U.uSN, sn ? sn.x : 0, sn ? sn.y : 0, sn ? sn.age : 0, sn ? sn.w : 0);
-      gl.uniform4fv(U.uCl, clA);
-      gl.uniform4f(U.uH, flash, implode, invert, jetMix);
-      gl.uniform4f(U.uJ, shR, shS, singMix, hzMix);
-      gl.uniform4f(U.uK, shieldR, shieldMix, vortexFall, 0);
-      gl.uniform3f(U.uShockCol, shCol[0], shCol[1], shCol[2]);
-      gl.uniform4fv(U.uCm, clB);
+      if (drawSky) {
+        gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, null);   // never sample what we draw into
+        gl.bindFramebuffer(gl.FRAMEBUFFER, skyFb);
+        gl.viewport(0, 0, w, h);
+        gl.useProgram(pSky);
+        quad();
+        upload(US, true);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      gl.viewport(0, 0, w, h);
+      gl.useProgram(pComp);
+      quad();
+      gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, skyTex);
+      upload(UC, false);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       return true;
     }
     return {
       render,
       get ok() { return ok; },
+      get active() { return ok && !broken && !isLow(); },
+      get low() { return broken || isLow(); },
       get softGL() { return softGL; },
       get ringPhase() { return ringPhase; },
       get motion() { return prefs().motion; }
@@ -9198,8 +9358,8 @@
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.1 + p * 1.2;
     ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke();
-    if (SpaceFX.motion) {
-      const ph = SpaceFX.ok ? SpaceFX.ringPhase : t * 2.5;
+    if (SpaceFX.motion && !SpaceFX.low) {
+      const ph = SpaceFX.active ? SpaceFX.ringPhase : t * 2.5;
       const seg = 6, tail = 0.95;
       for (let k = 0; k < 3; k++) {
         const head = ph + k * Math.PI * 2 / 3;
@@ -9218,13 +9378,15 @@
 
   // ---- Deep Space settings (Lite / High / Ultra + effect toggles) ----
   const SPACE_DESC = {
-    ultra: 'Full screen resolution: the sharpest black hole and stars. Drop to High if your phone gets warm.',
-    high: 'Twice the base resolution. Still sharp, lighter on battery.',
+    ultra: 'Full screen resolution. The sharpest, and the heaviest on your phone.',
+    high: 'Matches the game layer. Sharp, and steady on most phones.',
     lite: 'Base resolution, fewer stars, less infall. For older phones.'
   };
   function refreshSpaceSettings() {
     const s = save.settings;
-    const q = ['ultra', 'high', 'lite'].includes(s.spaceQuality) ? s.spaceQuality : 'ultra';
+    const q = ['ultra', 'high', 'lite'].includes(s.spaceQuality) ? s.spaceQuality : 'high';
+    const lo = document.getElementById('lowGfxToggle'); if (lo) lo.checked = SpaceFX.low;
+    const blk = document.getElementById('spaceSeg'); if (blk) blk.closest('.setting-block').classList.toggle('gfx-low', SpaceFX.low);
     document.querySelectorAll('#spaceSeg button').forEach((b) => b.classList.toggle('on', b.dataset.sq === q));
     const d = document.getElementById('spaceDesc'); if (d) d.textContent = SPACE_DESC[q];
     const m = document.getElementById('spaceMotionToggle'); if (m) m.checked = s.spaceMotion !== false;
@@ -10610,7 +10772,7 @@
     if (SPACE_MODE) {
       // The target is the black hole's photon ring: same radius, width and hit
       // flare as before, so timing reads exactly the same.
-      if (!SpaceFX.ok) drawBlackHole2D(x, y, t, p);
+      if (!SpaceFX.active) drawBlackHole2D(x, y, t, p);
       ring(x, y, targetR + p * 18, theme.c1, 5 + p * 7, 0.86 - p * 0.45);
       drawPhotonRingFX(x, y, targetR + p * 18, p, t);   // white-hot core + light circling the ring
     } else {
