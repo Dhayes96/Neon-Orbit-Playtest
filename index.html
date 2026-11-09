@@ -2020,10 +2020,7 @@
       }
       // v1.5: Music Mode setting removed — always Continuous now.
       if ('musicMode' in s.settings) delete s.settings.musicMode;
-      // v1.4: ensure a valid music vibe.
-      if (!s.settings.musicVibe || !['cyberBounce','bluePulse','toxicBreaks','goldGroove','darkWave','crimsonDrive','voidMetal'].includes(s.settings.musicVibe)) {
-        s.settings.musicVibe = 'voidMetal';
-      }
+      // v1.4: a valid music vibe is checked below, once vibeUnlocks is loaded.
       if (typeof s.settings.autoMatchVibe !== 'boolean') s.settings.autoMatchVibe = true;
       // v1.7: music volume slider. Existing v1.6 saves have no musicVolume →
       // give them the new 68% default; clamp any out-of-range stored value.
@@ -2051,6 +2048,15 @@
       if (parsed.vibeUnlocks && parsed.vibeUnlocks.westside) s.vibeUnlocks.cybermetal = true;
       delete s.vibeUnlocks.westside;
       s.vibeUnlocks.voidMetal = true;   // v0.3.0: the starter song, unlocked for every save
+      // v0.3.1: keep any song the picker can show. The base 7 always; Cybermetal and Ascension
+      // only once unlocked. Before this, those two reset to Void Metal on every reload.
+      // (Hellfire lives only inside the DOOM gauntlet, so it still resets.)
+      {
+        const _base = ['cyberBounce','bluePulse','toxicBreaks','goldGroove','darkWave','crimsonDrive','voidMetal'];
+        const _v = s.settings.musicVibe;
+        const _ok = _base.includes(_v) || (['cybermetal','ascension'].includes(_v) && s.vibeUnlocks[_v] === true);
+        if (!_ok) s.settings.musicVibe = 'voidMetal';
+      }
       s.doomCleared = !!parsed.doomCleared;
       // v0.3.0: Void Metal is free now, so beating Voraxis unlocks the Hellgrid theme.
       // Players who already cleared Abyss get it straight away.
@@ -3160,14 +3166,38 @@
      quantized. Input latency is untouched; only the timbre changed.
      =================================================================== */
 
-  // MIDI root of the chord currently sounding, so accents land in key.
-  function liveChordRoot() {
+  // v0.3.1: the bar you can HEAR right now. music.bar is the scheduler's bar, which runs up to
+  // ~0.8 s (the lookahead) ahead of the speaker, so in the last beat or so of every bar it
+  // already pointed at the NEXT chord. Count back from the next unscheduled step to the latest
+  // step whose start time has passed on the audio clock.
+  function audibleBar() {
+    try {
+      if (!audioCtx || !music.on || !(music.nextStepTime > 0)) return music.bar;
+      const sd = (60 / Math.max(1, bpm)) / 4;
+      const back = Math.max(0, Math.ceil((music.nextStepTime - audioCtx.currentTime) / sd - 1e-6));
+      const idx = music.bar * 16 + music.step - back;
+      return Math.floor((((idx % 64) + 64) % 64) / 16);
+    } catch { return music.bar; }
+  }
+
+  // The chord sounding right now: MIDI root plus its intervals (e.g. [0,3,7]).
+  function liveChord() {
     try {
       const ph = music.active && music.active.phase;
-      if (!ph || !ph.prog) return 45;
-      const slot = music.bar % ph.prog.length;
-      return ph.prog[slot] + ((music.active.transpose) || 0);
-    } catch { return 45; }
+      if (!ph || !ph.prog) return { root: 45, quality: [0, 3, 7] };
+      const slot = audibleBar() % ph.prog.length;
+      const q = (ph.quality && ph.quality[slot]) || [0, 3, 7];
+      return { root: ph.prog[slot] + ((music.active.transpose) || 0), quality: q };
+    } catch { return { root: 45, quality: [0, 3, 7] }; }
+  }
+
+  // MIDI root of the chord currently sounding, so accents land in key.
+  function liveChordRoot() { return liveChord().root; }
+
+  // The MIDI note with pitch class `pc` closest to `near` (ties go up).
+  function nearestPc(near, pc) {
+    const base = near - (((near - pc) % 12) + 12) % 12;   // at or below `near`
+    return (near - base <= 6) ? (near - base === 6 ? base + 12 : base) : base + 12;
   }
 
   let _noiseBuf = null;
@@ -3262,16 +3292,25 @@
       const lvl = (grade === 'perfect' ? (onBeat ? 1.12 : 1)
                  : grade === 'good' ? 0.72 : grade === 'ok' ? 0.5 : 0.8) * this.vol();
 
-      /* CLASSIC — the original beta hit sounds, unchanged. Fixed pitches,
-         not derived from the chord, exactly as they were before the v0.2.0
-         and v0.2.1 tap-sound work. Tap Volume still scales them. */
+      /* CLASSIC — the original beta hit sounds: same waveforms, lengths,
+         gains and register. v0.3.1: the pitches now follow the chord that is
+         sounding. They used to be fixed A and E (880/1320, 660, 440, 110 Hz),
+         a semitone against the chord on 19-100% of taps (every tap in Void
+         Metal). Each note is now the matching chord tone nearest its old
+         pitch: perfect = root ~A5 + fifth above it, good = fifth ~E5,
+         ok = root ~A4, miss = root ~A2. Tap Volume still scales them. */
       if (id === 'classic') {
         const v = this.vol();
-        if (grade === 'perfect')   { tone(880, 0.045, 'triangle', 0.045 * v);
-                                     tone(1320, 0.04, 'sine', 0.025 * v, 0.03); }
-        else if (grade === 'good') { tone(660, 0.045, 'triangle', 0.04 * v); }
-        else if (grade === 'ok')   { tone(440, 0.05, 'triangle', 0.03 * v); }
-        else                       { tone(110, 0.1, 'sawtooth', 0.035 * v); }
+        const ch = liveChord();
+        const rpc = ((ch.root % 12) + 12) % 12;
+        const fifth = (ch.quality && ch.quality[2] != null) ? ch.quality[2] : 7;
+        const fpc = (rpc + fifth) % 12;
+        if (grade === 'perfect')   { const r = nearestPc(81, rpc);
+                                     tone(midiHz(r), 0.045, 'triangle', 0.045 * v);
+                                     tone(midiHz(r + fifth), 0.04, 'sine', 0.025 * v, 0.03); }
+        else if (grade === 'good') { tone(midiHz(nearestPc(76, fpc)), 0.045, 'triangle', 0.04 * v); }
+        else if (grade === 'ok')   { tone(midiHz(nearestPc(69, rpc)), 0.05, 'triangle', 0.03 * v); }
+        else                       { tone(midiHz(nearestPc(45, rpc)), 0.1, 'sawtooth', 0.035 * v); }
         return;
       }
 
