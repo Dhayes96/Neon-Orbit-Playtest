@@ -67,11 +67,30 @@ async function stopRecorder(page) {
 async function installTapLog(page) {
   await page.evaluate(() => {
     const log = window.__tapLog = [];
+    // Ground truth for "the chord playing when the tap sounds", kept independent of the
+    // game's own chord lookup: record the chord of every step the sequencer schedules,
+    // with its audio start time, then look up the latest step that has started at tap time.
+    // (Until step 2 this read music.bar, the scheduler's bar, which runs up to a lookahead
+    // ahead of the speaker, the same mistake the game made. Taps before the first
+    // recorded step get no chord and are left out of the chord check, not counted as fits.)
+    const sched = window.__chordSched = [];
+    const prevStep = window.scheduleStep;
+    window.scheduleStep = function (step, when) {
+      try {
+        const ph = music.active.phase; const slot = music.bar % ph.prog.length;
+        sched.push({ when, root: ph.prog[slot] + (music.active.transpose || 0), quality: ph.quality[slot].slice() });
+        if (sched.length > 4096) sched.splice(0, 2048);
+      } catch {}
+      return prevStep.apply(this, arguments);
+    };
     const orig = TapVoice.play;
     TapVoice.play = function (grade) {
       let root = null, quality = null;
-      try { const ph = music.active && music.active.phase; const slot = music.bar % ph.prog.length; root = (liveChordRoot() % 12 + 12) % 12; quality = ph.quality[slot].slice(); } catch {}
-      log.push({ ac: audioCtx.currentTime, grade, voice: TapVoice.id(), root, quality });
+      const ac = audioCtx.currentTime;
+      for (let i = sched.length - 1; i >= 0; i--) {
+        if (sched[i].when <= ac) { root = (sched[i].root % 12 + 12) % 12; quality = sched[i].quality; break; }
+      }
+      log.push({ ac, grade, voice: TapVoice.id(), root, quality });
       return orig.apply(this, arguments);
     };
   });
@@ -116,7 +135,9 @@ async function installControlTones(page, { shiftMs = 0, interval = 24 } = {}) {
       const r = prev.apply(this, arguments);
       if (step % 4 === 0) {
         let root = 45, quality = null;
-        try { const ph = music.active.phase; const slot = music.bar % ph.prog.length; root = liveChordRoot(); quality = ph.quality[slot].slice(); } catch {}
+        // The chord of the step being scheduled (music.bar is that step's bar here). Not
+        // liveChordRoot(), which since step 2 returns the chord heard NOW, a lookahead earlier.
+        try { const ph = music.active.phase; const slot = music.bar % ph.prog.length; root = ph.prog[slot] + (music.active.transpose || 0); quality = ph.quality[slot].slice(); } catch {}
         const at = when + shiftMs / 1000;
         tone(midiHz(root + interval), 0.045, 'triangle', 0.045, Math.max(0, at - audioCtx.currentTime));
         log.push({ ac: at, grade: 'control', voice: 'control', root: (root % 12 + 12) % 12, quality });
