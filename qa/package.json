@@ -8,6 +8,7 @@
     "test:smoke": "playwright test tests/smoke.spec.js tests/mobile.spec.js --project=desktop-chrome --project=mobile-pixel7",
     "test:timing": "playwright test tests/timing.spec.js --project=desktop-chrome",
     "test:stress": "playwright test --project=stress-chrome",
+    "test:earbot": "EARBOT=1 playwright test tests/earbot-listen.spec.js --project=desktop-chrome",
     "test:all": "playwright test"
   },
   "keywords": [],
