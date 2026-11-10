@@ -886,6 +886,48 @@
     .lore-secret { cursor: pointer; -webkit-tap-highlight-color: transparent; }
     .lore-secret.warm { color: var(--c3); text-shadow: 0 0 6px var(--c3); transition: color 200ms ease, text-shadow 200ms ease; }
     .lore-secret.hot { color: #ff5a3c; text-shadow: 0 0 12px #ff2e00, 0 0 22px #ff2e00; }
+    /* ---- The Signal, as a comic ---- */
+    .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    #loreScreen .card { width: min(560px, 96vw); padding: 16px 14px 18px; }
+    .comic { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 10px; text-align: left; margin: 2px 0 6px;
+      max-height: calc(100vh - 120px); overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 4px 6px 8px 4px; }
+    .cp { grid-column: span 2; position: relative; background: #141032; border: 3px solid #f4f0ff; border-radius: 5px;
+      box-shadow: 4px 4px 0 rgba(0,0,0,0.6); overflow: hidden; transform: rotate(-0.5deg); }
+    .cp:nth-of-type(even) { transform: rotate(0.45deg); }
+    .cp.half { grid-column: span 1; }
+    .cp .art { position: relative; }
+    .cp .art.dark { background: #05040c; }
+    .cp svg { display: block; width: 100%; height: auto; }
+    .cap { margin: 0; background: #ffe14d; color: #15112a; font-weight: 850; font-size: 12.5px; line-height: 1.38;
+      padding: 7px 10px; border-bottom: 3px solid #15112a; }
+    .cap b { color: #b0127a; text-shadow: none; font-weight: 950; }
+    .cap.dark { background: #0a0814; color: #e8e4ff; border-bottom-color: #f4f0ff; font-style: italic; }
+    .bub { position: absolute; background: #fff; color: #15112a; font-weight: 950; font-size: 12px; line-height: 1.2;
+      padding: 5px 9px; border: 2.5px solid #15112a; border-radius: 14px; box-shadow: 2px 2px 0 rgba(0,0,0,0.45); white-space: nowrap; }
+    .bub-s { font-size: 10px; padding: 4px 7px; white-space: normal; max-width: 62%; }
+    .bub-l::after { content: ''; position: absolute; left: 10px; bottom: -9px; border: 7px solid transparent; border-top-color: #15112a; border-bottom: 0; }
+    .sfx { position: absolute; font-weight: 1000; font-style: italic; font-size: 21px; letter-spacing: 1px; color: #ffd23d;
+      -webkit-text-stroke: 1.4px #15112a; text-shadow: 2px 2px 0 #15112a; transform: rotate(-8deg); pointer-events: none; }
+    .sfx-s { font-size: 14px; color: #ff8fd8; transform: rotate(6deg); }
+    .sfx-g { color: #7dff68; }
+    .cover { padding: 16px 14px 14px; text-align: center; background:
+      radial-gradient(circle at 50% 120%, rgba(255,43,214,0.45), transparent 60%),
+      radial-gradient(rgba(255,255,255,0.12) 1px, transparent 1.4px) 0 0 / 6px 6px, #1a0f3e; }
+    .cover-issue { font-size: 10px; font-weight: 900; letter-spacing: 0.24em; color: #ffe14d; }
+    .cover-title { font-size: 38px; font-weight: 1000; font-style: italic; letter-spacing: 2px; line-height: 1.05; margin: 4px 0 6px;
+      color: #fff; -webkit-text-stroke: 2px #15112a; text-shadow: 3px 3px 0 #ff2bd6, 6px 6px 0 #15112a; }
+    .cover-sub { font-size: 12.5px; font-weight: 800; color: #d9d2ff; }
+    .files-h { grid-column: span 2; margin: 4px 0 -4px; text-align: center; font-size: 13px; font-weight: 1000; letter-spacing: 0.2em;
+      color: #ffe14d; text-shadow: 2px 2px 0 #15112a; }
+    .wanted .wn { margin: 6px 8px 0; font-size: 13.5px; font-weight: 1000; letter-spacing: 0.06em; color: #fff; }
+    .wanted .ws { margin: 1px 8px 0; font-size: 9.5px; font-weight: 850; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c3); }
+    .wanted .wd { margin: 4px 8px 9px; font-size: 11.5px; line-height: 1.35; color: rgba(255,255,255,0.86); }
+    .rumors { margin: 0; padding: 9px 12px 11px 26px; display: grid; gap: 6px; background: #05040c; }
+    .rumors li { font-size: 12.5px; line-height: 1.42; color: rgba(232,228,255,0.86); font-style: italic; }
+    .finale-line { margin: 8px 0 0; text-align: center; font-size: 17px; }
+    .finale-line b { color: var(--c1); text-shadow: 0 0 10px var(--glow1); font-weight: 1000; }
+    .tbc { margin: 4px 0 10px; text-align: center; font-size: 10px; font-weight: 1000; letter-spacing: 0.3em; color: #ffe14d; }
+    .zzz { font: italic 900 13px sans-serif; fill: #e8f6ff; opacity: 0.85; }
     .hidden { display: none !important; }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1125,31 +1167,216 @@
     </div>
   </div>
 
-  <!-- ================= THE SIGNAL (lore) ================= -->
+  <!-- ================= THE SIGNAL (lore, as a comic) ================= -->
   <div class="overlay hidden" id="loreScreen">
     <div class="card">
-      <h2>The Signal</h2>
-      <div class="lore-body">
-        <p class="lore-tag">I · The Grid</p>
-        <p>Between the stars hangs a lattice of light called <b>the Grid</b>, a woven barrier stretched over a thousand worlds. Beneath it, millions of species wake, build, argue, love and sleep without ever knowing it is there.</p>
-        <p>That is the point. A shield everyone can see is a shield someone will test.</p>
+      <h2 class="sr-only">The Signal</h2>
+      <!-- shared art: the hero saucer, the four wardens, a sleepy planet -->
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+        <defs>
+          <linearGradient id="cxGlass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9ddff" stop-opacity="0.32"/><stop offset="1" stop-color="#7a4bd6" stop-opacity="0.18"/></linearGradient>
+          <radialGradient id="cxCore" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#fff"/><stop offset="0.4" stop-color="#ff7ef0"/><stop offset="1" stop-color="#ff2bd6" stop-opacity="0"/></radialGradient>
+          <pattern id="cxDots" width="6" height="6" patternUnits="userSpaceOnUse"><circle cx="3" cy="3" r="1" fill="#fff" fill-opacity="0.09"/></pattern>
+          <symbol id="cxSaucer" viewBox="-62 -44 124 88">
+            <ellipse cx="0" cy="2" rx="58" ry="10" fill="none" stroke="#b45cff" stroke-width="3" opacity="0.55"/>
+            <ellipse cx="0" cy="2" rx="50" ry="7.5" fill="none" stroke="#46eeff" stroke-width="1.6" opacity="0.6"/>
+            <path d="M-9 12 L9 12 L22 40 L-22 40 Z" fill="#46eeff" opacity="0.16"/>
+            <ellipse cx="0" cy="27" rx="13" ry="3" fill="none" stroke="#46eeff" stroke-width="1.5" opacity="0.7"/>
+            <ellipse cx="0" cy="36" rx="18" ry="3.6" fill="none" stroke="#46eeff" stroke-width="1.5" opacity="0.5"/>
+            <path d="M-44 1 Q0 22 44 1 Z" fill="#241d38" stroke="#b45cff" stroke-width="2"/>
+            <ellipse cx="0" cy="12" rx="10" ry="3.4" fill="url(#cxCore)"/>
+            <ellipse cx="0" cy="0" rx="46" ry="9" fill="#3b3456" stroke="#c78bff" stroke-width="2.4"/>
+            <ellipse cx="0" cy="-2.5" rx="30" ry="5.5" fill="#5a5274"/>
+            <g fill="#5ef2ff"><circle cx="-36" cy="4.5" r="1.9"/><circle cx="-24" cy="6.5" r="1.9"/><circle cx="-12" cy="7.6" r="1.9"/><circle cx="0" cy="8" r="1.9"/><circle cx="12" cy="7.6" r="1.9"/><circle cx="24" cy="6.5" r="1.9"/><circle cx="36" cy="4.5" r="1.9"/></g>
+            <!-- the pilot: you -->
+            <circle cx="0" cy="-13" r="9.5" fill="#86f5d4"/>
+            <path d="M-9.5 -16 A9.5 9.5 0 0 1 9.5 -16" fill="none" stroke="#1a1430" stroke-width="2.4"/>
+            <rect x="-12.5" y="-17" width="4.6" height="7" rx="2" fill="#ff2bd6"/><rect x="7.9" y="-17" width="4.6" height="7" rx="2" fill="#ff2bd6"/>
+            <ellipse cx="-3.4" cy="-13.5" rx="2.6" ry="3.2" fill="#fff"/><ellipse cx="3.4" cy="-13.5" rx="2.6" ry="3.2" fill="#fff"/>
+            <circle cx="-3" cy="-13" r="1.5" fill="#111"/><circle cx="3.8" cy="-13" r="1.5" fill="#111"/>
+            <circle cx="-6.4" cy="-9.6" r="1.3" fill="#ff8fc8" opacity="0.8"/><circle cx="6.4" cy="-9.6" r="1.3" fill="#ff8fc8" opacity="0.8"/>
+            <path d="M-2.6 -8.6 Q0 -6.4 2.6 -8.6" fill="none" stroke="#111" stroke-width="1.2" stroke-linecap="round"/>
+            <path d="M-21 -3 A21 19 0 0 1 21 -3 Z" fill="url(#cxGlass)" stroke="#efe6ff" stroke-width="1.6"/>
+            <path d="M-13 -13 Q-9 -19 -3 -20" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity="0.8"/>
+          </symbol>
+          <symbol id="cxHex" viewBox="-52 -50 104 100">
+            <polygon points="-48,-8 -32,-22 -32,14" fill="#062430" stroke="#00f5ff" stroke-width="3" stroke-linejoin="round"/>
+            <polygon points="48,-8 32,-22 32,14" fill="#062430" stroke="#00f5ff" stroke-width="3" stroke-linejoin="round"/>
+            <polygon points="0,-31 27,-15.5 27,15.5 0,31 -27,15.5 -27,-15.5" fill="#0a1d2e" stroke="#00f5ff" stroke-width="3.4" stroke-linejoin="round"/>
+            <polygon points="0,-20 17.3,-10 17.3,10 0,20 -17.3,10 -17.3,-10" fill="none" stroke="#ff2bd6" stroke-width="2.4"/>
+            <circle cx="0" cy="2" r="9.5" fill="#7dff68"/><circle cx="1" cy="3" r="4.2" fill="#0b2a10"/><circle cx="-2.5" cy="-1.5" r="2" fill="#fff"/>
+            <path d="M-13 -13 L-3 -8.5 M13 -13 L3 -8.5" stroke="#fff" stroke-width="3" stroke-linecap="round"/>
+          </symbol>
+          <symbol id="cxTri" viewBox="-52 -54 104 100">
+            <g stroke="#ff4fa3" stroke-width="2" fill="#3a0a1c" opacity="0.9">
+              <path d="M0 0 L46 -10 L0 -4 Z"/><path d="M0 0 L-24 40 L-3 2 Z"/><path d="M0 0 L-22 -42 L-4 -2 Z"/>
+            </g>
+            <polygon points="0,-30 30,22 -30,22" fill="#2a0710" stroke="#ff2e4d" stroke-width="3.4" stroke-linejoin="round"/>
+            <path d="M-11 -32 L-11 -44 L-5 -38 L0 -47 L5 -38 L11 -44 L11 -32 Z" fill="#ffd23d" stroke="#111" stroke-width="1.4" stroke-linejoin="round"/>
+            <ellipse cx="-7" cy="4" rx="4.4" ry="3.6" fill="#fff"/><ellipse cx="7" cy="4" rx="4.4" ry="3.6" fill="#fff"/>
+            <circle cx="-6.4" cy="2.6" r="1.8" fill="#111"/><circle cx="7.6" cy="2.6" r="1.8" fill="#111"/>
+            <path d="M-12 1.8 L-2.6 2.6 M12 1.8 L2.6 2.6" stroke="#ffd23d" stroke-width="2.4" stroke-linecap="round"/>
+            <path d="M-6 12 Q-3 9 0 11.5 Q3 9 6 12" fill="none" stroke="#ffd23d" stroke-width="1.8" stroke-linecap="round"/>
+          </symbol>
+          <symbol id="cxPrism" viewBox="-50 -50 100 100">
+            <path d="M-46 -4 L-20 -2" stroke="#ff2e4d" stroke-width="3"/><path d="M-46 0 L-20 1" stroke="#ffd23d" stroke-width="3"/><path d="M-46 4 L-20 4" stroke="#5ef2ff" stroke-width="3"/>
+            <polygon points="-18,-26 0,-36 18,-26 0,-16" fill="#6a3ab0" stroke="#7dff68" stroke-width="2" stroke-linejoin="round"/>
+            <polygon points="-18,-26 0,-16 0,34 -18,24" fill="#2a1250" stroke="#7dff68" stroke-width="2" stroke-linejoin="round"/>
+            <polygon points="18,-26 0,-16 0,34 18,24" fill="#3a1866" stroke="#7dff68" stroke-width="2" stroke-linejoin="round"/>
+            <circle cx="-8" cy="2" r="2.4" fill="#fff"/><circle cx="8" cy="2" r="2.4" fill="#fff"/>
+            <path d="M-4 11 L4 11" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+          </symbol>
+          <symbol id="cxEclipse" viewBox="-52 -52 104 104">
+            <g fill="#ffd23d"><polygon points="0,-50 5,-34 -5,-34"/><polygon points="0,50 5,34 -5,34"/><polygon points="-50,0 -34,5 -34,-5"/><polygon points="50,0 34,5 34,-5"/>
+              <polygon points="-35,-35 -21,-27 -27,-21"/><polygon points="35,35 21,27 27,21"/><polygon points="35,-35 27,-21 21,-27"/><polygon points="-35,35 -27,21 -21,27"/></g>
+            <circle cx="0" cy="0" r="31" fill="none" stroke="#ff2e4d" stroke-width="3"/>
+            <circle cx="0" cy="0" r="26" fill="#060009" stroke="#b026ff" stroke-width="2"/>
+            <path d="M-15 -8 Q-9 -14 -3 -8 Q-9 -10 -15 -8 Z M15 -8 Q9 -14 3 -8 Q9 -10 15 -8 Z" fill="#ffd23d" stroke="#ffd23d" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M-16 4 Q0 22 16 4 Z" fill="#170012" stroke="#ffd23d" stroke-width="1.8"/>
+            <path d="M-12 7 L-9 11 L-6 8 L-3 12 L0 8.5 L3 12 L6 8 L9 11 L12 7" fill="none" stroke="#ffd23d" stroke-width="1.4"/>
+          </symbol>
+          <symbol id="cxPlanet" viewBox="-30 -30 60 60">
+            <circle r="24" fill="#3b7fb0" stroke="#bff3ff" stroke-width="1.6"/>
+            <path d="M-20 -6 Q0 -12 20 -6" fill="none" stroke="#9ff4ff" stroke-width="3" opacity="0.4"/>
+            <path d="M-11 2 Q-7 5 -3 2 M3 2 Q7 5 11 2" fill="none" stroke="#08213a" stroke-width="2" stroke-linecap="round"/>
+            <path d="M-3 10 Q0 12 3 10" fill="none" stroke="#08213a" stroke-width="1.6" stroke-linecap="round"/>
+          </symbol>
+        </defs>
+      </svg>
 
-        <p class="lore-tag">II · The Signal</p>
-        <p>The Grid is not powered. It is <i>played</i>. Every world it shelters sits inside one enormous standing wave, and that wave keeps time to a single pure pulse the old engineers named <b>the Signal</b>.</p>
-        <p>While the Signal holds its tempo, the lattice holds. Let the beat thin, and the light thins with it. Let it stop, and the barrier simply opens.</p>
+      <div class="comic">
+        <div class="cp cover">
+          <div class="cover-issue">RHYTHM VOID COMICS · No. 1</div>
+          <div class="cover-title">THE SIGNAL</div>
+          <div class="cover-sub">A tiny saucer. A giant song. Four very grumpy robots.</div>
+        </div>
 
-        <p class="lore-tag">III · What Waits Outside</p>
-        <p>They come from worlds that already went dark. Vast, patient intelligences that outlived their own suns and decided nothing else deserved to keep burning.</p>
-        <p>They have thrown fleets at the Grid. They have thrown centuries at it. None of it worked, because you cannot shatter a wave. You can only pull it out of step.</p>
-        <p>So they stopped attacking the barrier and started attacking the beat. They built <b>wardens</b>: machine-minds the size of moons, each one made to crowd the Signal, flood it with noise, and break its <span class="lore-secret" id="loreSecret" role="button" tabindex="0">rhythm</span>.</p>
+        <div class="cp">
+          <p class="cap">Out past the last star hangs a net of light called <b>the Grid</b>. It keeps a thousand worlds safe and snoozing.</p>
+          <div class="art"><svg viewBox="0 0 320 120" role="img" aria-label="Sleepy planets tucked under a glowing net of light">
+            <rect width="320" height="120" fill="url(#cxDots)"/>
+            <g fill="none" stroke="#5ef2ff" stroke-opacity="0.45" stroke-width="1.2">
+              <path d="M0 40 Q160 0 320 40"/><path d="M0 62 Q160 22 320 62"/><path d="M0 84 Q160 44 320 84"/>
+              <path d="M40 0 L70 120 M100 0 L115 120 M160 0 L160 120 M220 0 L205 120 M280 0 L250 120"/>
+            </g>
+            <use href="#cxPlanet" x="34" y="56" width="56" height="56"/>
+            <use href="#cxPlanet" x="138" y="64" width="44" height="44"/>
+            <use href="#cxPlanet" x="226" y="52" width="64" height="64"/>
+            <text x="86" y="62" class="zzz">z</text><text x="94" y="52" class="zzz">z</text><text x="182" y="68" class="zzz">z</text><text x="288" y="54" class="zzz">z</text><text x="296" y="44" class="zzz">z</text>
+          </svg></div>
+        </div>
 
-        <p class="lore-tag">IV · Why Music</p>
-        <p>A signal that only defends decays. It has to be fed, and only one thing feeds it: the substance it is made of. Sound with intention. Music.</p>
-        <p>Every clean strike pushes light back into the lattice. Every one you let slip takes some out. Play well enough for long enough and the Grid does more than hold. It grows brighter, and the things outside feel it.</p>
+        <div class="cp">
+          <p class="cap">It doesn't run on batteries. It runs on a song: <b>the Signal</b>. Every beat keeps the lights on.</p>
+          <div class="art"><svg viewBox="0 0 320 110" role="img" aria-label="A heartbeat waveform pulsing through the Grid">
+            <rect width="320" height="110" fill="url(#cxDots)"/>
+            <path d="M0 64 L70 64 L84 30 L98 92 L112 18 L126 64 L196 64 L210 30 L224 92 L238 18 L252 64 L320 64" fill="none" stroke="#ff2bd6" stroke-width="7" stroke-opacity="0.25" stroke-linejoin="round"/>
+            <path d="M0 64 L70 64 L84 30 L98 92 L112 18 L126 64 L196 64 L210 30 L224 92 L238 18 L252 64 L320 64" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
+            <g fill="#ffd23d"><circle cx="40" cy="34" r="4"/><rect x="43" y="14" width="2" height="20"/><circle cx="160" cy="40" r="4"/><rect x="163" y="20" width="2" height="20"/><rect x="163" y="20" width="10" height="3"/><circle cx="286" cy="34" r="4"/><rect x="289" y="14" width="2" height="20"/></g>
+          </svg><span class="sfx" style="left:6%;bottom:6%">BOOM</span><span class="sfx sfx-s" style="left:44%;bottom:10%">tsk</span><span class="sfx" style="right:6%;bottom:6%">BOOM</span></div>
+        </div>
 
-        <p class="lore-tag">V · You</p>
-        <p>There is no fleet coming. No relay, no backup, no second Signal waiting to take over.</p>
-        <p><b>You are the Signal.</b> Hold the beat. Keep the Grid alive.</p>
+        <div class="cp">
+          <p class="cap">But out in the dark live some very big, very grumpy machines. They <b>hate</b> music.</p>
+          <div class="art dark"><svg viewBox="0 0 320 120" role="img" aria-label="Four warden machines glaring out of the dark">
+            <use href="#cxHex" x="6" y="22" width="80" height="78" opacity="0.92"/>
+            <use href="#cxTri" x="84" y="16" width="76" height="76" opacity="0.92"/>
+            <use href="#cxPrism" x="162" y="24" width="72" height="72" opacity="0.92"/>
+            <use href="#cxEclipse" x="236" y="16" width="80" height="80" opacity="0.92"/>
+          </svg><span class="bub" style="right:5%;top:4%">TOO. MUCH. GROOVE.</span></div>
+        </div>
+
+        <div class="cp">
+          <p class="cap">Enter <b>you</b>: one tiny saucer with a gravity engine that runs on rhythm.</p>
+          <div class="art"><svg viewBox="0 0 320 140" role="img" aria-label="The hero: a little saucer with a pilot wearing headphones">
+            <rect width="320" height="140" fill="url(#cxDots)"/>
+            <use href="#cxSaucer" x="62" y="2" width="196" height="139"/>
+          </svg><span class="bub bub-l" style="left:58%;top:6%">Let's jam!</span><span class="sfx" style="left:5%;bottom:10%">VWOOM</span></div>
+        </div>
+
+        <div class="cp">
+          <p class="cap">Hit a ring right on the beat and your saucer slurps up its energy. Miss, and the Signal flickers.</p>
+          <div class="art"><svg viewBox="0 0 320 120" role="img" aria-label="A glowing ring breaking into strands that pour into the saucer">
+            <rect width="320" height="120" fill="url(#cxDots)"/>
+            <circle cx="160" cy="62" r="54" fill="none" stroke="#7dff68" stroke-width="4" stroke-dasharray="40 18" opacity="0.85"/>
+            <g fill="none" stroke="#7dff68" stroke-width="2.6" stroke-linecap="round" opacity="0.9">
+              <path d="M112 34 Q100 66 150 74"/><path d="M208 34 Q220 66 170 74"/><path d="M120 108 Q120 80 154 76"/><path d="M200 108 Q200 80 166 76"/>
+            </g>
+            <use href="#cxSaucer" x="118" y="38" width="84" height="60"/>
+          </svg><span class="sfx sfx-g" style="right:6%;top:8%">SHLURP!</span></div>
+        </div>
+
+        <p class="files-h">THE WARDEN FILES</p>
+        <div class="cp half wanted">
+          <div class="art"><svg viewBox="0 0 160 112" role="img" aria-label="Hexatron, an angry hexagon with one green eye"><rect width="160" height="112" fill="url(#cxDots)"/><use href="#cxHex" x="26" y="6" width="108" height="100"/></svg><span class="bub bub-s" style="left:4%;top:4%">OFF-BEAT! OFF-BEAT!</span></div>
+          <p class="wn">HEXATRON</p><p class="ws">The Signal Warden · Stage 20</p>
+          <p class="wd">Six sides, zero rhythm. Spins hex saws to chop the beat into bits.</p>
+        </div>
+        <div class="cp half wanted">
+          <div class="art"><svg viewBox="0 0 160 112" role="img" aria-label="Triarch, a snooty triangle wearing a tiny gold crown"><rect width="160" height="112" fill="url(#cxDots)"/><use href="#cxTri" x="26" y="8" width="108" height="100"/></svg><span class="bub bub-s" style="right:4%;top:4%">KNEEL TO THE TRIANGLE.</span></div>
+          <p class="wn">TRIARCH</p><p class="ws">The Razor Emperor · Stage 30</p>
+          <p class="wd">Three blades, one tiny crown, one enormous ego.</p>
+        </div>
+        <div class="cp half wanted">
+          <div class="art"><svg viewBox="0 0 160 112" role="img" aria-label="Vanta Prism, a quiet crystal that swallows a rainbow"><rect width="160" height="112" fill="url(#cxDots)"/><use href="#cxPrism" x="26" y="6" width="108" height="100"/></svg><span class="bub bub-s" style="right:6%;top:4%">…</span></div>
+          <p class="wn">VANTA PRISM</p><p class="ws">The Null Shard · Stage 40</p>
+          <p class="wd">Bends light until it isn't there. Doesn't say much.</p>
+        </div>
+        <div class="cp half wanted">
+          <div class="art"><svg viewBox="0 0 160 112" role="img" aria-label="Eclipse Sovereign, a black sun with a golden grin"><rect width="160" height="112" fill="url(#cxDots)"/><use href="#cxEclipse" x="28" y="4" width="104" height="104"/></svg><span class="bub bub-s" style="left:4%;bottom:4%">I AM THE END OF THE SONG.</span></div>
+          <p class="wn">ECLIPSE SOVEREIGN</p><p class="ws">The Last Orbit · Stage 50</p>
+          <p class="wd">Wants to swallow the last light in the sky. Rude.</p>
+        </div>
+
+        <div class="cp">
+          <p class="cap">Beat a warden and keep its power: <b>Hex Saw</b>, <b>Tri-Laser</b>, <b>Prism Guard</b> and the <b>Event Horizon</b>.</p>
+          <div class="art"><svg viewBox="0 0 320 96" role="img" aria-label="Four power badges: a saw, three lasers, a shield and a black hole">
+            <rect width="320" height="96" fill="url(#cxDots)"/>
+            <g transform="translate(46 48)"><circle r="30" fill="#062430" stroke="#00f5ff" stroke-width="3"/><polygon points="0,-18 15.6,-9 15.6,9 0,18 -15.6,9 -15.6,-9" fill="none" stroke="#fff" stroke-width="2.4"/><g fill="#00f5ff"><polygon points="0,-24 4,-17 -4,-17"/><polygon points="0,24 4,17 -4,17"/><polygon points="20.8,-12 13,-12.4 17,-5.6"/><polygon points="-20.8,12 -13,12.4 -17,5.6"/><polygon points="20.8,12 17,5.6 13,12.4"/><polygon points="-20.8,-12 -17,-5.6 -13,-12.4"/></g></g>
+            <g transform="translate(122 48)"><circle r="30" fill="#2a0710" stroke="#ff2e4d" stroke-width="3"/><g stroke="#ffd23d" stroke-width="3" stroke-linecap="round"><path d="M0 0 L0 -22"/><path d="M0 0 L19 11"/><path d="M0 0 L-19 11"/></g><circle r="4" fill="#fff"/></g>
+            <g transform="translate(198 48)"><circle r="30" fill="#1c0b33" stroke="#b06bff" stroke-width="3"/><path d="M0 -20 L16 -13 L14 8 Q8 18 0 22 Q-8 18 -14 8 L-16 -13 Z" fill="#3a1866" stroke="#7dff68" stroke-width="2.2" stroke-linejoin="round"/></g>
+            <g transform="translate(274 48)"><circle r="30" fill="#0b0012" stroke="#ffd23d" stroke-width="3"/><ellipse rx="22" ry="7" fill="none" stroke="#ff9e3d" stroke-width="2.4"/><circle r="10" fill="#000" stroke="#fff" stroke-width="1.4"/></g>
+          </svg></div>
+        </div>
+
+        <div class="cp">
+          <p class="cap">Chain your hits to power up: <b>Fever</b> ×1.5 at 25, <b>Supernova</b> ×2 at 100, and <b>Singularity</b> ×3 at 250. That last one is PERFECT hits only!</p>
+          <div class="art"><svg viewBox="0 0 320 120" role="img" aria-label="The saucer doing a barrel roll in a burst of light">
+            <rect width="320" height="120" fill="url(#cxDots)"/>
+            <g fill="#ffd23d" opacity="0.9"><polygon points="160,4 170,40 206,22 182,52 220,62 182,70 204,104 170,84 160,118 150,84 116,104 138,70 100,62 138,52 114,22 150,40"/></g>
+            <g transform="translate(160 62) rotate(-24)"><use href="#cxSaucer" x="-50" y="-36" width="100" height="72"/></g>
+            <g fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.8"><path d="M78 40 Q64 62 78 84"/><path d="M66 46 Q56 62 66 78"/><path d="M242 40 Q256 62 242 84"/></g>
+          </svg><span class="sfx" style="left:4%;top:8%">WHOOSH!</span><span class="sfx sfx-g" style="right:5%;bottom:8%">×3!</span></div>
+        </div>
+
+        <div class="cp rumor">
+          <p class="cap dark">And then there are the things the Wardens never talk about&hellip;</p>
+          <div class="art dark"><svg viewBox="0 0 320 112" role="img" aria-label="Shadows: a winged shape with ember eyes, a strange craft, and a watching eye">
+            <g opacity="0.85">
+              <path d="M40 74 Q62 30 96 52 Q102 34 116 30 Q112 46 120 58 Q150 40 168 70 Q140 66 126 78 Q112 92 90 86 Q70 96 40 74 Z" fill="#1d0403" stroke="#ff2b12" stroke-width="1.4" stroke-opacity="0.6"/>
+              <circle cx="112" cy="46" r="2.4" fill="#ff7a1a"/><circle cx="118" cy="47" r="2" fill="#ff7a1a"/>
+            </g>
+            <g transform="translate(212 46)" opacity="0.75"><ellipse rx="24" ry="5" fill="#0b2230" stroke="#5ef2ff" stroke-width="1.4"/><path d="M-11 -2 A11 10 0 0 1 11 -2" fill="#0f3a48" stroke="#5ef2ff" stroke-width="1.2"/><path d="M-6 6 L6 6 L14 26 L-14 26 Z" fill="#5ef2ff" opacity="0.12"/></g>
+            <g transform="translate(282 70)" opacity="0.8"><path d="M-22 0 Q0 -16 22 0 Q0 16 -22 0 Z" fill="#0d1430" stroke="#ffd23d" stroke-width="1.4"/><circle r="6" fill="#ffd23d"/><circle r="2.6" fill="#0d1430"/></g>
+          </svg></div>
+          <ul class="rumors">
+            <li>Something old and hungry is said to sleep beneath the Grid, dreaming of a broken <span class="lore-secret" id="loreSecret" role="button" tabindex="0">rhythm</span>.</li>
+            <li>A strange craft hides where not even light can escape.</li>
+            <li>And whoever built the Grid still keeps score.</li>
+          </ul>
+        </div>
+
+        <div class="cp finale">
+          <p class="cap">No fleet. No backup. No second Signal.</p>
+          <div class="art"><svg viewBox="0 0 320 118" role="img" aria-label="The saucer glowing in the middle of the Grid">
+            <rect width="320" height="118" fill="url(#cxDots)"/>
+            <circle cx="160" cy="62" r="52" fill="none" stroke="#5ef2ff" stroke-width="2" opacity="0.5"/>
+            <circle cx="160" cy="62" r="40" fill="none" stroke="#b45cff" stroke-width="3" opacity="0.7"/>
+            <use href="#cxSaucer" x="104" y="22" width="112" height="80"/>
+          </svg><span class="bub bub-l" style="left:58%;top:4%">Hold the beat!</span></div>
+          <p class="finale-line"><b>You are the Signal.</b></p>
+          <p class="tbc">TO BE CONTINUED&hellip;</p>
+        </div>
       </div>
       <div class="back-row"><button class="btn ghost" data-back>Back</button></div>
     </div>
@@ -1660,7 +1887,7 @@
 
   // WHITEGRID — The Architect's domain. Blueprint white, gold and cold blue.
   const WHITEGRID_THEME = {
-    id: 'whitegrid', name: 'Whitegrid', unlock: 999,
+    id: 'whitegrid', name: 'Ascension', unlock: 999,
     c1: '#ffffff', c2: '#ffd23d', c3: '#6bb6ff', bg: ['#0d1430', '#060a1a', '#01030a'], grid: '#9fd0ff',
     colors: ['#ffffff', '#ffd23d', '#6bb6ff', '#c9e6ff', '#8a7bff'],
     music: { pad: 1.4, arp: 1.05, bright: 1.15, bass: 1.2, hat: 0.8, accent: 'swell' }
@@ -1668,7 +1895,7 @@
 
   // VOIDBLACK — deep space. No grid at all, just stars and cold cyan steel.
   const VOIDBLACK_THEME = {
-    id: 'voidblack', name: 'Voidblack', unlock: 999,
+    id: 'voidblack', name: 'Contact', unlock: 999,
     c1: '#5ef2ff', c2: '#b76bff', c3: '#e8fbff', bg: ['#000000', '#000000', '#000000'], grid: '#000000',
     colors: ['#5ef2ff', '#b76bff', '#e8fbff', '#7de2ff', '#3a9dff'],
     music: { pad: 0.9, arp: 1.1, bright: 1.1, bass: 1.35, hat: 1.15, accent: 'stab' }
@@ -1974,7 +2201,7 @@
     },
     vibeUnlocks: { voidMetal: true, cybermetal: false, ascension: false },   // v0.3.0: Void Metal is the starter song
     doomCleared: false,
-    themeUnlocks: { hellgrid: false },   // v0.3.0: Voraxis's reward is the Hellgrid theme
+    themeUnlocks: { hellgrid: false, voidblack: false, whitegrid: false },   // each secret boss unlocks its world as a theme
     planetCleared: false,
     architectCleared: false,
     settings: { music: true, musicVolume: 68, sfx: true, haptics: true, tapMode: 'target', musicVibe: 'voidMetal', autoMatchVibe: true, environmentDetail: 'full', audioOffsetMs: 0, tapVoice: 'classic', tapVolume: 100 }
@@ -2060,8 +2287,10 @@
       s.doomCleared = !!parsed.doomCleared;
       // v0.3.0: Void Metal is free now, so beating Voraxis unlocks the Hellgrid theme.
       // Players who already cleared Abyss get it straight away.
-      s.themeUnlocks = Object.assign({ hellgrid: false }, parsed.themeUnlocks || {});
+      s.themeUnlocks = Object.assign({ hellgrid: false, voidblack: false, whitegrid: false }, parsed.themeUnlocks || {});
       if (s.doomCleared) s.themeUnlocks.hellgrid = true;
+      if (s.planetCleared) s.themeUnlocks.voidblack = true;       // v0.4: worlds for players who already won them
+      if (s.architectCleared) s.themeUnlocks.whitegrid = true;
       s.planetCleared = !!parsed.planetCleared;
       s.architectCleared = !!parsed.architectCleared;
       // v2.7: migrate ability ids from every prior lineup to the Boss Core set.
@@ -4718,7 +4947,7 @@
     const grid = $('themeGrid');
     grid.innerHTML = '';
     // Reward themes (secret palettes won in a gauntlet) join the grid once unlocked.
-    const rewardThemes = ['hellgrid'].filter(id => save.themeUnlocks && save.themeUnlocks[id]).map(id => SECRET_THEMES[id]);
+    const rewardThemes = ['hellgrid', 'voidblack', 'whitegrid'].filter(id => save.themeUnlocks && save.themeUnlocks[id]).map(id => SECRET_THEMES[id]);
     for (const t of THEMES.concat(rewardThemes)) {
       const locked = !(save.themeUnlocks && save.themeUnlocks[t.id]) && save.level < t.unlock;
       const b = document.createElement('button');
@@ -6102,33 +6331,33 @@
     abyss: {
       id: 'abyss', label: 'ABYSS', stages: 8, diff: () => DOOM_DIFF,
       theme: 'hellgrid', vibe: 'hellfire', boss: () => DOOM_DRAGON,
-      rewardTheme: 'hellgrid', rewardName: 'HELLGRID THEME', clearedFlag: 'doomCleared',
+      rewardTheme: 'hellgrid', rewardName: 'HELLGRID WORLD', clearedFlag: 'doomCleared',
       enter: ['THE SIGNAL BREAKS', '#ff2b12', 'HOLD THE RHYTHM'],
       enterTones: [110, 82, 55],
       winTitle: 'THE GRID HOLDS',
-      winSub: 'You outlasted Voraxis. The HELLGRID theme is yours. Equip it in Settings under Theme.',
+      winSub: 'You outlasted Voraxis. The HELLGRID world is yours. Equip it in Settings under Theme.',
       failTitle: 'THE SIGNAL FADES',
       failSub: 'Voraxis still circles the Grid. Try the gauntlet again.'
     },
     planet: {
       id: 'planet', label: 'CONTACT', stages: 9, phaseEvery: 2, diff: () => CONTACT_DIFF, bgStyle: 'starfield',
       theme: 'voidblack', vibe: 'cybermetal', boss: () => PLANET_BOSS,
-      rewardVibe: 'cybermetal', rewardName: 'CONTACT PROTOCOL', clearedFlag: 'planetCleared',
+      rewardVibe: 'cybermetal', rewardWorld: 'voidblack', rewardName: 'CONTACT PROTOCOL + CONTACT WORLD', clearedFlag: 'planetCleared',
       enter: ['SOMETHING CAME LOOKING', '#5ef2ff', 'HOLD THE SIGNAL'],
       enterTones: [147, 110, 73],
       winTitle: 'THE CRAFT GOES DARK',
-      winSub: 'The Visitor is down. CONTACT PROTOCOL unlocked. Equip it in Settings under Music Vibe.',
+      winSub: 'The Visitor is down. CONTACT PROTOCOL music and the CONTACT world are yours. Equip them in Settings.',
       failTitle: 'TAKEN',
       failSub: 'The Visitor withdraws with what it came for. Find it again.'
     },
     architect: {
       id: 'architect', label: 'ASCENSION', stages: 10, phaseEvery: 2, diff: () => ASCENSION_DIFF,
       theme: 'whitegrid', vibe: 'ascension', boss: () => ARCHITECT_BOSS,
-      rewardVibe: 'ascension', rewardName: 'ASCENSION', clearedFlag: 'architectCleared',
+      rewardVibe: 'ascension', rewardWorld: 'whitegrid', rewardName: 'ASCENSION + ASCENSION WORLD', clearedFlag: 'architectCleared',
       enter: ['YOU ARE BEING MEASURED', '#ffd23d', 'PROVE THE SIGNAL'],
       enterTones: [262, 330, 392],
       winTitle: 'THE ARCHITECT CONCEDES',
-      winSub: 'You were found worthy. ASCENSION unlocked. Equip it in Settings under Music Vibe.',
+      winSub: 'You were found worthy. ASCENSION music and the ASCENSION world are yours. Equip them in Settings.',
       failTitle: 'FOUND WANTING',
       failSub: 'The Architect returns to its work. Prove yourself again.'
     }
@@ -6837,11 +7066,12 @@
         save.vibeUnlocks = save.vibeUnlocks || {};
         save.vibeUnlocks[rv] = true;
       }
+      if (doomCfg.rewardWorld) { save.themeUnlocks = save.themeUnlocks || {}; save.themeUnlocks[doomCfg.rewardWorld] = true; }
       save[doomCfg.clearedFlag] = true;
       persist();
       bossDefeatNameEl.textContent = def.name + ' FALLS';
       bossRewardLabelEl.textContent = !firstClear ? 'ALREADY UNLOCKED'
-        : (doomCfg.rewardTheme ? 'THEME UNLOCKED' : 'MUSIC VIBE UNLOCKED');
+        : (doomCfg.rewardTheme ? 'WORLD UNLOCKED' : doomCfg.rewardWorld ? 'MUSIC + WORLD UNLOCKED' : 'MUSIC VIBE UNLOCKED');
       bossRewardValueEl.textContent = doomCfg.rewardName;
       bossDefeatBanner.classList.add('show');
       applyBossMusic(false);
@@ -9475,6 +9705,7 @@
     }
     return {
       render,
+      hide,
       get ok() { return ok; },
       get active() { return ok && !broken && !isLow(); },
       get low() { return broken || isLow(); },
@@ -10198,7 +10429,7 @@
   // incoming ring. Low graphics / no WebGL also gets a cheap stand-in for the warp.
   function drawCraftStage(t) {
     const p = pulse + beatBreath();
-    if (!SpaceFX.active) drawGravityWell2D(tgt.x, tgt.y, t, p);
+    if (!SpaceFX.active && !WorldFX.kindFor(theme.id)) drawGravityWell2D(tgt.x, tgt.y, t, p);
     CraftFX.draw(t, tgt.x, tgt.y, p);
   }
 
@@ -10519,6 +10750,508 @@
     ctx.restore();
   }
 
+  // ================= SECRET WORLDS (v0.4) =================
+  // The three secret gauntlets each get their own place instead of the space sky:
+  //   Hellgrid  (Voraxis)  : a burning desert wasteland under a molten sun
+  //   Voidblack (Visitor)  : an alien moon under a ringed giant, aurora overhead
+  //   Whitegrid (Archon)   : a golden sky-forge above a sea of clouds
+  // Winning a gauntlet lets you equip its world as a theme. The landscape is painted
+  // once per size into cached layers; each frame draws those plus a little light
+  // animation (embers, lava pulse, aurora, rays) that reacts to the beat and the
+  // combo tiers. Fixed-seed generators only: nothing here calls Math.random.
+  const WorldFX = (() => {
+    const TAU = Math.PI * 2;
+    const KIND = { hellgrid: 'hell', voidblack: 'contact', whitegrid: 'ascend' };
+    let L = null;
+    const fr = (v) => v - Math.floor(v);
+    const hash = (n) => fr(Math.sin(n * 127.1 + 311.7) * 43758.5453);
+    function rng(seed) {
+      let s = seed >>> 0;
+      return () => { s = (s + 0x6D2B79F5) >>> 0; let v = s; v = Math.imul(v ^ (v >>> 15), v | 1); v ^= v + Math.imul(v ^ (v >>> 7), v | 61); return ((v ^ (v >>> 14)) >>> 0) / 4294967296; };
+    }
+    function layer(w, h, s) {
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w * s)); c.height = Math.max(1, Math.round(h * s));
+      const g = c.getContext('2d'); g.scale(s, s);
+      return [c, g];
+    }
+    const quality = () => SpaceFX.low ? 0 : (save.settings.spaceQuality === 'lite' ? 1 : 2);
+    const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+    const glows = {};
+    function glow(c) {                                   // a small soft dot, drawn additively
+      const k = c.join(',');
+      if (glows[k]) return glows[k];
+      const [cv, g] = layer(32, 32, 1);
+      const gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+      gr.addColorStop(0, rgba(c, 1)); gr.addColorStop(0.25, rgba(c, 0.6)); gr.addColorStop(1, rgba(c, 0));
+      g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
+      return (glows[k] = cv);
+    }
+    // a jagged ridge line from x0 to x1 standing on baseY; returns the points
+    function ridge(R, x0, x1, baseY, amp, step, jag) {
+      const pts = []; let y = baseY - amp * 0.5;
+      for (let x = x0; x <= x1 + step; x += step * (0.6 + R() * 0.8)) {
+        y += (R() - 0.5) * amp * jag; y = Math.max(baseY - amp, Math.min(baseY - amp * 0.12, y));
+        pts.push([x, y]);
+      }
+      return pts;
+    }
+    function fillRidge(g, pts, baseY, fill) {
+      g.beginPath(); g.moveTo(pts[0][0], baseY);
+      for (const [x, y] of pts) g.lineTo(x, y);
+      g.lineTo(pts[pts.length - 1][0], baseY); g.closePath();
+      g.fillStyle = fill; g.fill();
+    }
+    function strokeRidge(g, pts, style, w) {
+      g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y));
+      g.strokeStyle = style; g.lineWidth = w; g.stroke();
+    }
+    function vignette(g, w, h, a) {
+      const gr = g.createRadialGradient(w / 2, h * 0.5, Math.min(w, h) * 0.35, w / 2, h * 0.5, Math.hypot(w, h) * 0.62);
+      gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, `rgba(0,0,0,${a})`);
+      g.fillStyle = gr; g.fillRect(0, 0, w, h);
+    }
+
+    // ---------------------------------------------------------------- HELLGRID
+    function paintHell(w, h, s, Q) {
+      const [cv, g] = layer(w, h, s), [lv, lg] = layer(w, h, s);
+      const R = rng(666), hz = h * 0.66, vx = w * 0.5, m = Math.min(w, h);
+      let gr = g.createLinearGradient(0, 0, 0, hz);
+      [[0, '#040000'], [0.3, '#190302'], [0.62, '#4a0a03'], [0.86, '#9c2306'], [1, '#ff6a1c']].forEach(([o, c]) => gr.addColorStop(o, c));
+      g.fillStyle = gr; g.fillRect(0, 0, w, hz + 1);
+      for (let i = 0; i < 48; i++) {                    // smoke banks
+        const x = R() * w, y = h * (0.03 + R() * 0.5), rx = m * (0.12 + R() * 0.36), ry = rx * (0.07 + R() * 0.1);
+        g.fillStyle = R() < 0.58 ? `rgba(0,0,0,${0.16 + R() * 0.24})` : `rgba(255,${(60 + R() * 50) | 0},20,${0.03 + R() * 0.05})`;
+        g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, TAU); g.fill();
+      }
+      // the molten sun, sinking behind the mesas
+      const sx = w * 0.2, sy = hz - m * 0.03, sr = m * 0.16;
+      gr = g.createRadialGradient(sx, sy, sr * 0.7, sx, sy, sr * 3.2);
+      gr.addColorStop(0, 'rgba(255,110,30,0.55)'); gr.addColorStop(0.4, 'rgba(200,40,10,0.22)'); gr.addColorStop(1, 'rgba(120,10,0,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, w, hz);
+      g.save(); g.beginPath(); g.arc(sx, sy, sr, 0, TAU); g.clip();
+      gr = g.createLinearGradient(0, sy - sr, 0, sy + sr);
+      gr.addColorStop(0, '#ffe58c'); gr.addColorStop(0.45, '#ff7a1e'); gr.addColorStop(1, '#a8160a');
+      g.fillStyle = gr; g.fillRect(sx - sr, sy - sr, sr * 2, sr * 2);
+      g.fillStyle = 'rgba(60,4,2,0.85)';                 // heat bands across the lower half
+      for (let k = 0; k < 6; k++) { const yy = sy + sr * (0.05 + k * 0.17), th = sr * (0.025 + k * 0.012); g.fillRect(sx - sr, yy, sr * 2, th); }
+      g.restore();
+      // far crags, lit from below by the lava
+      const far = ridge(R, -20, w + 20, hz, m * 0.15, m * 0.025, 0.9);
+      fillRidge(g, far, hz + 1, '#1b0302'); strokeRidge(g, far, 'rgba(255,110,40,0.32)', 1.4);
+      // mid mesas (flat-topped), the skull sits on the right-hand one
+      const mesas = [[0.02, 0.2, 0.07], [0.3, 0.42, 0.05], [0.56, 0.7, 0.06], [0.74, 0.98, 0.09]];
+      for (const [a, b, hh] of mesas) {
+        const x0 = a * w, x1 = b * w, top = hz - m * hh;
+        g.beginPath(); g.moveTo(x0 - m * 0.03, hz + 1); g.lineTo(x0, top + m * 0.012); g.lineTo(x0 + m * 0.02, top);
+        g.lineTo(x1 - m * 0.02, top); g.lineTo(x1, top + m * 0.015); g.lineTo(x1 + m * 0.03, hz + 1); g.closePath();
+        g.fillStyle = '#0d0101'; g.fill();
+        g.beginPath(); g.moveTo(x0 + m * 0.02, top); g.lineTo(x1 - m * 0.02, top);
+        g.strokeStyle = 'rgba(255,90,25,0.45)'; g.lineWidth = 1.5; g.stroke();
+      }
+      // scorched ground
+      gr = g.createLinearGradient(0, hz, 0, h);
+      gr.addColorStop(0, '#3c0b03'); gr.addColorStop(0.28, '#190401'); gr.addColorStop(1, '#070100');
+      g.fillStyle = gr; g.fillRect(0, hz, w, h - hz);
+      gr = g.createLinearGradient(0, hz - 2, 0, hz + m * 0.05);
+      gr.addColorStop(0, 'rgba(255,120,40,0.55)'); gr.addColorStop(1, 'rgba(255,60,10,0)');
+      g.fillStyle = gr; g.fillRect(0, hz - 2, w, m * 0.05);
+      for (let i = 0; i < 26; i++) {                    // dune ripples
+        const y = hz + (h - hz) * Math.pow(R(), 1.6), x = R() * w, len = m * (0.1 + R() * 0.3) * (0.4 + (y - hz) / (h - hz));
+        g.beginPath(); g.moveTo(x - len, y); g.quadraticCurveTo(x, y - m * 0.012, x + len, y);
+        g.strokeStyle = R() < 0.5 ? 'rgba(0,0,0,0.35)' : 'rgba(255,90,30,0.07)'; g.lineWidth = 1 + (y - hz) / (h - hz) * 2; g.stroke();
+      }
+      // lava rivers fanning out from the horizon toward you
+      const rivers = [[-0.55, 0.7, 1], [-0.15, 1.3, 2], [0.22, 1.1, 3], [0.62, 0.8, 4]];
+      for (const [dir, fq, sd] of rivers) {
+        const L1 = [], L2 = [], C = [];
+        for (let k = 0; k <= 40; k++) {
+          const u = k / 40, y = hz + (h - hz) * u;
+          const cx = vx + dir * w * 0.62 * Math.pow(u, 1.15) + Math.sin(u * 7 * fq + sd) * m * 0.05 * u;
+          const hw = 0.6 + m * 0.03 * Math.pow(u, 1.4);
+          C.push([cx, y, hw]); L1.push([cx - hw, y]); L2.push([cx + hw, y]);
+        }
+        const path = (gg) => { gg.beginPath(); L1.forEach(([x, y], i) => i ? gg.lineTo(x, y) : gg.moveTo(x, y)); for (let i = L2.length - 1; i >= 0; i--) gg.lineTo(L2[i][0], L2[i][1]); gg.closePath(); };
+        path(g); g.fillStyle = '#6a1503'; g.fill();
+        lg.save(); lg.globalCompositeOperation = 'lighter';
+        path(lg); gr = lg.createLinearGradient(0, hz, 0, h); gr.addColorStop(0, 'rgba(255,190,80,0.9)'); gr.addColorStop(1, 'rgba(255,110,20,0.95)');
+        lg.fillStyle = gr; lg.fill();
+        lg.beginPath(); C.forEach(([x, y], i) => i ? lg.lineTo(x, y) : lg.moveTo(x, y));
+        lg.strokeStyle = 'rgba(255,240,170,0.8)'; lg.lineWidth = 1.2; lg.stroke();
+        lg.strokeStyle = 'rgba(255,80,10,0.18)'; lg.lineWidth = m * 0.05; lg.stroke();
+        lg.restore();
+      }
+      lg.save(); lg.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 36; i++) {                    // cracks
+        let x = R() * w, y = hz + (h - hz) * (0.1 + R() * 0.9); const segs = 4 + (R() * 6) | 0, sc = 0.4 + (y - hz) / (h - hz);
+        lg.beginPath(); lg.moveTo(x, y);
+        for (let k = 0; k < segs; k++) { x += (R() - 0.5) * m * 0.07 * sc; y += (R() - 0.5) * m * 0.02 * sc; lg.lineTo(x, y); }
+        lg.strokeStyle = 'rgba(255,120,30,0.75)'; lg.lineWidth = 0.6 + sc; lg.stroke();
+      }
+      lg.restore();
+      // the horned skull on the far mesa, eyes full of fire
+      const kx = w * 0.86, ks = m * 0.13, ky = hz - m * 0.09 - ks * 0.45;
+      g.save(); g.translate(kx, ky);
+      g.fillStyle = '#120202'; g.strokeStyle = 'rgba(255,100,40,0.5)'; g.lineWidth = 1.4;
+      for (const sd of [-1, 1]) {                         // horns
+        g.beginPath(); g.moveTo(sd * ks * 0.32, -ks * 0.28);
+        g.quadraticCurveTo(sd * ks * 1.15, -ks * 0.55, sd * ks * 1.05, -ks * 1.25);
+        g.quadraticCurveTo(sd * ks * 0.85, -ks * 0.62, sd * ks * 0.2, -ks * 0.05); g.closePath(); g.fill(); g.stroke();
+      }
+      g.beginPath(); g.ellipse(0, -ks * 0.1, ks * 0.48, ks * 0.44, 0, 0, TAU); g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(-ks * 0.32, ks * 0.12); g.lineTo(-ks * 0.22, ks * 0.5); g.lineTo(ks * 0.22, ks * 0.5); g.lineTo(ks * 0.32, ks * 0.12); g.closePath(); g.fill(); g.stroke();
+      g.fillStyle = '#000';
+      for (const sd of [-1, 1]) { g.beginPath(); g.ellipse(sd * ks * 0.19, -ks * 0.08, ks * 0.13, ks * 0.11, sd * 0.3, 0, TAU); g.fill(); }
+      g.strokeStyle = 'rgba(0,0,0,0.9)'; g.lineWidth = 1.2;
+      for (let k = -2; k <= 2; k++) { g.beginPath(); g.moveTo(k * ks * 0.08, ks * 0.3); g.lineTo(k * ks * 0.08, ks * 0.5); g.stroke(); }
+      g.restore();
+      lg.save(); lg.globalCompositeOperation = 'lighter';
+      for (const sd of [-1, 1]) lg.drawImage(glow([255, 120, 30]), kx + sd * ks * 0.19 - ks * 0.22, ky - ks * 0.08 - ks * 0.22, ks * 0.44, ks * 0.44);
+      lg.restore();
+      // the ribs of something enormous, half buried on the left
+      const bx = w * 0.12, by = hz + (h - hz) * 0.42, bs = m * 0.2;
+      g.save(); g.lineCap = 'round';
+      g.beginPath(); g.moveTo(bx - bs * 0.9, by + bs * 0.05); g.quadraticCurveTo(bx, by - bs * 0.06, bx + bs * 0.95, by + bs * 0.08);
+      g.strokeStyle = '#2b1712'; g.lineWidth = bs * 0.07; g.stroke();
+      for (let k = 0; k < 7; k++) {
+        const u = k / 6, x = bx - bs * 0.75 + u * bs * 1.5, hh = bs * (0.55 + 0.4 * Math.sin(u * Math.PI));
+        g.beginPath(); g.moveTo(x, by); g.quadraticCurveTo(x - bs * 0.32, by - hh * 0.75, x - bs * 0.08, by - hh);
+        g.strokeStyle = '#3a221a'; g.lineWidth = bs * 0.045; g.stroke();
+        g.strokeStyle = 'rgba(255,140,80,0.22)'; g.lineWidth = bs * 0.012; g.stroke();
+      }
+      g.restore();
+      for (const [x, hh, wd] of [[0.015, 0.34, 0.025], [0.05, 0.22, 0.018], [0.955, 0.3, 0.024], [0.99, 0.4, 0.03]]) {   // obsidian spires
+        const X = x * w, top = h - m * hh;
+        g.beginPath(); g.moveTo(X - m * wd, h + 2); g.lineTo(X - m * wd * 0.2, top + m * 0.04); g.lineTo(X, top); g.lineTo(X + m * wd * 0.35, top + m * 0.06); g.lineTo(X + m * wd, h + 2); g.closePath();
+        g.fillStyle = '#050000'; g.fill(); g.strokeStyle = 'rgba(255,60,20,0.35)'; g.lineWidth = 1.2; g.stroke();
+      }
+      vignette(g, w, h, 0.6);
+      // flame vents along the mesas
+      const vents = [[0.34, 0.05], [0.4, 0.05], [0.6, 0.06], [0.66, 0.06], [0.95, 0.09]].map(([x, hh]) => [x * w, hz - m * hh]);
+      return { cv, lv, hz, vents, m, gy0: hz - m * 0.21 };
+    }
+    let flameSpr = null;
+    function flame() {
+      if (flameSpr) return flameSpr;
+      const [cv, g] = layer(48, 128, 1);
+      const gr = g.createRadialGradient(24, 112, 2, 24, 90, 70);
+      gr.addColorStop(0, 'rgba(255,245,190,1)'); gr.addColorStop(0.25, 'rgba(255,170,50,0.9)'); gr.addColorStop(0.6, 'rgba(255,60,10,0.45)'); gr.addColorStop(1, 'rgba(160,10,0,0)');
+      g.fillStyle = gr;
+      g.beginPath(); g.moveTo(24, 0); g.bezierCurveTo(34, 40, 48, 70, 40, 104); g.quadraticCurveTo(24, 132, 8, 104); g.bezierCurveTo(0, 70, 14, 40, 24, 0); g.fill();
+      return (flameSpr = cv);
+    }
+    function drawHell(D, t, Q, beat, tier) {
+      const { hz, m } = D;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, 0.5 + 0.16 * Math.sin(t * 1.3) + 0.08 * Math.sin(t * 3.7) + 0.35 * beat + 0.18 * tier);
+      glowStrip(D);                                      // the lava breathes with the beat
+      const F = flame(), nV = Q ? D.vents.length : 3;
+      for (let i = 0; i < nV; i++) {                     // flame vents
+        const [x, y] = D.vents[i], n = 0.55 + 0.25 * Math.sin(t * 9 + i * 2.1) + 0.2 * Math.sin(t * 14.3 + i);
+        const fh = m * (0.08 + 0.05 * n + 0.07 * beat + 0.12 * tier), fw = fh * 0.38;
+        ctx.globalAlpha = 0.75 + 0.25 * n;
+        ctx.drawImage(F, x - fw / 2, y - fh + m * 0.006, fw, fh);
+      }
+      const nE = [16, 32, 54][Q] + (tier > 0.5 ? 18 : 0), E = glow([255, 140, 40]);
+      for (let i = 0; i < nE; i++) {                     // embers rising
+        const sp = 0.05 + hash(i) * 0.08, ph = fr(hash(i + 7) + t * sp);
+        const x = fr(hash(i + 3) + Math.sin(t * 0.7 + i) * 0.01) * W + Math.sin(t * (1 + hash(i) * 2) + i) * 12;
+        const y = H * (1.02 - ph * 1.05), sz = 2 + hash(i + 11) * 4;
+        ctx.globalAlpha = Math.min(1, (1 - ph) * 1.6) * (0.5 + 0.5 * hash(i + 5));
+        ctx.drawImage(E, x - sz * 2, y - sz * 2, sz * 4, sz * 4);
+      }
+      if (Q > 0) {                                       // red lightning in the smoke
+        const P = 6.5, k = Math.floor(t / P), at = hash(k) * P * 0.7, dt = t - k * P - at;
+        if (dt >= 0 && dt < 0.22) {
+          const a = dt < 0.06 ? 1 : 1 - (dt - 0.06) / 0.16;
+          ctx.globalAlpha = 0.12 * a; ctx.fillStyle = '#ff5020'; ctx.fillRect(0, 0, W, hz);
+          let x = hash(k + 1) * W, y = 0; ctx.beginPath(); ctx.moveTo(x, y);
+          for (let j = 0; j < 9; j++) { x += (hash(k * 9 + j) - 0.5) * m * 0.12; y += hz * 0.06; ctx.lineTo(x, y); }
+          ctx.globalAlpha = a; ctx.strokeStyle = 'rgba(255,200,160,0.9)'; ctx.lineWidth = 1.6; ctx.stroke();
+          ctx.strokeStyle = 'rgba(255,60,20,0.35)'; ctx.lineWidth = 7; ctx.stroke();
+        }
+      }
+      ctx.restore();
+    }
+
+    // ----------------------------------------------------------------- CONTACT
+    function paintContact(w, h, s, Q) {
+      const [cv, g] = layer(w, h, s), [lv, lg] = layer(w, h, s);
+      const R = rng(1947), hz = h * 0.67, vx = w * 0.5, m = Math.min(w, h);
+      let gr = g.createLinearGradient(0, 0, 0, hz);
+      [[0, '#000004'], [0.5, '#020a16'], [0.85, '#04232e'], [1, '#0b4a52']].forEach(([o, c]) => gr.addColorStop(o, c));
+      g.fillStyle = gr; g.fillRect(0, 0, w, hz + 1);
+      g.save(); g.translate(w * 0.45, h * 0.3); g.rotate(-0.5);   // the galaxy's dusty band
+      for (let i = 0; i < 60; i++) {
+        const x = (R() - 0.5) * w * 1.5, y = (R() - 0.5) * m * 0.14, r = m * (0.04 + R() * 0.12);
+        g.fillStyle = R() < 0.5 ? `rgba(120,90,255,${0.02 + R() * 0.03})` : `rgba(80,220,255,${0.015 + R() * 0.025})`;
+        g.beginPath(); g.ellipse(x, y, r * 1.8, r * 0.5, 0, 0, TAU); g.fill();
+      }
+      g.restore();
+      const twinkle = [];
+      for (let i = 0; i < [140, 220, 300][Q]; i++) {
+        const x = R() * w, y = Math.pow(R(), 1.3) * hz * 0.98, b = R();
+        g.fillStyle = `rgba(${200 + (R() * 55) | 0},${220 + (R() * 35) | 0},255,${0.25 + b * 0.6})`;
+        g.fillRect(x, y, b > 0.9 ? 2 : 1.2, b > 0.9 ? 2 : 1.2);
+        if (b > 0.93 && twinkle.length < 22) twinkle.push([x, y]);
+      }
+      // the ringed giant
+      const px = w * 0.78, py = h * 0.2, pr = m * 0.17, tilt = -0.35;
+      const ring = (front) => {
+        g.save(); g.translate(px, py); g.rotate(tilt);
+        g.beginPath(); front ? g.rect(-pr * 3, 0, pr * 6, pr * 3) : g.rect(-pr * 3, -pr * 3, pr * 6, pr * 3); g.clip();
+        for (let k = 0; k < 7; k++) {
+          const rx = pr * (1.45 + k * 0.12), ry = rx * 0.24;
+          g.beginPath(); g.ellipse(0, 0, rx, ry, 0, 0, TAU);
+          g.strokeStyle = `rgba(${150 + k * 12},${210 - k * 8},255,${0.16 + 0.12 * Math.sin(k * 1.7) ** 2})`; g.lineWidth = pr * 0.07; g.stroke();
+        }
+        g.restore();
+      };
+      ring(false);
+      g.save(); g.beginPath(); g.arc(px, py, pr, 0, TAU); g.clip();
+      gr = g.createRadialGradient(px - pr * 0.4, py + pr * 0.35, pr * 0.1, px, py, pr * 1.1);
+      gr.addColorStop(0, '#9ff4ff'); gr.addColorStop(0.45, '#3b7fb0'); gr.addColorStop(1, '#10123a');
+      g.fillStyle = gr; g.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+      g.translate(px, py); g.rotate(tilt);
+      for (let k = -6; k <= 6; k++) { g.fillStyle = k % 2 ? 'rgba(20,10,60,0.22)' : 'rgba(180,240,255,0.10)'; g.fillRect(-pr * 1.2, k * pr * 0.15, pr * 2.4, pr * 0.08); }
+      g.restore();
+      gr = g.createRadialGradient(px + pr * 0.5, py - pr * 0.45, pr * 0.2, px + pr * 0.3, py - pr * 0.3, pr * 1.3);   // night side
+      gr.addColorStop(0, 'rgba(0,0,8,0.75)'); gr.addColorStop(1, 'rgba(0,0,8,0)');
+      g.save(); g.beginPath(); g.arc(px, py, pr, 0, TAU); g.clip(); g.fillStyle = gr; g.fillRect(px - pr, py - pr, pr * 2, pr * 2); g.restore();
+      ring(true);
+      const mx = w * 0.16, my = h * 0.12, mr = m * 0.032;   // a small moon
+      g.fillStyle = '#cfe9f2'; g.beginPath(); g.arc(mx, my, mr, 0, TAU); g.fill();
+      g.fillStyle = 'rgba(2,8,20,0.92)'; g.beginPath(); g.arc(mx + mr * 0.45, my - mr * 0.2, mr * 0.95, 0, TAU); g.fill();
+      // alien ranges
+      const far = ridge(R, -20, w + 20, hz, m * 0.12, m * 0.03, 1.1);
+      fillRidge(g, far, hz + 1, '#041019'); strokeRidge(g, far, 'rgba(94,242,255,0.28)', 1.2);
+      const near = ridge(R, -20, w + 20, hz + m * 0.02, m * 0.07, m * 0.05, 0.7);
+      fillRidge(g, near, hz + m * 0.02 + 1, '#030a10'); strokeRidge(g, near, 'rgba(183,107,255,0.22)', 1);
+      gr = g.createLinearGradient(0, hz, 0, h);
+      gr.addColorStop(0, '#0b1c28'); gr.addColorStop(0.3, '#061019'); gr.addColorStop(1, '#010306');
+      g.fillStyle = gr; g.fillRect(0, hz + m * 0.015, w, h - hz);
+      for (let i = 0; i < 22; i++) {                    // craters
+        const u = Math.pow(R(), 1.3), y = hz + m * 0.04 + (h - hz) * u, x = R() * w, rx = m * (0.02 + R() * 0.07) * (0.3 + u * 1.4), ry = rx * (0.18 + u * 0.12);
+        g.fillStyle = 'rgba(0,0,0,0.45)'; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, TAU); g.fill();
+        g.strokeStyle = 'rgba(120,220,255,0.12)'; g.lineWidth = 1; g.beginPath(); g.ellipse(x, y + ry * 0.15, rx, ry, 0, Math.PI * 1.05, Math.PI * 1.95); g.stroke();
+      }
+      // the crop-circle glyph under the craft: someone has been here before
+      const gx = vx, gy = hz + (h - hz) * 0.5, grx = Math.min(w * 0.42, m * 0.5), gry = grx * 0.2;
+      const glyph = (gg, a, lw) => {
+        gg.save(); gg.translate(gx, gy); gg.scale(1, gry / grx);
+        gg.strokeStyle = `rgba(94,242,255,${a})`; gg.lineWidth = lw * grx / gry * 0.5;
+        for (const k of [1, 0.78, 0.5]) { gg.beginPath(); gg.arc(0, 0, grx * k, 0, TAU); gg.stroke(); }
+        for (let k = 0; k < 8; k++) { const a0 = k * TAU / 8; gg.beginPath(); gg.moveTo(Math.cos(a0) * grx * 0.5, Math.sin(a0) * grx * 0.5); gg.lineTo(Math.cos(a0) * grx * 0.78, Math.sin(a0) * grx * 0.78); gg.stroke();
+          gg.beginPath(); gg.arc(Math.cos(a0 + 0.39) * grx * 0.89, Math.sin(a0 + 0.39) * grx * 0.89, grx * 0.05, 0, TAU); gg.stroke(); }
+        gg.restore();
+      };
+      glyph(g, 0.18, 1.2);
+      lg.save(); lg.globalCompositeOperation = 'lighter'; glyph(lg, 0.55, 1.6); lg.restore();
+      // monolith pylons with glyph strips
+      const pylons = [[0.07, 0.3], [0.21, 0.17], [0.79, 0.19], [0.93, 0.33]].map(([x, hh]) => [x * w, hz + (h - hz) * (hh > 0.25 ? 0.62 : 0.18), m * hh]);
+      for (const [x, base, hh] of pylons) {
+        const wd = hh * 0.12;
+        g.fillStyle = '#02060b'; g.beginPath(); g.moveTo(x - wd, base); g.lineTo(x - wd * 0.6, base - hh); g.lineTo(x + wd * 0.6, base - hh); g.lineTo(x + wd, base); g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(94,242,255,0.25)'; g.lineWidth = 1; g.stroke();
+        lg.save(); lg.globalCompositeOperation = 'lighter'; lg.fillStyle = 'rgba(94,242,255,0.75)';
+        for (let k = 0; k < 6; k++) lg.fillRect(x - wd * 0.12, base - hh * (0.2 + k * 0.11), wd * 0.24, hh * 0.05);
+        lg.restore();
+      }
+      vignette(g, w, h, 0.55);
+      return { cv, lv, hz, m, twinkle, pylons, gy0: hz - m * 0.16 };
+    }
+    let auroraSpr = null;
+    function aurora(w, h) {
+      const key = (w | 0) + 'x' + (h | 0);
+      if (auroraSpr && auroraSpr.key === key) return auroraSpr;
+      const aw = w, ah = h * 0.5, [cv, g] = layer(aw, ah, 0.5), R = rng(42);
+      g.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 260; i++) {                   // overlapping soft curtains (no hard stripes)
+        const x = (i / 260) * aw, base = ah * (0.62 + 0.18 * Math.sin(i * 0.055) + 0.05 * Math.sin(i * 0.19)), hh = ah * (0.3 + 0.25 * Math.sin(i * 0.13) ** 2 + 0.12 * R());
+        const gr = g.createLinearGradient(0, base, 0, base - hh);
+        const c = (i % 7) < 5 ? [80, 255, 190] : [150, 110, 255];
+        gr.addColorStop(0, rgba(c, 0.09)); gr.addColorStop(0.35, rgba(c, 0.045)); gr.addColorStop(1, rgba(c, 0));
+        g.fillStyle = gr; g.fillRect(x - aw / 130, base - hh, aw / 65, hh);
+      }
+      return (auroraSpr = { key, cv, aw, ah });
+    }
+    function drawContact(D, t, Q, beat, tier) {
+      const { hz, m } = D;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      if (Q > 0) {                                       // aurora curtains drifting across
+        const A = aurora(W, H), off = (t * 12) % A.aw;
+        ctx.globalAlpha = 0.55 + 0.25 * Math.sin(t * 0.6) + 0.2 * tier;
+        ctx.drawImage(A.cv, -off, H * 0.02, A.aw, A.ah); ctx.drawImage(A.cv, A.aw - off, H * 0.02, A.aw, A.ah);
+      }
+      ctx.globalAlpha = Math.min(1, 0.45 + 0.4 * beat + 0.2 * Math.sin(t * 2) + 0.3 * tier);
+      glowStrip(D);                                      // glyphs and pylons pulse with the beat
+      const S = glow([200, 240, 255]);
+      for (let i = 0; i < D.twinkle.length; i++) {       // twinkling stars
+        const [x, y] = D.twinkle[i], a = 0.3 + 0.7 * Math.max(0, Math.sin(t * (1.5 + hash(i) * 2.5) + i * 3));
+        ctx.globalAlpha = a; ctx.drawImage(S, x - 5, y - 5, 10, 10);
+      }
+      if (Q > 0) for (let k = 0; k < 2; k++) {           // the searchlights, sweeping the sky for you
+        const [x, base, hh] = D.pylons[k ? 3 : 0], ang = -Math.PI / 2 + (k ? -1 : 1) * (0.35 + 0.3 * Math.sin(t * 0.4 + k * 2));
+        ctx.save(); ctx.translate(x, base - hh); ctx.rotate(ang);
+        const gr = ctx.createLinearGradient(0, 0, H * 0.7, 0);
+        gr.addColorStop(0, 'rgba(94,242,255,0.18)'); gr.addColorStop(1, 'rgba(94,242,255,0)');
+        ctx.globalAlpha = 0.8; ctx.fillStyle = gr;
+        ctx.beginPath(); ctx.moveTo(0, -2); ctx.lineTo(H * 0.7, -m * 0.09); ctx.lineTo(H * 0.7, m * 0.09); ctx.lineTo(0, 2); ctx.closePath(); ctx.fill();
+        ctx.restore();
+      }
+      for (const [x, base, hh] of D.pylons) {            // pylon beacons
+        const a = 0.4 + 0.6 * Math.max(0, Math.sin(t * 3 + x * 0.01));
+        ctx.globalAlpha = a; ctx.drawImage(glow([94, 242, 255]), x - 7, base - hh - 7, 14, 14);
+      }
+      { const P = 4.2, k = Math.floor(t / P), dt = t - k * P - hash(k) * 2;   // a shooting star now and then
+        if (dt >= 0 && dt < 0.7) {
+          const x0 = hash(k + 3) * W, y0 = hash(k + 5) * hz * 0.5, len = m * 0.25, u = dt / 0.7;
+          const x = x0 + len * u, y = y0 + len * 0.35 * u;
+          const gr = ctx.createLinearGradient(x, y, x - len * 0.4, y - len * 0.14);
+          gr.addColorStop(0, 'rgba(230,250,255,0.9)'); gr.addColorStop(1, 'rgba(230,250,255,0)');
+          ctx.globalAlpha = 1 - u; ctx.strokeStyle = gr; ctx.lineWidth = 1.6;
+          ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - len * 0.4, y - len * 0.14); ctx.stroke();
+        } }
+      ctx.restore();
+    }
+
+    // --------------------------------------------------------------- ASCENSION
+    function paintAscend(w, h, s, Q) {
+      const [cv, g] = layer(w, h, s);
+      const R = rng(1618), hz = h * 0.68, vx = w * 0.5, m = Math.min(w, h);
+      let gr = g.createLinearGradient(0, 0, 0, hz);
+      [[0, '#02051a'], [0.32, '#0a1846'], [0.62, '#24398a'], [0.86, '#b98a52'], [1, '#ffe7b0']].forEach(([o, c]) => gr.addColorStop(o, c));
+      g.fillStyle = gr; g.fillRect(0, 0, w, hz + 1);
+      for (let i = 0; i < 120; i++) { const x = R() * w, y = Math.pow(R(), 2) * hz * 0.6; g.fillStyle = `rgba(230,236,255,${0.2 + R() * 0.5})`; g.fillRect(x, y, 1.2, 1.2); }
+      // the dawn behind the cloud sea
+      gr = g.createRadialGradient(vx, hz, m * 0.02, vx, hz, m * 0.75);
+      gr.addColorStop(0, 'rgba(255,248,220,0.95)'); gr.addColorStop(0.18, 'rgba(255,214,140,0.55)'); gr.addColorStop(0.55, 'rgba(255,170,90,0.12)'); gr.addColorStop(1, 'rgba(255,160,80,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, w, hz + 2);
+      // the great halo structure spanning the sky
+      g.save(); g.translate(vx, h * 0.3);
+      for (const [rx, ry, lw, a] of [[w * 0.62, h * 0.1, m * 0.018, 0.5], [w * 0.62, h * 0.1, 1.2, 0.9], [w * 0.55, h * 0.085, 1, 0.45]]) {
+        g.beginPath(); g.ellipse(0, 0, rx, ry, 0, Math.PI * 1.02, Math.PI * 1.98); g.strokeStyle = `rgba(255,214,120,${a})`; g.lineWidth = lw; g.stroke();
+      }
+      for (let k = 0; k < 28; k++) {                      // its spokes
+        const a0 = Math.PI * (1.04 + 0.92 * k / 27), x = Math.cos(a0) * w * 0.62, y = Math.sin(a0) * h * 0.1;
+        g.beginPath(); g.moveTo(x, y); g.lineTo(x * 0.89, y * 0.85); g.strokeStyle = 'rgba(255,230,170,0.35)'; g.lineWidth = 1; g.stroke();
+      }
+      g.restore();
+      // floating monoliths, far
+      const mono = [];
+      for (const [x, y, sz, kind] of [[0.12, 0.42, 0.07, 0], [0.26, 0.5, 0.04, 1], [0.74, 0.47, 0.05, 1], [0.9, 0.38, 0.08, 0], [0.62, 0.36, 0.03, 2], [0.38, 0.34, 0.025, 2]]) {
+        const X = x * w, Y = y * h, S = sz * m;
+        const [mc, mg] = layer(S * 2.4, S * 3.2, s); mg.translate(S * 1.2, S * 1.4);
+        if (kind === 0) {                                // obelisk
+          mg.beginPath(); mg.moveTo(0, -S * 1.3); mg.lineTo(S * 0.32, -S * 0.9); mg.lineTo(S * 0.26, S * 1.2); mg.lineTo(-S * 0.26, S * 1.2); mg.lineTo(-S * 0.32, -S * 0.9); mg.closePath();
+        } else if (kind === 1) {                         // octahedron
+          mg.beginPath(); mg.moveTo(0, -S); mg.lineTo(S * 0.7, 0); mg.lineTo(0, S); mg.lineTo(-S * 0.7, 0); mg.closePath();
+        } else { mg.beginPath(); mg.rect(-S * 0.5, -S * 0.5, S, S); }
+        const fg = mg.createLinearGradient(-S, -S, S, S); fg.addColorStop(0, '#fffaf0'); fg.addColorStop(0.5, '#c9cfe6'); fg.addColorStop(1, '#4a5488');
+        mg.fillStyle = fg; mg.fill(); mg.strokeStyle = 'rgba(255,210,110,0.95)'; mg.lineWidth = 1.4; mg.stroke();
+        mg.beginPath(); mg.moveTo(0, -S * 1.3); mg.lineTo(0, S * 1.2); mg.strokeStyle = 'rgba(255,220,140,0.6)'; mg.lineWidth = 1; mg.stroke();
+        mono.push([mc, X - S * 1.2, Y - S * 1.4, S * 2.4, S * 3.2, hash(X)]);
+      }
+      // the cloud sea: banks of small puffs, far ones lit gold by the dawn, near ones in blue shadow
+      g.fillStyle = '#c7b3c0'; g.fillRect(0, hz, w, h - hz);
+      const rows = [[0.0, 0.022, '#c9b4c2', 0.0], [0.16, 0.034, '#9c97c4', 0.25], [0.38, 0.05, '#6a6ea8', 0.5], [0.66, 0.075, '#3b4279', 0.75]];
+      for (const [yu, rr, base, shade] of rows) {
+        const yt = hz + (h - hz) * yu, rs = m * rr;
+        g.fillStyle = base; g.fillRect(0, yt + rs * 0.4, w, h - yt);
+        const n = Math.ceil(w * 1.1 / (rs * 1.05));
+        for (let i = 0; i < n; i++) {
+          const x = (i + R() * 0.6) * rs * 1.05 - rs, y = yt + (R() - 0.3) * rs * 0.7 + Math.sin(i * 0.7 + yu * 9) * rs * 0.35, r = rs * (0.75 + R() * 0.6);
+          const warm = Math.max(0, 1 - Math.abs(x - vx) / (w * 0.55)) * (1 - shade);
+          const top = warm > 0.4 ? '#fff0d2' : warm > 0.15 ? '#f1dcd6' : '#d5cfe8';
+          const cg = g.createRadialGradient(x - r * 0.25, y - r * 0.55, r * 0.05, x, y, r * 1.15);
+          cg.addColorStop(0, top); cg.addColorStop(0.45, shade > 0.4 ? '#8f93c6' : '#d8c8d4'); cg.addColorStop(1, base);
+          g.fillStyle = cg; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+        }
+      }
+      gr = g.createLinearGradient(0, hz - m * 0.02, 0, hz + (h - hz) * 0.4);   // golden mist on the horizon
+      gr.addColorStop(0, 'rgba(255,232,180,0.75)'); gr.addColorStop(1, 'rgba(255,220,160,0)');
+      g.fillStyle = gr; g.fillRect(0, hz - m * 0.02, w, (h - hz) * 0.4 + m * 0.02);
+      // a white grid laid over the clouds, fading into the distance
+      g.save(); g.beginPath(); g.rect(0, hz, w, h - hz); g.clip();
+      g.strokeStyle = 'rgba(255,255,255,0.10)'; g.lineWidth = 1;
+      for (let k = -14; k <= 14; k++) { g.beginPath(); g.moveTo(vx + k * w * 0.012, hz); g.lineTo(vx + k * w * 0.16, h); g.stroke(); }
+      for (let k = 1; k < 10; k++) { const y = hz + (h - hz) * Math.pow(k / 10, 1.8); g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+      g.restore();
+      vignette(g, w, h, 0.45);
+      // sun rays (drawn turning, additive)
+      const [rv, rg] = layer(m * 1.6, m * 1.6, 0.5), rc = m * 0.8;
+      rg.globalCompositeOperation = 'lighter';
+      for (let k = 0; k < 18; k++) {
+        const a0 = (k / 18) * TAU, wd = 0.05 + hash(k) * 0.06;
+        const gr2 = rg.createRadialGradient(rc, rc, 0, rc, rc, rc); gr2.addColorStop(0, 'rgba(255,236,180,0.28)'); gr2.addColorStop(1, 'rgba(255,220,150,0)');
+        rg.fillStyle = gr2; rg.beginPath(); rg.moveTo(rc, rc); rg.arc(rc, rc, rc, a0, a0 + wd); rg.closePath(); rg.fill();
+      }
+      return { cv, hz, m, mono, rays: rv, rayR: rc };
+    }
+    function drawAscend(D, t, Q, beat, tier) {
+      const { hz, m } = D;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      if (Q > 0) {                                       // the dawn's rays turning slowly
+        ctx.save(); ctx.translate(W / 2, hz); ctx.rotate(t * 0.03);
+        ctx.globalAlpha = Math.min(1, 0.5 + 0.35 * beat + 0.3 * tier);
+        ctx.drawImage(D.rays, -D.rayR, -D.rayR, D.rayR * 2, D.rayR * 2);
+        ctx.restore();
+      }
+      ctx.restore();
+      for (const [mc, x, y, w2, h2, ph] of D.mono) {     // monoliths drift and bob
+        ctx.drawImage(mc, x, y + Math.sin(t * 0.6 + ph * TAU) * m * 0.012, w2, h2);
+      }
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      ctx.translate(W / 2, H * 0.22);                    // blueprint orrery: dashed rings turning
+      ctx.globalAlpha = 0.55 + 0.35 * beat;
+      for (const [r, sp, dash] of [[m * 0.2, 0.15, [6, 10]], [m * 0.27, -0.09, [2, 7]], [m * 0.33, 0.05, [18, 12]]]) {
+        ctx.setLineDash(dash); ctx.lineDashOffset = -t * sp * 60;
+        ctx.beginPath(); ctx.ellipse(0, 0, r, r * 0.32, 0, 0, TAU); ctx.strokeStyle = 'rgba(255,226,150,0.55)'; ctx.lineWidth = 1.2; ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const nM = [12, 24, 40][Q] + (tier > 0.5 ? 14 : 0), G = glow([255, 226, 150]);
+      for (let i = 0; i < nM; i++) {                     // motes of gold rising
+        const ph = fr(hash(i + 2) + t * (0.03 + hash(i) * 0.04));
+        const x = hash(i + 9) * W + Math.sin(t * 0.8 + i) * 10, y = H * (0.98 - ph * 0.9), sz = 1.5 + hash(i + 4) * 3;
+        ctx.globalAlpha = Math.sin(ph * Math.PI) * 0.9;
+        ctx.drawImage(G, x - sz * 2, y - sz * 2, sz * 4, sz * 4);
+      }
+      ctx.restore();
+    }
+
+    function glowStrip(D) {                              // only the band that actually glows
+      const y0 = Math.max(0, D.gy0), sc = D.lv.width / W;
+      ctx.drawImage(D.lv, 0, y0 * sc, D.lv.width, D.lv.height - y0 * sc, 0, y0, W, H - y0);
+    }
+    const PAINT = { hell: paintHell, contact: paintContact, ascend: paintAscend };
+    const DRAW = { hell: drawHell, contact: drawContact, ascend: drawAscend };
+    function render(kind, t, beat) {
+      const Q = quality(), s = DPR;                     // layers at screen resolution: 1:1 copies are cheapest
+      const key = kind + '|' + W + '|' + H + '|' + s + '|' + Q;
+      if (!L || L.key !== key) { L = PAINT[kind](W, H, s, Q); L.key = key; }
+      const tt = SpaceFX.motion ? t : 0;
+      const tier = feverLevel >= 3 ? 1 : feverLevel >= 2 ? 0.6 : fever ? 0.25 : 0;
+      if (shake > 0.05) {                                // margin, so screen shake never shows an edge
+        ctx.fillStyle = kind === 'ascend' ? '#0a1440' : '#000'; ctx.fillRect(-24, -24, W + 48, H + 48);
+      }
+      ctx.drawImage(L.cv, 0, 0, W, H);
+      DRAW[kind](L, tt, Q, Math.max(0, Math.min(1, beat)), tier);
+      if (bgPulse > 0.02) {                              // phase-change / milestone flash
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = bgPulse * 0.22;
+        ctx.fillStyle = kind === 'hell' ? '#ff4a12' : kind === 'contact' ? '#5ef2ff' : '#ffe2a0'; ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+      }
+      return true;
+    }
+    return {
+      kindFor: (id) => KIND[id] || null,
+      render,
+      drop() { L = null; }
+    };
+  })();
+
   function drawBackground(t) {
     const pv = phaseVisual();
 
@@ -10537,7 +11270,9 @@
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.restore();
-      if (!SpaceFX.render(t, pv, m.e / DPR, m.f / DPR)) drawStarfieldBg(t);
+      const world = WorldFX.kindFor(theme.id);            // secret worlds replace the sky
+      if (world) { SpaceFX.hide(); WorldFX.render(world, t, pulse + beatBreath()); }
+      else if (!SpaceFX.render(t, pv, m.e / DPR, m.f / DPR)) drawStarfieldBg(t);
       if (arenaMix > 0.01) drawBossArena(t, arenaMix);
       if (sparks.length) {                          // orbiting debris around the hole
         ctx.save();
