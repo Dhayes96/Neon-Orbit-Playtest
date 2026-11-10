@@ -1252,13 +1252,14 @@
         </div>
 
         <div class="cp">
-          <p class="cap">Out past the last star hangs a net of light called <b>the Grid</b>. It keeps a thousand worlds safe and snoozing.</p>
-          <div class="art"><svg viewBox="0 0 320 120" role="img" aria-label="Sleepy planets tucked under a glowing net of light">
+          <p class="cap">Out past the last star, a thousand sleepy little worlds float through the dark, snug and snoozing.</p>
+          <div class="art"><svg viewBox="0 0 320 120" role="img" aria-label="Sleepy planets drifting through space, with orbits and twinkling stars">
             <rect width="320" height="120" fill="url(#cxDots)"/>
-            <g fill="none" stroke="#5ef2ff" stroke-opacity="0.45" stroke-width="1.2">
-              <path d="M0 40 Q160 0 320 40"/><path d="M0 62 Q160 22 320 62"/><path d="M0 84 Q160 44 320 84"/>
-              <path d="M40 0 L70 120 M100 0 L115 120 M160 0 L160 120 M220 0 L205 120 M280 0 L250 120"/>
+            <g fill="none" stroke="#b45cff" stroke-opacity="0.4" stroke-width="1.2" stroke-dasharray="4 6">
+              <ellipse cx="62" cy="84" rx="44" ry="10"/><ellipse cx="160" cy="86" rx="34" ry="8"/><ellipse cx="258" cy="84" rx="52" ry="12"/>
             </g>
+            <g fill="#e8f6ff"><circle cx="18" cy="14" r="1.4"/><circle cx="70" cy="24" r="1"/><circle cx="122" cy="10" r="1.6"/><circle cx="198" cy="20" r="1.1"/><circle cx="246" cy="8" r="1.5"/><circle cx="304" cy="26" r="1.2"/><circle cx="150" cy="40" r="0.9"/><circle cx="36" cy="44" r="0.9"/></g>
+            <path d="M122 4 L123.5 9 L128 10 L123.5 11 L122 16 L120.5 11 L116 10 L120.5 9 Z" fill="#ffe14d"/>
             <use href="#cxPlanet" x="34" y="56" width="56" height="56"/>
             <use href="#cxPlanet" x="138" y="64" width="44" height="44"/>
             <use href="#cxPlanet" x="226" y="52" width="64" height="64"/>
@@ -1267,8 +1268,8 @@
         </div>
 
         <div class="cp">
-          <p class="cap">It doesn't run on batteries. It runs on a song: <b>the Signal</b>. Every beat keeps the lights on.</p>
-          <div class="art"><svg viewBox="0 0 320 110" role="img" aria-label="A heartbeat waveform pulsing through the Grid">
+          <p class="cap">Their lights don't run on batteries. They run on a song: <b>the Signal</b>. Every beat keeps them glowing.</p>
+          <div class="art"><svg viewBox="0 0 320 110" role="img" aria-label="A heartbeat waveform pulsing through space">
             <rect width="320" height="110" fill="url(#cxDots)"/>
             <path d="M0 64 L70 64 L84 30 L98 92 L112 18 L126 64 L196 64 L210 30 L224 92 L238 18 L252 64 L320 64" fill="none" stroke="#ff2bd6" stroke-width="7" stroke-opacity="0.25" stroke-linejoin="round"/>
             <path d="M0 64 L70 64 L84 30 L98 92 L112 18 L126 64 L196 64 L210 30 L224 92 L238 18 L252 64 L320 64" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"/>
@@ -1360,15 +1361,15 @@
             <g transform="translate(282 70)" opacity="0.8"><path d="M-22 0 Q0 -16 22 0 Q0 16 -22 0 Z" fill="#0d1430" stroke="#ffd23d" stroke-width="1.4"/><circle r="6" fill="#ffd23d"/><circle r="2.6" fill="#0d1430"/></g>
           </svg></div>
           <ul class="rumors">
-            <li>Something old and hungry is said to sleep beneath the Grid, dreaming of a broken <span class="lore-secret" id="loreSecret" role="button" tabindex="0">rhythm</span>.</li>
+            <li>Something old and hungry is said to sleep between the stars, dreaming of a broken <span class="lore-secret" id="loreSecret" role="button" tabindex="0">rhythm</span>.</li>
             <li>A strange craft hides where not even light can escape.</li>
-            <li>And whoever built the Grid still keeps score.</li>
+            <li>And whoever wrote the Signal still keeps score.</li>
           </ul>
         </div>
 
         <div class="cp finale">
           <p class="cap">No fleet. No backup. No second Signal.</p>
-          <div class="art"><svg viewBox="0 0 320 118" role="img" aria-label="The saucer glowing in the middle of the Grid">
+          <div class="art"><svg viewBox="0 0 320 118" role="img" aria-label="The saucer glowing in the dark, holding the beat">
             <rect width="320" height="118" fill="url(#cxDots)"/>
             <circle cx="160" cy="62" r="52" fill="none" stroke="#5ef2ff" stroke-width="2" opacity="0.5"/>
             <circle cx="160" cy="62" r="40" fill="none" stroke="#b45cff" stroke-width="3" opacity="0.7"/>
@@ -2097,7 +2098,7 @@
   // ---- SECRET: the Cyber Dragon that ends the hidden DOOM gauntlet. Keyed by
   // id (not a stage) since doomMode drives it directly.
   const DOOM_DRAGON = {
-    id: 'cyberDragon', name: 'VORAXIS', subtitle: 'THE GRID-EATER',
+    id: 'cyberDragon', name: 'VORAXIS', subtitle: 'THE STAR-EATER',
     kind: 'dragon', hp: 440, energyReward: 999, ability: null,
     colors: ['#ff2b12', '#ff9e1a', '#ffd23d'], barColor: '#ff2b12',
     scale: 1.18,
@@ -4786,7 +4787,7 @@
   // actually built this game gets to be one of them.
   const NAMEPLATES = {
     none:     { id: 'none',     label: '',               cls: '' },
-    engineer: { id: 'engineer', label: 'GRID ENGINEER',  cls: 'plate-engineer' }
+    engineer: { id: 'engineer', label: 'SIGNAL ENGINEER',  cls: 'plate-engineer' }
   };
   // Entering one of these as a display name unlocks the plate instead of
   // renaming. Case- and space-insensitive.
@@ -6334,10 +6335,10 @@
       rewardTheme: 'hellgrid', rewardName: 'HELLGRID WORLD', clearedFlag: 'doomCleared',
       enter: ['THE SIGNAL BREAKS', '#ff2b12', 'HOLD THE RHYTHM'],
       enterTones: [110, 82, 55],
-      winTitle: 'THE GRID HOLDS',
+      winTitle: 'THE SIGNAL HOLDS',
       winSub: 'You outlasted Voraxis. The HELLGRID world is yours. Equip it in Settings under Theme.',
       failTitle: 'THE SIGNAL FADES',
-      failSub: 'Voraxis still circles the Grid. Try the gauntlet again.'
+      failSub: 'Voraxis still circles the stars. Try the gauntlet again.'
     },
     planet: {
       id: 'planet', label: 'CONTACT', stages: 9, phaseEvery: 2, diff: () => CONTACT_DIFF, bgStyle: 'starfield',
