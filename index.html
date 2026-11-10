@@ -85,7 +85,7 @@
     }
 
     #game { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
-    /* Deep Space: WebGL sky + black hole, drawn under the (transparent) game canvas */
+    /* Deep Space: WebGL lensed sky, drawn under the (transparent) game canvas (UFO craft on top) */
     #space { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; pointer-events: none; background: #000; }
     /* Low graphics on: the Deep Space detail controls don't apply */
     .setting-block.gfx-low #spaceSeg, .setting-block.gfx-low #spaceDesc, .setting-block.gfx-low .toggle-row:not(:first-of-type) { opacity: 0.4; }
@@ -1246,7 +1246,7 @@
           <button data-sq="ultra">Ultra</button>
         </div>
         <div class="seg-desc" id="spaceDesc"></div>
-        <label class="toggle-row" style="margin-top:10px"><span>Black hole motion</span><input type="checkbox" class="toggle" id="spaceMotionToggle"></label>
+        <label class="toggle-row" style="margin-top:10px"><span>Craft &amp; ring motion</span><input type="checkbox" class="toggle" id="spaceMotionToggle"></label>
         <label class="toggle-row"><span>Warp galaxies &amp; supernovas</span><input type="checkbox" class="toggle" id="spaceCosmosToggle"></label>
         <div class="seg-desc">Motion: matter spiraling in and light circling the ring. Warp: spiral galaxies and supernovas during Combo Fever.</div>
       </div>
@@ -7847,6 +7847,7 @@
       createBurst(bestNote.tx, bestNote.ty, color, 12, 0.7);
       if (bossActive) { damageBoss(BOSS_DMG.ok); bossPerfectStreak = 0; }      // OK: 0.5
     }
+    CraftFX.hit(color, text === 'PERFECT' ? 1 : 0.6);   // cosmetic: the ring is absorbed by the craft
 
     const baseMult = 1 + Math.floor(combo / 12) * 0.25;
     const mult = baseMult * FEVER_MULTS[fever ? Math.max(1, feverLevel) : 0];
@@ -8600,7 +8601,11 @@
       #define TAU 6.2831853
       #define PI 3.14159265
       const float RSH  = 0.90;   // shadow (event horizon silhouette), in target radii
+#ifdef UFO
+      const float THE  = 1.36;   // Einstein radius (sky): the craft bends space a touch harder
+#else
       const float THE  = 1.24;   // Einstein radius (sky)
+#endif
       const float KD   = 0.86;   // lensing strength applied to the disk (hugs the shadow)
       const float RIN  = 1.22;   // inner edge of the accretion disk (ISCO)
       const float RH   = 0.42;   // event horizon in the disk plane
@@ -8915,12 +8920,27 @@
         col += uTint * 0.5 * uBgPulse * clamp(1.0 - th / (max(uWH.x, uWH.y) * 0.8), 0.0, 1.0);
 
         float aa = 1.4 / (uScale * R);
+#ifdef UFO
+        float hole = 1.0;                            // no shadow: the craft sits in the lensed sky
+        // light pulled into curved paths: faint filaments winding in toward the craft
+        if (thR > 0.9 && thR < 4.4) {
+          float lr = log(thR);
+          float sp = atan(pc.y, pc.x) / TAU + lr * 0.55 - uTime * 0.03 * (1.0 + 1.5 * uFever + 3.0 * uSing);
+          float fil = smoothstep(0.52, 0.95, texture2D(uDiskTex, vec2(sp * 3.0, lr * 0.35 + uInflow)).r);
+          float env = smoothstep(0.9, 1.4, thR) * (1.0 - smoothstep(2.3, 4.4, thR));
+          vec3 lc = mix(vec3(0.62, 0.42, 1.0), vec3(0.36, 0.86, 1.0), 1.0 - smoothstep(1.0, 1.9, thR));
+          col += lc * fil * env * (0.09 + 0.10 * uPulse + 0.10 * uFever + 0.40 * uSing);
+        }
+        col += mix(vec3(0.70, 0.40, 1.0), vec3(0.30, 0.36, 1.0), smoothstep(0.15, 1.1, thR)) * (0.07 + uPulse * 0.12 + uFever * 0.05) * exp(-thR * 1.5);
+#else
         float hole = smoothstep(RSH - aa, RSH + aa, thR);
         col *= hole;
+#endif
 
         float cs = cos(TILT), sn = sin(TILT);
         vec2 d = vec2(cs * pc.x - sn * pc.y, sn * pc.x + cs * pc.y) / R;
 
+#ifndef UFO
         if (abs(d.x) < gRout * 1.05 && (abs(d.y) < gRout * COSI + 0.15 || thR < 1.9 + 0.5 * uHz)) {
           // far half of the disk: its light is bent over the top and under the bottom
           float sphi = abs(d.y) / thR;
@@ -8938,9 +8958,11 @@
           vec4 dk = dkF + dkN;                       // one premultiplied layer: no seam
           col = col * (1.0 - min(dk.a, 0.96)) + dk.rgb;
         }
+#endif
 
         // Photon ring: crisp n=1 ring, fainter n=2 sub-ring inside it, soft glow, with
         // light circling the hole (brightest where the disk spins toward us).
+#ifndef UFO
         if (thR > 0.55 && thR < 1.6) {
         float ang = atan(pc.y, pc.x);
         float crescent = 0.62 + 0.38 * cos(ang);
@@ -8961,6 +8983,7 @@
         col += mix(vec3(1.0), uC1, 0.4) * ringI * crescent * (0.6 + 0.9 * spots) * shim * (0.75 + uPulse * 1.7 + uFever * 0.4);
         col += mix(vec3(1.0), uC1, 0.5) * 0.035 * smoothstep(RSH * 0.55, RSH, thR) * (1.0 - hole) * crescent;
         }
+#endif
         col += uC1 * (0.035 + uPulse * 0.07) * exp(-max(thR - RSH, 0.0) * 1.6) * hole;
 
         // Prism Guard's rim: a thin prismatic edge (red/green/blue split) and faint hex facets.
@@ -8989,8 +9012,11 @@
         gl_FragColor = vec4(col, 1.0);
 #endif
       }`;
-    const SKY_SRC = '#define PASS_SKY 1\n' + MAIN_FS;
-    const COMP_SRC = MAIN_FS;
+    // UFO: the craft (drawn on the game canvas) replaces the black hole's shadow,
+    // accretion disk and photon ring. The lensed sky stays, a little stronger, and
+    // faint filaments of light curve in toward the craft.
+    const SKY_SRC = '#define UFO 1\n#define PASS_SKY 1\n' + MAIN_FS;
+    const COMP_SRC = '#define UFO 1\n' + MAIN_FS;
 
     function compile(type, src) {
       const s = gl.createShader(type);
@@ -9504,26 +9530,768 @@
     const c = document.getElementById('spaceCosmosToggle'); if (c) c.checked = s.spaceCosmos !== false;
   }
 
-  // 2D stand-in for the black hole, only used when WebGL is unavailable.
-  function drawBlackHole2D(x, y, t, p) {
-    const R = targetR;
+  // ================= UFO GRAVITY CRAFT (approved art direction, Nov 2026) =================
+  // A rhythm-powered gravity engine: a layered saucer that bends space around itself
+  // and absorbs energy from every clean hit. Purely cosmetic. Timing, judging, input,
+  // scoring and patterns are untouched, and nothing here calls Math.random (gameplay
+  // owns that sequence). Built for phones: the hull and its resting glow are painted
+  // once per size into offscreen sprites; each frame adds small sprites and a few
+  // strokes. No shadowBlur anywhere in the space look.
+  // v4: the outer hull turns under a still dome (hits and tiers spin it up), the craft
+  // banks and bounces as it absorbs hits, and matter orbits it in the rim plane, wrapping
+  // behind and in front of the hull. Supernova tumbles the ship inside its circle (a
+  // different move each time); Singularity crushes it in, flips it through warp and
+  // lets it rebound. The halo and the exact timing line never move.
+  const CraftFX = (() => {
+    // Geometry, in target radii, centred on the target. Seen from ~10° above the rim.
+    const Y0 = -0.25, RX = 1.12, RY = 0.19, WALL = 0.06;            // rim
+    const T1Y = Y0 - 0.10, T1RX = 0.66, T1RY = 0.11, T1H = 0.045;   // first tier (raised band)
+    const T2Y = Y0 - 0.19, T2RX = 0.40, T2RY = 0.068;               // second tier
+    const DOME_RX = 0.32, DOME_H = 0.22;                            // raised central dome
+    const CORE_Y = 0.22, CORE_RX = 0.34, CORE_RY = 0.078;           // underside energy core
+    const SW = 2.5, SH = 2.0, SO = 0.75;                           // sprite box and centre offset from its top
+    const CY = [70, 238, 255], VI = [176, 92, 255], IN = [96, 92, 255], WH = [242, 238, 255], GD = [255, 196, 110];
+    const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+    const mixc = (a, b, k) => [0, 1, 2].map((i) => Math.round(a[i] + (b[i] - a[i]) * k));
+    const ease = (k) => 1 - Math.pow(1 - Math.min(1, Math.max(0, k)), 3);
+    const clamp01 = (v) => Math.max(0, Math.min(1, v));
+    const shade = (v) => { const c = Math.round(clamp01(v) * 255); return `rgb(${Math.round(c * 0.76)},${Math.round(c * 0.79)},${c})`; };
+    const ep = (cx, cy, rx, ry, a) => [cx + Math.cos(a) * rx, cy + Math.sin(a) * ry];
+
+    let key = '', S = null;                     // cached sprites for the current size
+    const glows = {};
+    let hitAt = -9, hitPow = 0, coreAt = -9;    // crisp per-hit pulse + the core pulse when the strands land
+    let pendingHits = [], strands = [];
+    let lastLvl = 0, lvlAt = -9, lvlKind = '', downAt = -9;
+    let lastT = null;
+    let phi = 0, kick = 0, th1 = 0, th2 = 0, hitN = 0, swaySign = 1;   // spin: hull, inner and outer swirl
+    let novaN = 0, manVar = 0, manDir = 1;                              // which Supernova move plays (cycles, no Math.random)
+    const shadeQ = [];                                                  // quantised plate colours (no per-frame strings)
+
+    function glow(c) {                          // soft radial dot, one 64 px sprite per colour
+      const k = c.join(',');
+      if (glows[k]) return glows[k];
+      const s = document.createElement('canvas'); s.width = s.height = 64;
+      const g = s.getContext('2d');
+      const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, rgba(c, 1)); gr.addColorStop(0.22, rgba(c, 0.6)); gr.addColorStop(0.55, rgba(c, 0.16)); gr.addColorStop(1, rgba(c, 0));
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+      return (glows[k] = s);
+    }
+    // tight boxes (half-width, top, bottom; target radii) so each frame fills fewer pixels
+    const BB = [1.22, -0.46, 0.64], BT = [1.16, -0.70, -0.03], BL = [1.2, -0.68, 0.49];
+    function boxCanvas(R, dpr, B) { const cv = canvas(B[0] * 2 * R, (B[2] - B[1]) * R, dpr); return [cv, unitCtx(cv, R, dpr, B[0], -B[1])]; }
+    function drawBox(img, B, x, cy, R) { ctx.drawImage(img, x - B[0] * R, cy + B[1] * R, B[0] * 2 * R, (B[2] - B[1]) * R); }
+    function canvas(w, h, dpr) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w * dpr)); c.height = Math.max(1, Math.ceil(h * dpr)); return c; }
+    function unitCtx(cv, R, dpr, ox, oy) { const g = cv.getContext('2d'); g.setTransform(R * dpr, 0, 0, R * dpr, ox * R * dpr, oy * R * dpr); return g; }
+
+    // ---------- the hull (painted once) ----------
+    function paintHullBase(R, dpr) {
+      const [cv, g] = boxCanvas(R, dpr, BB);
+      const px = 1 / R, wY = Y0 + WALL;
+      // resting light baked under the hull: violet spill from the core and the beam's glow
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = 0.42; g.drawImage(glow(VI), -1.2, CORE_Y - 0.45, 2.4, 0.85);
+      g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
+      // 1. belly: a deep plated bowl narrowing into the energy core
+      g.beginPath();
+      g.ellipse(0, wY, RX * 0.99, RY, 0, 0, Math.PI);
+      g.bezierCurveTo(-1.0, wY + 0.14, -0.50, CORE_Y - 0.02, -CORE_RX - 0.04, CORE_Y);
+      g.ellipse(0, CORE_Y, CORE_RX + 0.04, CORE_RY + 0.014, 0, Math.PI, 0, true);
+      g.bezierCurveTo(0.50, CORE_Y - 0.02, 1.0, wY + 0.14, RX * 0.99, wY);
+      g.closePath();
+      let gr = g.createLinearGradient(0, wY, 0, CORE_Y + 0.06);
+      gr.addColorStop(0, '#22253a'); gr.addColorStop(0.55, '#101120'); gr.addColorStop(1, '#1d0f3a');
+      g.fillStyle = gr; g.fill();
+      g.lineWidth = 1.3 * px; g.strokeStyle = rgba([150, 120, 255], 0.45); g.stroke();   // edge light so the bowl reads against space
+      g.save(); g.clip();
+      g.lineWidth = 1 * px;
+      for (let i = 1; i < 14; i++) {                     // plating seams converging on the core
+        const a = Math.PI * i / 14;
+        const [x0, y0] = ep(0, wY, RX, RY, a), [x1, y1] = ep(0, CORE_Y, CORE_RX + 0.04, CORE_RY, a);
+        g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo((x0 + x1) / 2 * 0.86, (y0 + y1) / 2 + 0.035, x1, y1);
+        g.strokeStyle = 'rgba(4,4,10,0.65)'; g.stroke();
+      }
+      // the throat: violet light swirling down into the core
+      g.beginPath();
+      g.moveTo(-0.72, wY + 0.085);
+      g.bezierCurveTo(-0.58, wY + 0.17, -0.45, CORE_Y - 0.03, -CORE_RX - 0.01, CORE_Y);
+      g.ellipse(0, CORE_Y, CORE_RX + 0.01, CORE_RY + 0.006, 0, Math.PI, 0, true);
+      g.bezierCurveTo(0.45, CORE_Y - 0.03, 0.58, wY + 0.17, 0.72, wY + 0.085);
+      g.ellipse(0, wY + 0.085, 0.72, RY * 0.55, 0, 0, Math.PI, false);
+      g.closePath();
+      gr = g.createRadialGradient(0, CORE_Y, 0.02, 0, CORE_Y - 0.03, 0.72);
+      gr.addColorStop(0, rgba([236, 194, 255], 0.95)); gr.addColorStop(0.26, rgba(VI, 0.85)); gr.addColorStop(0.68, rgba([86, 40, 170], 0.5)); gr.addColorStop(1, rgba([40, 20, 90], 0.08));
+      g.fillStyle = gr; g.fill();
+      for (let j = 0; j < 7; j++) {
+        g.beginPath();
+        g.ellipse(0, CORE_Y - 0.02 - j * 0.008, CORE_RX + 0.06 + j * 0.052, CORE_RY + 0.014 + j * 0.01, 0, Math.PI * 0.06 + j * 0.05, Math.PI * 0.94 - j * 0.03);
+        g.lineWidth = 1.2 * px; g.strokeStyle = rgba([232, 204, 255], 0.34 - j * 0.035); g.stroke();
+      }
+      g.restore();
+      // 2. rim wall, with a bright lip where it catches the light
+      g.beginPath(); g.ellipse(0, wY, RX, RY, 0, 0, Math.PI); g.ellipse(0, Y0, RX, RY, 0, Math.PI, 0, true); g.closePath();
+      gr = g.createLinearGradient(0, Y0, 0, wY + RY); gr.addColorStop(0, '#41465f'); gr.addColorStop(0.5, '#1a1c29'); gr.addColorStop(1, '#0a0b12');
+      g.fillStyle = gr; g.fill();
+      g.beginPath(); g.ellipse(0, wY, RX, RY, 0, 0.08, Math.PI - 0.08); g.lineWidth = 1 * px; g.strokeStyle = 'rgba(190,198,240,0.28)'; g.stroke();
+      return cv;
+    }
+
+    // a ring of faceted plates between two ellipses (painted into a cached sprite)
+    function cone(g, px, oy, orx, ory, iy, irx, iry, n, base) {
+        for (const back of [true, false]) for (let i = 0; i < n; i++) {
+          const a0 = i * Math.PI * 2 / n, a1 = (i + 1) * Math.PI * 2 / n, am = (a0 + a1) / 2;
+          if ((Math.sin(am) < 0) !== back) continue;
+          const [ox0, oy0] = ep(0, oy, orx, ory, a0), [ox1, oy1] = ep(0, oy, orx, ory, a1);
+          const [ix0, iy0] = ep(0, iy, irx, iry, a0), [ix1, iy1] = ep(0, iy, irx, iry, a1);
+          const lit = base + 0.44 * Math.max(0, Math.cos(am + 2.3)) + 0.12 * Math.max(0, Math.sin(am)) + (i % 2 ? 0.06 : -0.04);
+          g.beginPath(); g.moveTo(ox0, oy0); g.lineTo(ox1, oy1); g.lineTo(ix1, iy1); g.lineTo(ix0, iy0); g.closePath();
+          const pg = g.createLinearGradient(ox0, oy0, ix1, iy1);
+          pg.addColorStop(0, shade(lit * 0.7)); pg.addColorStop(0.55, shade(lit)); pg.addColorStop(1, shade(lit * 0.85));
+          g.fillStyle = pg; g.fill();
+          g.lineWidth = 1 * px; g.strokeStyle = 'rgba(5,5,12,0.78)'; g.stroke();
+        }
+          }
+
+    // The upper hull (painted once): deck depth shading and sheen, the rim's neon line,
+    // the first tier and the dome. The deck plates between them turn every frame.
+    function paintHullTop(R, dpr) {
+      const [cv, g] = boxCanvas(R, dpr, BT);
+      const px = 1 / R;
+      let gr;
+      g.save();                                          // deck depth: darker toward the rim, a little light inward
+      g.beginPath(); g.ellipse(0, Y0, RX, RY, 0, 0, Math.PI * 2); g.clip();
+      g.translate(0, (Y0 + T1Y) / 2); g.scale(1, RY / RX);
+      gr = g.createRadialGradient(0, 0, T1RX * 0.9, 0, 0, RX);
+      gr.addColorStop(0, 'rgba(230,232,255,0.07)'); gr.addColorStop(0.6, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,6,0.38)');
+      g.fillStyle = gr; g.fillRect(-RX * 1.2, -RX * 1.2, RX * 2.4, RX * 2.4);
+      g.restore();
+      g.save();                                          // brushed sheen across the front plates
+      g.beginPath(); g.ellipse(0, Y0, RX, RY, 0, 0, Math.PI * 2); g.clip();
+      gr = g.createLinearGradient(-0.75, Y0 - 0.15, 0.25, Y0 + 0.15);
+      gr.addColorStop(0, 'rgba(232,234,255,0)'); gr.addColorStop(0.5, 'rgba(232,234,255,0.17)'); gr.addColorStop(1, 'rgba(232,234,255,0)');
+      g.fillStyle = gr; g.fillRect(-1.3, Y0 - 0.4, 2.6, 0.6);
+      g.restore();
+      // the rim's neon line, crisp (its glow is in the light layer); the first tier covers its far side
+      g.beginPath(); g.ellipse(0, Y0, RX, RY, 0, 0, Math.PI * 2); g.lineWidth = 1.6 * px; g.strokeStyle = rgba(VI, 1); g.stroke();
+      // 4. first tier: a raised band, then the upper cone
+      g.beginPath(); g.ellipse(0, T1Y, T1RX, T1RY, 0, 0, Math.PI); g.ellipse(0, T1Y - T1H, T1RX * 0.97, T1RY * 0.97, 0, Math.PI, 0, true); g.closePath();
+      gr = g.createLinearGradient(0, T1Y - T1H, 0, T1Y + T1RY); gr.addColorStop(0, '#2a2d40'); gr.addColorStop(1, '#0d0e16'); g.fillStyle = gr; g.fill();
+      cone(g, px, T1Y - T1H, T1RX * 0.97, T1RY * 0.97, T2Y, T2RX, T2RY, 16, 0.30);
+      g.beginPath(); g.ellipse(0, T1Y - T1H, T1RX * 0.97, T1RY * 0.97, 0, Math.PI + 0.15, Math.PI * 2 - 0.15);
+      g.lineWidth = 1.3 * px; g.strokeStyle = 'rgba(214,222,255,0.5)'; g.stroke();          // its far edge catches light
+      // 5. the raised dome: dark glass over a lit collar
+      g.beginPath(); g.ellipse(0, T2Y, T2RX, T2RY, 0, 0, Math.PI * 2);
+      gr = g.createLinearGradient(-0.4, T2Y - 0.07, 0.4, T2Y + 0.07); gr.addColorStop(0, '#767ca0'); gr.addColorStop(0.5, '#353a52'); gr.addColorStop(1, '#161824');
+      g.fillStyle = gr; g.fill();
+      g.beginPath(); g.ellipse(0, T2Y, DOME_RX, DOME_RX * 0.17, 0, 0, Math.PI); g.ellipse(0, T2Y, DOME_RX, DOME_H, 0, Math.PI, 0); g.closePath();
+      gr = g.createRadialGradient(-0.08, T2Y - 0.12, 0, 0, T2Y - 0.04, 0.34);
+      gr.addColorStop(0, '#8d8ab8'); gr.addColorStop(0.28, '#2e2a4a'); gr.addColorStop(0.75, '#100c1e'); gr.addColorStop(1, '#07060c');
+      g.fillStyle = gr; g.fill();
+      g.save(); g.clip();                                // violet depth inside the glass
+      gr = g.createRadialGradient(0, T2Y + 0.02, 0, 0, T2Y + 0.02, 0.26);
+      gr.addColorStop(0, rgba(VI, 0.45)); gr.addColorStop(1, rgba(VI, 0)); g.fillStyle = gr; g.fillRect(-0.4, T2Y - 0.2, 0.8, 0.3);
+      g.restore();
+      g.beginPath(); g.ellipse(-0.05, T2Y - 0.08, 0.16, 0.06, 0, Math.PI * 1.08, Math.PI * 1.55);
+      g.lineWidth = 1.8 * px; g.strokeStyle = 'rgba(255,255,255,0.7)'; g.stroke();         // one crisp highlight
+      g.beginPath(); g.ellipse(0, T2Y, DOME_RX, DOME_RX * 0.17, 0, 0.1, Math.PI - 0.1);
+      g.lineWidth = 1.4 * px; g.strokeStyle = rgba(CY, 0.75); g.stroke();                  // cyan collar
+      return cv;
+    }
+
+    // ---------- resting light (painted once, drawn brighter on beats/hits) ----------
+    function paintLight(R, dpr) {
+      const [cv, g] = boxCanvas(R, dpr, BL);
+      const px = 1 / R;
+      g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+      g.globalAlpha = 0.34; g.strokeStyle = rgba(VI, 1); g.lineWidth = Math.max(3 * px, 0.06);
+      g.beginPath(); g.ellipse(0, Y0, RX, RY, 0, 0, Math.PI * 2); g.stroke();
+      g.globalAlpha = 0.6; g.strokeStyle = rgba([228, 198, 255], 1); g.lineWidth = Math.max(1 * px, 0.012);
+      g.beginPath(); g.ellipse(0, Y0, RX, RY, 0, 0, Math.PI * 2); g.stroke();
+      const ty = T1Y - T1H * 0.5;                        // violet strips round the first tier
+      g.globalAlpha = 0.75; g.strokeStyle = rgba(VI, 1); g.lineWidth = Math.max(1.3 * px, 0.016);
+      for (const [a0, a1] of [[0.22, 0.86], [1.12, 2.02], [2.28, 2.92]]) { g.beginPath(); g.ellipse(0, ty, T1RX * 0.985, T1RY * 0.985, 0, a0, a1); g.stroke(); }
+      g.globalAlpha = 0.22; g.drawImage(glow(VI), -0.34, T2Y - 0.2, 0.68, 0.26);           // dome glow
+      g.globalAlpha = 0.65; g.drawImage(glow(VI), -CORE_RX * 1.9, CORE_Y - CORE_RY * 3.2, CORE_RX * 3.8, CORE_RY * 6.4);
+      return cv;
+    }
+
+    // Rotating parts, painted in circle space and drawn squashed: the core's spiral
+    // arms and one neon ring for the tractor beam.
+    function paintArms(R, dpr) {
+      const rA = CORE_RX * 1.1, cv = canvas(rA * 2 * R, rA * 2 * R, dpr), g = unitCtx(cv, R, dpr, rA, rA);
+      g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+      for (let j = 0; j < 5; j++) {
+        const s = 1 - j * 0.15, a0 = j * 0.66;
+        g.globalAlpha = 0.62 * (1 - j * 0.12); g.strokeStyle = j % 2 ? rgba(VI, 1) : rgba([216, 152, 255], 1);
+        g.lineWidth = Math.max(1 / R, 0.016 * s) * (CORE_RX / CORE_RY) * 0.42;
+        g.beginPath(); g.arc(0, 0, rA * s * 0.95, a0, a0 + 2.4); g.stroke();
+      }
+      return { cv, rA };
+    }
+    function paintBeamRing(R, dpr) {
+      const rr = 0.6, cv = canvas(rr * 2 * R, rr * 2 * R, dpr), g = unitCtx(cv, R, dpr, rr, rr);
+      g.globalCompositeOperation = 'lighter';
+      const r0 = rr - 0.06;
+      for (const [w, al, c] of [[0.07, 0.26, CY], [0.034, 1, CY], [0.009, 0.85, WH]]) {
+        g.globalAlpha = al; g.strokeStyle = rgba(c, 1); g.lineWidth = w;
+        g.beginPath(); g.arc(0, 0, r0, 0, Math.PI * 2); g.stroke();
+      }
+      return { cv, rr, r0 };
+    }
+
+    // ---------- the halo (replaces the solid cyan target ring) ----------
+    // Broken violet/indigo arcs with a few cyan highlights, plus soft wisps, in two
+    // cached layers that drift in opposite directions. A faint unbroken line keeps
+    // the exact timing radius readable; note rings stay solid and coloured.
+    function paintHalo(R, dpr, wisps) {
+      const m = 0.25, cv = canvas((2 + m * 2) * R, (2 + m * 2) * R, dpr), g = unitCtx(cv, R, dpr, 1 + m, 1 + m);
+      const px = 1 / R;
+      g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+      const arcs = [[0.15, 0.55, 0], [0.95, 1.30, 1], [1.75, 2.30, 0], [2.75, 2.95, 0], [3.30, 3.85, 1], [4.35, 4.65, 0], [5.10, 5.70, 1]];
+      for (const [a0, a1, hi] of arcs) {
+        g.globalAlpha = 0.16; g.strokeStyle = rgba(IN, 1); g.lineWidth = 10 * px;     // soft body
+        g.beginPath(); g.arc(0, 0, 1, a0 - 0.08, a1 + 0.08); g.stroke();
+        g.globalAlpha = 0.55; g.strokeStyle = rgba(VI, 1); g.lineWidth = 2.2 * px;     // luminous core, tapered ends
+        g.beginPath(); g.arc(0, 0, 1, a0, a1); g.stroke();
+        g.globalAlpha = 0.35; g.lineWidth = 1.2 * px;
+        g.beginPath(); g.arc(0, 0, 1, a0 - 0.12, a0); g.stroke(); g.beginPath(); g.arc(0, 0, 1, a1, a1 + 0.12); g.stroke();
+        if (hi) {                                         // a cyan highlight riding the arc
+          const h0 = a0 + (a1 - a0) * 0.3, h1 = a0 + (a1 - a0) * 0.75;
+          g.globalAlpha = 0.9; g.strokeStyle = rgba(CY, 1); g.lineWidth = 2.6 * px;
+          g.beginPath(); g.arc(0, 0, 1, h0, h1); g.stroke();
+          g.globalAlpha = 0.25; g.lineWidth = 8 * px;
+          g.beginPath(); g.arc(0, 0, 1, h0, h1); g.stroke();
+        }
+      }
+      if (wisps) {                                        // soft wisps just inside and outside
+        const ws = [[0.4, 1.5, 1.07, 10], [2.0, 3.0, 0.93, 8], [3.4, 4.6, 1.09, 12], [4.9, 5.9, 0.92, 9], [5.6, 6.9, 1.05, 7]];
+        for (const [a0, a1, r, w] of ws) {
+          g.globalAlpha = 0.10; g.strokeStyle = rgba(VI, 1); g.lineWidth = w * px;
+          g.beginPath(); g.arc(0, 0, r, a0, a1); g.stroke();
+          g.globalAlpha = 0.22; g.strokeStyle = rgba([150, 140, 255], 1); g.lineWidth = 1 * px;
+          g.beginPath(); g.arc(0, 0, r + 0.01, a0 + 0.2, a1 - 0.3); g.stroke();
+        }
+      }
+      return { cv, m };
+    }
+
+
+    // ---------- the turning deck (every frame: flat-shaded plates, a few cheap fills) ----------
+    function plateCol(v) {
+      const q = Math.max(0, Math.min(63, Math.round(v * 63)));
+      return shadeQ[q] || (shadeQ[q] = shade(q / 63));
+    }
+    function drawDeck(x, cy, R, ph, Q) {
+      const n = 22, dA = Math.PI * 2 / n;
+      const P = (kk, a) => {                               // kk 0 = rim edge, 1 = foot of the first tier
+        const rx = RX + (T1RX - RX) * kk, ry = RY + (T1RY - RY) * kk, oy = Y0 + (T1Y - Y0) * kk;
+        return [x + Math.cos(a) * rx * R, cy + (oy + Math.sin(a) * ry) * R];
+      };
+      for (const back of [true, false]) for (let i = 0; i < n; i++) {
+        const a0 = ph + i * dA, a1 = a0 + dA, am = a0 + dA / 2;
+        if ((Math.sin(am) < 0) !== back) continue;
+        const lc = Math.cos(am + 2.3), fc = Math.cos(am - 2.0);
+        // fixed light from the upper left: plates brighten and glint as they turn through it
+        const lit = 0.24 + 0.44 * Math.max(0, lc) + 0.12 * Math.max(0, Math.sin(am)) + (i % 2 ? 0.06 : -0.04)
+                  + 0.34 * Math.pow(Math.max(0, lc), 10) + 0.22 * Math.pow(Math.max(0, fc), 14);
+        const [ox0, oy0] = P(0, a0), [ox1, oy1] = P(0, a1), [ix1, iy1] = P(1, a1), [ix0, iy0] = P(1, a0);
+        ctx.beginPath(); ctx.moveTo(ox0, oy0); ctx.lineTo(ox1, oy1); ctx.lineTo(ix1, iy1); ctx.lineTo(ix0, iy0); ctx.closePath();
+        ctx.fillStyle = plateCol(lit * 0.9); ctx.fill();
+      }
+      ctx.beginPath();                                     // plate seams, carried down the front wall
+      for (let i = 0; i < n; i++) {
+        const a = ph + i * dA, [ox, oy] = P(0, a), [ix, iy] = P(1, a);
+        ctx.moveTo(ox, oy); ctx.lineTo(ix, iy);
+        if (Math.sin(a) > 0.12) { ctx.moveTo(ox, oy + 0.5); ctx.lineTo(ox, oy + WALL * R); }
+      }
+      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(5,5,12,0.78)'; ctx.stroke();
+      ctx.beginPath();                                     // violet keel stripes and chevrons ride the deck
+      for (let k = 0; k < 4; k++) {
+        const a = ph + 0.14 + k * Math.PI / 2;
+        if (Math.sin(a) < -0.6) continue;                  // far side: under the tier
+        const [x0, y0] = P(0.06, a), [x1, y1] = P(0.94, a);
+        ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+        if (Q > 0) for (let j = 0; j < 3; j++) {            // a run of dashes trailing each stripe round the deck
+          const b0 = a + 0.08 + j * 0.1;
+          const [c0x, c0y] = P(0.32, b0), [cmx, cmy] = P(0.32, b0 + 0.03), [c1x, c1y] = P(0.32, b0 + 0.06);
+          ctx.moveTo(c0x, c0y); ctx.lineTo(cmx, cmy); ctx.lineTo(c1x, c1y);
+        }
+      }
+      ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.4, R * 0.024); ctx.strokeStyle = rgba(VI, 0.95); ctx.stroke();
+    }
+
+    // ---------- the gravity swirl: matter orbiting in the rim plane ----------
+    // Painted once per palette as a flat disk in circle space (a fixed-seed generator, so
+    // no Math.random), then drawn turning and squashed into the rim's plane.
+    function seeded(seed) {
+      let s = seed >>> 0;
+      return () => { s = (s + 0x6D2B79F5) >>> 0; let v = s; v = Math.imul(v ^ (v >>> 15), v | 1); v ^= v + Math.imul(v ^ (v >>> 7), v | 61); return ((v ^ (v >>> 14)) >>> 0) / 4294967296; };
+    }
+    function paintDisk(R, dpr, rIn, rOut, n, seed, pal) {
+      const hs = rOut + 0.06, cv = canvas(hs * 2 * R, hs * 2 * R, dpr), g = unitCtx(cv, R, dpr, hs, hs);
+      const px = 1 / R, rnd = seeded(seed), out = pal === 'out';
+      const body = pal === 'nova' ? [255, 170, 110] : pal === 'sing' ? [140, 70, 240] : VI;
+      const pick = (f, roll) => {
+        if (pal === 'nova') return f > 0.8 ? mixc(GD, WH, 0.6) : roll < 0.45 ? GD : roll < 0.7 ? [255, 150, 90] : roll < 0.86 ? CY : VI;
+        if (pal === 'sing') return f > 0.8 ? mixc(VI, WH, 0.6) : roll < 0.5 ? VI : roll < 0.8 ? [130, 70, 230] : [210, 160, 255];
+        if (out) return roll < 0.03 ? GD : roll < 0.4 ? IN : roll < 0.75 ? VI : [130, 120, 240];
+        return f > 0.8 ? (roll < 0.5 ? CY : [200, 120, 255]) : roll < 0.06 ? GD : roll < 0.38 ? [150, 140, 255] : roll < 0.62 ? IN : VI;
+      };
+      g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+      const gr = g.createRadialGradient(0, 0, rIn, 0, 0, rOut);   // diffuse matter, so it reads as a disk, not lines
+      gr.addColorStop(0, rgba(body, out ? 0.10 : 0.14)); gr.addColorStop(0.4, rgba(IN, out ? 0.07 : 0.09)); gr.addColorStop(1, rgba(IN, 0));
+      g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rOut, 0, Math.PI * 2); g.arc(0, 0, rIn, 0, Math.PI * 2, true); g.fill();
+      const am = out ? 0.7 : 1;
+      for (let i = 0; i < n; i++) {
+        const r = rIn + (rOut - rIn) * Math.pow(rnd(), 1.2), f = 1 - (r - rIn) / (rOut - rIn);
+        const a0 = rnd() * Math.PI * 2, len = 0.3 + rnd() * 1.5 * (0.55 + 0.45 * f), roll = rnd();
+        const c = pick(f, roll), w = (0.8 + rnd() * 2.4) * px * 1.8;
+        g.strokeStyle = rgba(c, 1);
+        g.globalAlpha = (0.05 + 0.05 * f) * am; g.lineWidth = w * 3.5;
+        g.beginPath(); g.arc(0, 0, r, a0, a0 + len); g.stroke();
+        g.globalAlpha = (0.16 + 0.34 * f * f) * (0.6 + 0.4 * rnd()) * am; g.lineWidth = w;
+        g.beginPath(); g.arc(0, 0, r, a0 + len * 0.1, a0 + len * 0.9); g.stroke();
+      }
+      if (!out) {                                          // a hot inner edge, broken so the turning reads
+        const hc = pal === 'nova' ? mixc(GD, WH, 0.5) : pal === 'sing' ? mixc(VI, WH, 0.5) : CY;
+        for (let j = 0; j < 9; j++) {
+          const a0 = j * Math.PI * 2 / 9 + rnd() * 0.3, len = 0.35 + rnd() * 0.4;
+          g.strokeStyle = rgba(hc, 1);
+          g.globalAlpha = 0.08; g.lineWidth = 12 * px; g.beginPath(); g.arc(0, 0, rIn + 0.025, a0, a0 + len); g.stroke();
+          g.globalAlpha = 0.6; g.lineWidth = 3 * px; g.beginPath(); g.arc(0, 0, rIn + 0.025, a0, a0 + len); g.stroke();
+        }
+      }
+      return { cv, hs };
+    }
+    // one half of a swirl layer: side < 0 is the far half (above the plane on screen), > 0 the near half
+    function swirlPass(L, ang, cx, cyP, k, side, alpha, sc) {
+      if (alpha <= 0.01) return;
+      const s = L.hs * targetR * sc;
+      ctx.save();
+      ctx.beginPath();
+      if (side < 0) ctx.rect(cx - s - 4, cyP - s - 4, s * 2 + 8, s + 4); else ctx.rect(cx - s - 4, cyP, s * 2 + 8, s + 4);
+      ctx.clip();
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, alpha);
+      ctx.translate(cx, cyP); ctx.scale(1, k); ctx.rotate(ang);
+      ctx.drawImage(L.cv, -s, -s, s * 2, s * 2);
+      ctx.restore();
+    }
+
+    function build(R, dpr) {
+      return { hullBase: paintHullBase(R, dpr), hullTop: paintHullTop(R, dpr), light: paintLight(R, dpr),
+               arms: paintArms(R, dpr), beam: paintBeamRing(R, dpr),
+               haloA: paintHalo(R, dpr, false), haloB: paintHalo(R, dpr, true),
+               diskIn: paintDisk(R, dpr, 1.3, 1.85, 150, 11, 'base'), diskOut: paintDisk(R, dpr, 1.55, 2.35, 110, 23, 'out'),
+               diskNova: paintDisk(R, dpr, 1.3, 1.85, 150, 11, 'nova'), diskSing: paintDisk(R, dpr, 1.3, 1.85, 150, 11, 'sing') };
+    }
+
+    // ---------- hit feedback (cosmetic; judging already happened) ----------
+    function hit(color, power) { pendingHits.push({ color, power }); }
+
+    function tierQuality() {
+      if (SpaceFX.low) return 0;                         // Low graphics: identity + clear feedback, fewest extras
+      const q = save.settings.spaceQuality;
+      return q === 'lite' ? 1 : 2;
+    }
+
+    function draw(t, x, y, p) {
+      const R = targetR, dpr = DPR, Q = tierQuality();
+      const k = Math.round(R * 4) + '|' + dpr;
+      if (k !== key) { S = build(R, dpr); key = k; }
+      const dt = lastT === null ? 0 : Math.max(0, Math.min(0.1, t - lastT)); lastT = t;
+      const motion = SpaceFX.motion;
+      // per-hit pulse: each hit restarts it (never adds up), so fast streams stay crisp
+      for (const h of pendingHits) {
+        hitAt = t; hitPow = h.power;
+        kick = Math.min(3.4, kick + 1.5 * h.power);        // every hit spins the engine up a little
+        hitN++; swaySign = hitN % 2 ? 1 : -1;              // and rocks it, alternating sides
+        const n = Q === 0 ? 3 : Q === 1 ? 4 : 5;
+        const rot0 = (strands.length * 1.7) % (Math.PI * 2);
+        for (let i = 0; i < n; i++) strands.push({ t0: t, c: h.color, a: rot0 + i * Math.PI * 2 / n, span: Math.PI * 2 / n * 0.62 });
+      }
+      if (pendingHits.length) coreAt = t + 0.24;         // the core answers when the strands land
+      pendingHits = [];
+      if (strands.length > 30) strands = strands.slice(-30);
+      const hp = t >= hitAt ? Math.exp(-(t - hitAt) / 0.075) * hitPow : 0;
+      const cp = t >= coreAt ? Math.exp(-(t - coreAt) / 0.09) * 0.7 : 0;
+
+      // ---- tier state: Supernova (x2) and Singularity (x3) as ship abilities ----
+      const inRun = inRunState();
+      const lvl = inRun ? (feverLevel || 0) : 0;
+      if (lvl > lastLvl) {
+        lvlAt = t; lvlKind = lvl >= 3 ? 'sing' : lvl === 2 ? 'nova' : 'fever';
+        if (lvlKind === 'nova') { novaN++; manVar = (novaN * 2 + 1) % 3; manDir = novaN % 2 ? 1 : -1; }   // roll, double spin, flip, ...
+        if (lvlKind !== 'fever') kick = 3.4;                // the engine roars up
+      }
+      else if (lvl < lastLvl && lastLvl >= 2) downAt = t;
+      lastLvl = lvl;
+      // buildup: the reactor charges over the last hits before a tier lands
+      let charge2 = 0, charge3 = 0;
+      if (inRun && lvl < 2) charge2 = clamp01((combo - 88) / 12);
+      if (inRun && lvl === 2) charge3 = (typeof singLost !== 'undefined' && singLost) ? clamp01((perfectRun - (SING_REGAIN - 10)) / 10) : clamp01((combo - 235) / 15);
+      const la = t - lvlAt;
+      const novaAct = lvlKind === 'nova' && la >= 0 && la < 2.0 ? la : -1;
+      const singAct = lvlKind === 'sing' && la >= 0 && la < 2.0 ? la : -1;
+      const down = t - downAt >= 0 && t - downAt < 0.7 ? t - downAt : -1;
+      const nova = lvl >= 2 ? 1 : 0, sing = lvl >= 3 ? 1 : 0;
+      // activation flashes (crisp, short; no full-screen white)
+      const novaFl = novaAct >= 0 ? Math.exp(-novaAct / 0.18) : 0;
+      const singPull = singAct >= 0 && singAct < 0.45 ? singAct / 0.45 : 0;         // matches the sky's implosion
+      const singFl = singAct >= 0.45 ? Math.exp(-(singAct - 0.45) / 0.2) : 0;
+      const dim = down >= 0 ? (0.5 + 0.5 * Math.abs(Math.cos(down * 18))) * (1 - down / 0.7) : 0;   // power-down flicker
+
+      const heat = Math.min(1, (fever ? 0.25 : 0) + nova * 0.3 + sing * 0.35);
+      // spin: idles slowly, kicked by hits, faster in Fever and much faster in the tiers
+      const spinMul = 1 + (fever ? 0.45 : 0) + 0.8 * nova + 1.7 * sing + 1.4 * charge2 + 1.8 * charge3 + 4 * singPull + 1.2 * novaFl;
+      if (motion) {
+        kick *= Math.exp(-dt / 0.45);
+        phi = (phi + dt * (0.7 * spinMul + kick)) % (Math.PI * 2);
+        th1 = (th1 + dt * (1.5 * spinMul + kick * 0.8)) % (Math.PI * 2);
+        th2 = (th2 + dt * (0.6 * spinMul + kick * 0.3)) % (Math.PI * 2);
+      }
+      // body language: a slow banking wobble, and a springy bounce + sway on each hit
+      const sinceHit = t - hitAt, he = sinceHit >= 0 && sinceHit < 1.2 ? Math.exp(-sinceHit / 0.17) * hitPow : 0;
+      const tilt = motion ? 0.026 * Math.sin(t * 0.83) + 0.011 * Math.sin(t * 2.1 + 1.3) + swaySign * 0.045 * he * Math.cos(sinceHit * 13) : 0;
+      const dip = motion ? R * 0.035 * he * Math.cos(sinceHit * 16) : 0;
+      // tier moves (ship only; the swirl, halo and timing line stay put)
+      let roll = 0, pitchY = 1, msc = 1, jx = 0, jy = 0, swS = 1, warpRing = -1;
+      const eIO = (k) => k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      if (motion && novaAct >= 0) {                          // Supernova: a tumble inside its circle, then it steadies
+        const v = manVar, endT = v === 1 ? 0.85 : v === 0 ? 1.0 : 1.15, k = clamp01(novaAct / endT);
+        if (v === 0) { roll = manDir * Math.PI * 2 * eIO(k); pitchY = 1 - 0.35 * Math.sin(Math.PI * k); }          // barrel roll
+        else if (v === 1) { pitchY = Math.cos(Math.PI * 2 * eIO(k)); roll = manDir * 0.35 * Math.sin(Math.PI * k); }   // full flip
+        else { roll = -manDir * Math.PI * 4 * ease(k); msc = 1 + 0.12 * Math.sin(Math.PI * k); }                  // double spin
+        if (novaAct > endT) roll += 0.13 * Math.exp(-(novaAct - endT) / 0.22) * Math.cos((novaAct - endT) * 15);
+      }
+      if (motion && singAct >= 0) {                          // Singularity: crushed in by its own gravity, warp flip, rebound
+        if (singAct < 0.45) {
+          const k = eIO(singAct / 0.45);
+          msc = 1 - 0.2 * k; swS = 1 - 0.32 * k;
+          jx = R * 0.014 * k * Math.sin(singAct * 95); jy = R * 0.011 * k * Math.cos(singAct * 83);
+        } else {
+          const u = singAct - 0.45;
+          pitchY = Math.cos(Math.PI * 2 * eIO(clamp01(u / 0.4)));
+          msc = 1 - 0.2 * Math.exp(-u / 0.25) * Math.cos(u * 10);
+          swS = 1 - 0.32 * Math.exp(-u / 0.3) * Math.cos(u * 8);
+          if (u > 0.4) roll = 0.12 * Math.exp(-(u - 0.4) / 0.25) * Math.cos((u - 0.4) * 14);
+          warpRing = u;
+        }
+      }
+      if (pitchY !== 1) pitchY = (pitchY < 0 ? -1 : 1) * Math.max(0.03, Math.abs(pitchY));   // edge-on, never degenerate
+      const maneuver = roll !== 0 || pitchY !== 1 || msc !== 1 || jx !== 0;
+      const cy = y + (motion ? Math.sin(t * 1.7) * R * 0.014 : 0) + dip;    // a slow hover, plus the bounce
+      const vx = x, vy = cy + CORE_Y * R, vrx = CORE_RX * R, vry = CORE_RY * R;
+      const coreCol = sing ? mixc(VI, WH, 0.35) : nova ? mixc(CY, GD, 0.45) : CY;
+      const lightCol = sing ? [200, 140, 255] : nova ? mixc(CY, GD, 0.55) : CY;
+      const gW = glow(WH), gCore = glow(coreCol);
+
+      // ---------- the halo (under the craft) ----------
+      const hr = (R + p * 18) * (1 - 0.06 * singPull - 0.03 * charge3);
+      const haloA = Math.min(1, 0.7 + p * 0.5 + hp * 0.25 + heat * 0.25 + novaFl * 0.6);
+      const drift = motion ? t * (0.16 + 0.12 * nova + 0.3 * sing) : 0;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const halo = (L, rot, a) => {
+        const s = hr * (1 + L.m);
+        ctx.save(); ctx.translate(x, y); ctx.rotate(rot); ctx.globalAlpha = a;
+        ctx.drawImage(L.cv, -s, -s, s * 2, s * 2); ctx.restore();
+      };
+      halo(S.haloA, drift, haloA);
+      if (Q > 0) halo(S.haloB, -drift * 0.7 + 1.3, haloA * 0.9);
+      ctx.globalAlpha = Math.min(1, 0.2 + p * 0.3 + hp * 0.2);             // the exact timing radius
+      ctx.strokeStyle = 'rgba(200,190,255,1)'; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.arc(x, y, hr, 0, Math.PI * 2); ctx.stroke();
+      if (Q === 2 && motion) {                                              // two cyan sparks flowing along it
+        const ph = SpaceFX.active ? SpaceFX.ringPhase : t * 2.5;
+        ctx.lineCap = 'round';
+        for (let c = 0; c < 2; c++) {
+          const head = ph * 0.8 + c * Math.PI;
+          for (let s = 0; s < 4; s++) {
+            ctx.globalAlpha = (1 - s / 4) * 0.8;
+            ctx.strokeStyle = s ? rgba(CY, 1) : rgba(WH, 1); ctx.lineWidth = 2.4 - s * 0.4;
+            ctx.beginPath(); ctx.arc(x, y, hr, head - 0.16 * (s + 1), head - 0.16 * s); ctx.stroke();
+          }
+        }
+      }
+
+      ctx.restore();
+
+      // ---------- the craft moves as one (the halo and timing line above never move) ----------
+      ctx.save();
+      if (tilt && Q > 0) { ctx.translate(x, y); ctx.rotate(tilt); ctx.translate(-x, -y); }   // Low: bounce only, no rotated draws
+      const KP = RY / RX, dyP = cy + Y0 * R;                // the rim plane, where the swirl orbits
+      const swA = Math.min(1, 0.62 + p * 0.25 + hp * 0.35 + heat * 0.2 + novaFl * 0.5 + singFl * 0.5 + charge2 * 0.25) * (1 - dim * 0.5);
+      const inner = sing ? S.diskSing : nova ? S.diskNova : S.diskIn;
+      const mixT = (lvlKind === 'nova' || lvlKind === 'sing') && la >= 0 && la < 0.5 ? la / 0.5 : 1;   // new palette fades in
+      const prevInner = lvlKind === 'sing' ? S.diskNova : S.diskIn;
+      const swirl = (side, k, aMul) => {
+        if (Q > 0) swirlPass(S.diskOut, th2, x, dyP, k, side, swA * 0.8 * aMul, swS);
+        if (mixT < 1) swirlPass(prevInner, th1, x, dyP, k, side, swA * aMul * (1 - mixT), swS);
+        swirlPass(inner, th1, x, dyP, k, side, swA * aMul * mixT, swS);
+      };
+      swirl(-1, KP, 1);                                      // the far half, behind the hull
+      ctx.save();                                            // tier moves act on the ship, not its swirl
+      if (maneuver) { const pvx = x + jx, pvy = cy - 0.15 * R + jy; ctx.translate(pvx, pvy); ctx.rotate(roll); ctx.scale(msc, msc * pitchY); ctx.translate(-pvx, -pvy); }
+
+      // ---------- tractor beam: light rings drawn up into the core ----------
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const bA = Math.min(1, 0.6 + p * 0.3 + hp * 0.25 + heat * 0.25 + novaFl * 0.4 + singPull * 0.5);
+      const bSpeed = 0.5 * (1 + 0.5 * nova + 1.2 * sing + 1.5 * singPull);
+      ctx.globalAlpha = 0.2 * bA; ctx.drawImage(glow(CY), x - 0.5 * R, cy + (CORE_Y - 0.05) * R, R, 0.95 * R);
+      for (let j = 0; j < 3; j++) {
+        const kk = ((motion ? t * bSpeed : 0) + j / 3) % 1;
+        const e = kk * kk, rr = R * (0.15 + 0.44 * (1 - e)), w = rr / S.beam.r0;
+        ctx.globalAlpha = bA * Math.sin(Math.PI * Math.min(1, kk * 1.1 + 0.05));
+        ctx.drawImage(S.beam.cv, vx - w * S.beam.rr, vy + (0.70 * (1 - e) + 0.05) * R - w * S.beam.rr * 0.26, w * S.beam.rr * 2, w * S.beam.rr * 0.52);
+      }
+      ctx.restore();
+
+      // ---------- the hull ----------
+      ctx.save();
+      if (dim > 0) ctx.globalAlpha = 1 - dim * 0.25;
+      drawBox(S.hullBase, BB, x, cy, R);
+      drawDeck(x, cy, R, phi, Q);                           // the turning deck
+      drawBox(S.hullTop, BT, x, cy, R);
+      ctx.restore();
+
+      // ---------- the core: black eye, turning arms, crisp pulses ----------
+      ctx.save();
+      ctx.fillStyle = 'rgba(2,1,6,0.94)';
+      ctx.beginPath(); ctx.ellipse(vx, vy + vry * 0.1, vrx * 0.36, vry * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter';
+      const spin = motion ? t * (2.6 + 2.4 * nova + 6 * sing + 10 * singPull + 4 * charge3) : 0;
+      ctx.globalAlpha = Math.min(1, 0.8 + p * 0.35 + hp * 0.5 + charge3 * 0.4);
+      ctx.translate(vx, vy); ctx.scale(1, CORE_RY / CORE_RX); ctx.rotate(spin);
+      ctx.drawImage(S.arms.cv, -S.arms.rA * R, -S.arms.rA * R, S.arms.rA * R * 2, S.arms.rA * R * 2);
+      ctx.restore();
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const lightBoost = Math.min(1, p * 0.45 + hp * 0.55 + heat * 0.3 + novaFl * 0.6 + charge2 * 0.4);
+      ctx.globalAlpha = Math.max(0, 1 - dim * 0.6);
+      drawBox(S.light, BL, x, cy, R);
+      if (lightBoost > 0.04) { ctx.globalAlpha = lightBoost; drawBox(S.light, BL, x, cy, R); }
+      // core ring: steady, brighter on hits, charge and tiers
+      const coreA = Math.min(1, 0.55 + p * 0.25 + hp * 0.6 + cp + charge2 * 0.5 + heat * 0.25 + novaFl + singFl);
+      ctx.globalAlpha = coreA * (1 - dim * 0.6);
+      ctx.strokeStyle = rgba(coreCol, 1); ctx.lineWidth = Math.max(1.4, R * 0.024);
+      ctx.beginPath(); ctx.ellipse(vx, vy, vrx * 0.62, vry * 0.66, 0, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = rgba(WH, 1); ctx.lineWidth = Math.max(0.8, R * 0.009);
+      ctx.beginPath(); ctx.ellipse(vx, vy, vrx * 0.62, vry * 0.66, 0, 0, Math.PI * 2); ctx.stroke();
+      const pulseA = Math.min(1, hp * 0.8 + cp + novaFl + singFl + charge2 * 0.35 + charge3 * 0.35);
+      if (pulseA > 0.03) {                               // a tight flare at the core only, never the screen
+        ctx.globalAlpha = pulseA;
+        ctx.drawImage(gCore, vx - vrx * 1.5, vy - vry * 2.6, vrx * 3, vry * 5.2);
+        ctx.globalAlpha = pulseA * 0.7;
+        ctx.drawImage(gW, vx - vrx * 0.8, vy - vry * 1.4, vrx * 1.6, vry * 2.8);
+      }
+
+      // ---------- rim lights: a sequence travelling round the whole rim ----------
+      const N = Q === 0 ? 18 : 26;
+      const seqRate = (0.9 + bpm / 160) * (1 + 0.6 * nova + 1.0 * sing + 1.5 * charge2 + 1.5 * charge3);
+      const head = motion ? t * seqRate * 1.6 : 0;
+      const step = motion ? Math.floor(t * seqRate * 6) : 0;
+      const wy = cy + (Y0 + WALL * 0.5) * R;
+      ctx.lineCap = 'round';
+      for (let i = 0; i < N; i++) {
+        const al = (i + 0.5) * Math.PI * 2 / N, a = al + phi, sa = Math.sin(a), ca = Math.cos(a);   // lights ride the turning rim
+        const front = sa > 0;
+        if (!front && Math.abs(ca) < 0.62) continue;     // the far middle is behind the upper hull
+        let d = ((al - head) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+        const headW = Math.exp(-(d * d) / 0.12);
+        const marq = (i + step) % 3 === 0 ? 1 : 0.3;
+        let b = 0.18 + 0.32 * marq + 0.75 * headW + hp * 0.7 + charge2 * 0.25 + novaFl * 0.8 + singFl * 0.9;
+        b = clamp01(b * (front ? 1 : 0.55) * (1 - dim * 0.7));
+        const lx = x + ca * RX * (front ? 0.975 : 0.99) * R;
+        const ly = front ? wy + sa * RY * R : cy + (Y0 + sa * RY) * R;
+        if (front) {
+          const half = R * 0.05 * Math.abs(sa) + 1;
+          if (b > 0.45 && Q > 0) { ctx.globalAlpha = (b - 0.3) * 0.8; ctx.drawImage(glow(lightCol), lx - half * 2.4, ly - R * 0.05, half * 4.8, R * 0.1); }
+          ctx.globalAlpha = Math.min(1, 0.25 + b * 0.8);
+          ctx.strokeStyle = rgba(b > 0.85 ? WH : lightCol, 1); ctx.lineWidth = Math.max(1.3, R * 0.017);
+          ctx.beginPath(); ctx.moveTo(lx - half, ly); ctx.lineTo(lx + half, ly); ctx.stroke();
+        } else {
+          ctx.globalAlpha = b; ctx.drawImage(glow(lightCol), lx - R * 0.03, ly - R * 0.02, R * 0.06, R * 0.04);
+        }
+      }
+      // a beacon on the dome blinks with the bar
+      if (Q > 0) {
+        const bl = motion ? Math.max(0, Math.cos(t * Math.PI * bpm / 120)) : 0.4;
+        ctx.globalAlpha = 0.35 + 0.55 * Math.pow(bl, 6);
+        ctx.drawImage(glow(VI), x - R * 0.05, cy + (T2Y - DOME_H) * R - R * 0.05, R * 0.1, R * 0.1);
+      }
+
+      ctx.restore();
+      ctx.restore();                                         // tier moves
+      swirl(1, KP, 1);                                       // the near half passes in front of the hull
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      // ---------- Supernova: reactor charge and release ----------
+      if (charge2 > 0.02 && Q > 0) {                     // charge rings tightening onto the core
+        for (let j = 0; j < 2; j++) {
+          const kk = ((t * 1.6) + j * 0.5) % 1, r2 = vrx * (2.4 - 1.7 * kk);
+          ctx.globalAlpha = charge2 * 0.55 * (1 - kk);
+          ctx.strokeStyle = rgba(mixc(CY, GD, 0.5), 1); ctx.lineWidth = 1.5;
+          ctx.beginPath(); ctx.ellipse(vx, vy, r2, r2 * CORE_RY / CORE_RX, 0, 0, Math.PI * 2); ctx.stroke();
+        }
+      }
+      if (novaAct >= 0) {                                // release: an energy shockwave from the reactor
+        const e = ease(novaAct / 1.1), rr = R * (0.4 + 3.8 * e);
+        ctx.globalAlpha = Math.max(0, 1 - novaAct / 1.1) * 0.9;
+        ctx.strokeStyle = rgba(mixc(CY, GD, 0.4), 1); ctx.lineWidth = 6 * (1 - e) + 1.5;
+        ctx.beginPath(); ctx.ellipse(vx, cy + Y0 * R * 0.5, rr, rr * 0.42, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = rgba(WH, 1); ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.ellipse(vx, cy + Y0 * R * 0.5, rr, rr * 0.42, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+
+      // ---------- Singularity: the gravity drive pulls light into the core ----------
+      const pullA = Math.max(charge3 * 0.8, singPull, sing * 0.35);
+      if (pullA > 0.02 && motion) {
+        const n = Q === 0 ? 3 : Q === 1 ? 5 : 7;
+        for (let j = 0; j < n; j++) {
+          const kk = ((t * (0.7 + 1.4 * singPull)) + j / n) % 1;
+          const e = kk * kk, r2 = R * (2.6 - 2.3 * e), a0 = j * 2.39 + e * 2.4;
+          ctx.globalAlpha = pullA * 0.7 * Math.sin(Math.PI * kk);
+          ctx.strokeStyle = rgba(j % 2 ? VI : mixc(VI, WH, 0.5), 1); ctx.lineWidth = 1.2 + 1.6 * e;
+          ctx.beginPath(); ctx.ellipse(vx, vy - (1 - e) * R * 0.2, r2, r2 * (0.45 - 0.2 * e), 0, a0, a0 + 0.9); ctx.stroke();
+        }
+      }
+      if (singFl > 0.02) {                               // the drive engaging: a tight violet-white flare
+        ctx.globalAlpha = singFl;
+        ctx.drawImage(glow(mixc(VI, WH, 0.5)), vx - R * 0.9, vy - R * 0.5, R * 1.8, R);
+      }
+
+      if (warpRing >= 0 && warpRing < 0.9) {                 // the warp flip's shock ring, out along the rim plane
+        const e = ease(warpRing / 0.9), rr = R * (1.1 + 2.6 * e);
+        ctx.globalAlpha = (1 - warpRing / 0.9) * 0.85;
+        ctx.strokeStyle = rgba(mixc(VI, WH, 0.3), 1); ctx.lineWidth = 5 * (1 - e) + 1.2;
+        ctx.beginPath(); ctx.ellipse(x, dyP, rr, rr * KP * 1.6, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.strokeStyle = rgba(WH, 1); ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.ellipse(x, dyP, rr, rr * KP * 1.6, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+
+      // ---------- absorbed notes: strands contracting into the core ----------
+      for (const s of strands) {
+        const kk = (t - s.t0) / 0.26;
+        if (kk < 0 || kk >= 1) continue;
+        const e = kk * kk * (3 - 2 * kk), rr = R + (vrx * 0.55 - R) * e;
+        const sq = 1 - (1 - CORE_RY / CORE_RX) * e;
+        const ccx = x, ccy = y + (vy - y) * e;
+        const a0 = s.a + e * 1.1, a1 = a0 + s.span * (1 - 0.5 * e);
+        ctx.globalAlpha = 1 - kk * 0.6;
+        ctx.strokeStyle = s.c; ctx.lineWidth = 4 * (1 - e) + 1.2;
+        ctx.beginPath(); ctx.ellipse(ccx, ccy, rr, rr * sq, 0, a0, a1); ctx.stroke();
+        ctx.strokeStyle = rgba(WH, 1); ctx.lineWidth = 1.2 * (1 - e) + 0.6;
+        ctx.beginPath(); ctx.ellipse(ccx, ccy, rr, rr * sq, 0, a0 + 0.05, a1 - 0.05); ctx.stroke();
+      }
+      strands = strands.filter((s) => t - s.t0 < 0.26 && t >= s.t0);
+      ctx.restore();
+      ctx.restore();                                         // craft transform
+    }
+    return { draw, hit };
+  })();
+
+  // Draws the halo and the craft BEFORE the notes, so the bigger craft never hides an
+  // incoming ring. Low graphics / no WebGL also gets a cheap stand-in for the warp.
+  function drawCraftStage(t) {
+    const p = pulse + beatBreath();
+    if (!SpaceFX.active) drawGravityWell2D(tgt.x, tgt.y, t, p);
+    CraftFX.draw(t, tgt.x, tgt.y, p);
+  }
+
+  // Low graphics / no WebGL: warped space around the craft, cheaply: a cached glow,
+  // a faint Einstein ring, and streaks of light spiralling in toward the core.
+  let wellGlow = null;
+  function drawGravityWell2D(x, y, t, p) {
+    const R = targetR, motion = SpaceFX.motion;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const g = ctx.createRadialGradient(x, y, R * 0.9, x, y, R * 3.2);
-    g.addColorStop(0, hexToRgba(theme.c1, 0.45 + p * 0.3));
-    g.addColorStop(0.2, hexToRgba(theme.c2, 0.16));
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, R * 3.2, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 0.55 + p * 0.3;
-    ctx.strokeStyle = hexToRgba(theme.c1, 0.6);
-    ctx.lineWidth = R * 0.18;
-    ctx.beginPath(); ctx.ellipse(x, y, R * 2.4, R * 0.42, -0.1, 0, Math.PI * 2); ctx.stroke();
+    if (!wellGlow) {
+      wellGlow = document.createElement('canvas'); wellGlow.width = wellGlow.height = 256;
+      const w = wellGlow.getContext('2d'), gr = w.createRadialGradient(128, 128, 23, 128, 128, 128);
+      gr.addColorStop(0, 'rgba(150,90,255,1)'); gr.addColorStop(0.4, 'rgba(70,90,255,0.35)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+      w.fillStyle = gr; w.fillRect(0, 0, 256, 256);
+    }
+    ctx.globalAlpha = 0.22 + p * 0.18;
+    ctx.drawImage(wellGlow, x - R * 2.2, y - R * 2.2, R * 4.4, R * 4.4);
+    ctx.globalAlpha = 0.15 + p * 0.1;
+    ctx.strokeStyle = 'rgba(170,180,255,0.8)'; ctx.lineWidth = 1.1;
+    ctx.beginPath(); ctx.arc(x, y, R * 1.36, 0, Math.PI * 2); ctx.stroke();
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 7; i++) {                    // streaks spiralling in: they shrink and turn as they fall
+      const k = ((motion ? t * 0.22 : 0) + i / 7) % 1;
+      const r = R * (3.0 - 1.8 * k), a0 = i * 2.6 + k * 2.2;
+      ctx.globalAlpha = 0.34 * Math.sin(Math.PI * k) * (1 + p * 0.5);
+      ctx.strokeStyle = i % 3 === 2 ? 'rgba(90,220,255,1)' : i % 2 ? 'rgba(176,92,255,1)' : 'rgba(110,120,255,1)';
+      ctx.lineWidth = 1 + 1.4 * k;
+      ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.42, 0, a0, a0 + 0.8 + 0.5 * k); ctx.stroke();
+    }
     ctx.restore();
+  }
+
+  // Note rings in the space look: alien energy rings. A solid luminous edge marks
+  // the timing radius exactly; a thin segmented collar turns around it. Glow comes
+  // from a wide translucent stroke, not shadowBlur (much cheaper on phones).
+  function drawNoteRingSpace(note, r, width, alpha, t) {
+    if (r <= 0 || alpha <= 0) return;
+    const near = width > 6;
     ctx.save();
-    ctx.fillStyle = '#000';
-    ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = alpha * 0.22;
+    ctx.strokeStyle = note.color; ctx.lineWidth = width * 2.8;
+    ctx.beginPath(); ctx.arc(note.tx, note.ty, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = alpha;
+    ctx.lineWidth = width;
+    ctx.beginPath(); ctx.arc(note.tx, note.ty, r, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = alpha * (near ? 0.95 : 0.7);
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = Math.max(1, width * 0.28);
+    ctx.beginPath(); ctx.arc(note.tx, note.ty, r, 0, Math.PI * 2); ctx.stroke();
+    // segmented collar: six short arcs just outside the edge, turning slowly
+    const rot = note.angle + t * 0.4, rc = r + width * 0.5 + 4;
+    ctx.globalAlpha = alpha * 0.75;
+    ctx.strokeStyle = note.color; ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 6; i++) {
+      const a = rot + i * Math.PI / 3;
+      ctx.beginPath(); ctx.arc(note.tx, note.ty, rc, a, a + 0.32); ctx.stroke();
+    }
     ctx.restore();
+  }
+
+  // Particles and shockwaves in the space look: cached glow sprites per colour
+  // instead of a shadowBlur per particle.
+  const _pGlow = {};
+  function particleGlow(color) {
+    if (_pGlow[color]) return _pGlow[color];
+    const s = document.createElement('canvas'); s.width = s.height = 32;
+    const g = s.getContext('2d'), gr = g.createRadialGradient(16, 16, 0, 16, 16, 16);
+    const hex = /^#[0-9a-f]{6}$/i.test(color);
+    gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.25, color);
+    gr.addColorStop(0.6, hex ? hexToRgba(color, 0.25) : 'rgba(255,255,255,0.12)'); gr.addColorStop(1, hex ? hexToRgba(color, 0) : 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 32, 32);
+    return (_pGlow[color] = s);
+  }
+  function drawParticlesSpace() {
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const p of particles) {
+      ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
+      const d = p.r * 4.2;
+      ctx.drawImage(particleGlow(p.color), p.x - d / 2, p.y - d / 2, d, d);
+    }
+    ctx.restore();
+    for (const w of shockwaves) {
+      if (w.r <= 0) continue;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, w.alpha) * 0.3; ctx.strokeStyle = w.color; ctx.lineWidth = w.width * 2.6;
+      ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = Math.max(0, w.alpha); ctx.lineWidth = w.width;
+      ctx.beginPath(); ctx.arc(w.x, w.y, w.r, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
   }
 
   // ================= BOSS CORE POWERS — deep-space look =================
@@ -10881,11 +11649,9 @@
     }
 
     if (SPACE_MODE) {
-      // The target is the black hole's photon ring: same radius, width and hit
-      // flare as before, so timing reads exactly the same.
-      if (!SpaceFX.active) drawBlackHole2D(x, y, t, p);
-      ring(x, y, targetR + p * 18, theme.c1, 5 + p * 7, 0.86 - p * 0.45);
-      drawPhotonRingFX(x, y, targetR + p * 18, p, t);   // white-hot core + light circling the ring
+      // The halo (same radius and beat flare as the old target ring) and the UFO
+      // craft are drawn by drawCraftStage(), before the notes, so the larger craft
+      // never hides an incoming ring.
     } else {
       ring(x, y, targetR + p * 18, theme.c1, 5 + p * 7, 0.86 - p * 0.45);
       ring(x, y, targetR * 0.72, theme.c2, 2, 0.5);
@@ -10980,6 +11746,7 @@
       const dHit = Math.abs(t - note.hitTime);
       const alpha = progress < 0 ? 0 : Math.max(0, 1 - Math.max(0, progress - 1) * 5);
       const width = dHit < 0.08 ? 9 : 5;
+      if (SPACE_MODE) { drawNoteRingSpace(note, r, width, alpha, t); continue; }
       // each ring converges on ITS OWN destination, fixed at spawn time
       ring(note.tx, note.ty, r, note.color, width, alpha);
 
@@ -11002,6 +11769,7 @@
   }
 
   function drawParticles() {
+    if (SPACE_MODE) { drawParticlesSpace(); return; }
     for (const p of particles) {
       ctx.save();
       ctx.globalAlpha = Math.max(0, p.life / p.maxLife);
@@ -11022,6 +11790,7 @@
     drawBackground(t);
     const breathe = (Math.sin(t * 92 / 60 * Math.PI * 2) + 1) / 2;
     pulse = Math.max(pulse, breathe * 0.13);
+    if (SPACE_MODE) drawCraftStage(t);
     drawTarget(t);
     ring(tgt.x, tgt.y, spawnR * 0.56 + Math.sin(t * 1.4) * 18, theme.c2, 2, 0.28);
     drawParticles();
@@ -11036,6 +11805,7 @@
     if (realmPlanet) drawVisitorCraft(t);
     if (bossActive) drawBoss(t);      // boss sits behind the notes/target
     drawGhost(t);
+    if (SPACE_MODE) drawCraftStage(t);
     drawNotes(t);
     drawTarget(t);
     drawParticles();
