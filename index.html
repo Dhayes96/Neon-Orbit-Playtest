@@ -9537,6 +9537,9 @@
   // owns that sequence). Built for phones: the hull and its resting glow are painted
   // once per size into offscreen sprites; each frame adds small sprites and a few
   // strokes. No shadowBlur anywhere in the space look.
+  // v4: the outer hull turns under a still dome (hits and tiers spin it up), the craft
+  // banks and bounces as it absorbs hits, and matter orbits it in the rim plane, wrapping
+  // behind and in front of the hull, with its far side lensed up over the dome.
   const CraftFX = (() => {
     // Geometry, in target radii, centred on the target. Seen from ~10° above the rim.
     const Y0 = -0.25, RX = 1.12, RY = 0.19, WALL = 0.06;            // rim
@@ -9559,6 +9562,8 @@
     let pendingHits = [], strands = [];
     let lastLvl = 0, lvlAt = -9, lvlKind = '', downAt = -9;
     let lastT = null;
+    let phi = 0, kick = 0, th1 = 0, th2 = 0, hitN = 0, swaySign = 1;   // spin: hull, inner and outer swirl
+    const shadeQ = [];                                                  // quantised plate colours (no per-frame strings)
 
     function glow(c) {                          // soft radial dot, one 64 px sprite per colour
       const k = c.join(',');
@@ -9570,16 +9575,19 @@
       g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
       return (glows[k] = s);
     }
+    // tight boxes (half-width, top, bottom; target radii) so each frame fills fewer pixels
+    const BB = [1.22, -0.46, 0.64], BT = [1.16, -0.70, -0.03], BL = [1.2, -0.68, 0.49];
+    function boxCanvas(R, dpr, B) { const cv = canvas(B[0] * 2 * R, (B[2] - B[1]) * R, dpr); return [cv, unitCtx(cv, R, dpr, B[0], -B[1])]; }
+    function drawBox(img, B, x, cy, R) { ctx.drawImage(img, x - B[0] * R, cy + B[1] * R, B[0] * 2 * R, (B[2] - B[1]) * R); }
     function canvas(w, h, dpr) { const c = document.createElement('canvas'); c.width = Math.max(1, Math.ceil(w * dpr)); c.height = Math.max(1, Math.ceil(h * dpr)); return c; }
     function unitCtx(cv, R, dpr, ox, oy) { const g = cv.getContext('2d'); g.setTransform(R * dpr, 0, 0, R * dpr, ox * R * dpr, oy * R * dpr); return g; }
 
     // ---------- the hull (painted once) ----------
-    function paintHull(R, dpr) {
-      const cv = canvas(SW * R, SH * R, dpr), g = unitCtx(cv, R, dpr, SW / 2, SO);
+    function paintHullBase(R, dpr) {
+      const [cv, g] = boxCanvas(R, dpr, BB);
       const px = 1 / R, wY = Y0 + WALL;
       // resting light baked under the hull: violet spill from the core and the beam's glow
       g.globalCompositeOperation = 'lighter';
-      g.globalAlpha = 0.20; g.drawImage(glow(CY), -0.5, CORE_Y - 0.05, 1.0, 0.95);
       g.globalAlpha = 0.42; g.drawImage(glow(VI), -1.2, CORE_Y - 0.45, 2.4, 0.85);
       g.globalAlpha = 1; g.globalCompositeOperation = 'source-over';
       // 1. belly: a deep plated bowl narrowing into the energy core
@@ -9623,8 +9631,11 @@
       gr = g.createLinearGradient(0, Y0, 0, wY + RY); gr.addColorStop(0, '#41465f'); gr.addColorStop(0.5, '#1a1c29'); gr.addColorStop(1, '#0a0b12');
       g.fillStyle = gr; g.fill();
       g.beginPath(); g.ellipse(0, wY, RX, RY, 0, 0.08, Math.PI - 0.08); g.lineWidth = 1 * px; g.strokeStyle = 'rgba(190,198,240,0.28)'; g.stroke();
-      // 3. lower deck: a shallow cone of faceted plates, lit from the upper left
-      const cone = (oy, orx, ory, iy, irx, iry, n, base) => {
+      return cv;
+    }
+
+    // a ring of faceted plates between two ellipses (painted into a cached sprite)
+    function cone(g, px, oy, orx, ory, iy, irx, iry, n, base) {
         for (const back of [true, false]) for (let i = 0; i < n; i++) {
           const a0 = i * Math.PI * 2 / n, a1 = (i + 1) * Math.PI * 2 / n, am = (a0 + a1) / 2;
           if ((Math.sin(am) < 0) !== back) continue;
@@ -9637,24 +9648,33 @@
           g.fillStyle = pg; g.fill();
           g.lineWidth = 1 * px; g.strokeStyle = 'rgba(5,5,12,0.78)'; g.stroke();
         }
-      };
-      cone(Y0, RX, RY, T1Y, T1RX, T1RY, 22, 0.24);
+          }
+
+    // The upper hull (painted once): deck depth shading and sheen, the rim's neon line,
+    // the first tier and the dome. The deck plates between them turn every frame.
+    function paintHullTop(R, dpr) {
+      const [cv, g] = boxCanvas(R, dpr, BT);
+      const px = 1 / R;
+      let gr;
+      g.save();                                          // deck depth: darker toward the rim, a little light inward
+      g.beginPath(); g.ellipse(0, Y0, RX, RY, 0, 0, Math.PI * 2); g.clip();
+      g.translate(0, (Y0 + T1Y) / 2); g.scale(1, RY / RX);
+      gr = g.createRadialGradient(0, 0, T1RX * 0.9, 0, 0, RX);
+      gr.addColorStop(0, 'rgba(230,232,255,0.07)'); gr.addColorStop(0.6, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,6,0.38)');
+      g.fillStyle = gr; g.fillRect(-RX * 1.2, -RX * 1.2, RX * 2.4, RX * 2.4);
+      g.restore();
       g.save();                                          // brushed sheen across the front plates
       g.beginPath(); g.ellipse(0, Y0, RX, RY, 0, 0, Math.PI * 2); g.clip();
       gr = g.createLinearGradient(-0.75, Y0 - 0.15, 0.25, Y0 + 0.15);
       gr.addColorStop(0, 'rgba(232,234,255,0)'); gr.addColorStop(0.5, 'rgba(232,234,255,0.17)'); gr.addColorStop(1, 'rgba(232,234,255,0)');
       g.fillStyle = gr; g.fillRect(-1.3, Y0 - 0.4, 2.6, 0.6);
       g.restore();
-      g.lineCap = 'round'; g.lineWidth = 2 * px; g.strokeStyle = rgba(VI, 0.95);    // violet chevrons + keel stripe
-      for (const s of [-1, 1]) for (let j = 0; j < 3; j++) {
-        const cx = s * (0.42 + j * 0.05), cy = Y0 + 0.07;
-        g.beginPath(); g.moveTo(cx - 0.02 * s, cy - 0.016); g.lineTo(cx + 0.024 * s, cy + 0.009); g.stroke();
-      }
-      g.beginPath(); g.moveTo(0, T1Y + T1RY + 0.004); g.lineTo(0, Y0 + RY - 0.035); g.stroke();
+      // the rim's neon line, crisp (its glow is in the light layer); the first tier covers its far side
+      g.beginPath(); g.ellipse(0, Y0, RX, RY, 0, 0, Math.PI * 2); g.lineWidth = 1.6 * px; g.strokeStyle = rgba(VI, 1); g.stroke();
       // 4. first tier: a raised band, then the upper cone
       g.beginPath(); g.ellipse(0, T1Y, T1RX, T1RY, 0, 0, Math.PI); g.ellipse(0, T1Y - T1H, T1RX * 0.97, T1RY * 0.97, 0, Math.PI, 0, true); g.closePath();
       gr = g.createLinearGradient(0, T1Y - T1H, 0, T1Y + T1RY); gr.addColorStop(0, '#2a2d40'); gr.addColorStop(1, '#0d0e16'); g.fillStyle = gr; g.fill();
-      cone(T1Y - T1H, T1RX * 0.97, T1RY * 0.97, T2Y, T2RX, T2RY, 16, 0.30);
+      cone(g, px, T1Y - T1H, T1RX * 0.97, T1RY * 0.97, T2Y, T2RX, T2RY, 16, 0.30);
       g.beginPath(); g.ellipse(0, T1Y - T1H, T1RX * 0.97, T1RY * 0.97, 0, Math.PI + 0.15, Math.PI * 2 - 0.15);
       g.lineWidth = 1.3 * px; g.strokeStyle = 'rgba(214,222,255,0.5)'; g.stroke();          // its far edge catches light
       // 5. the raised dome: dark glass over a lit collar
@@ -9673,14 +9693,12 @@
       g.lineWidth = 1.8 * px; g.strokeStyle = 'rgba(255,255,255,0.7)'; g.stroke();         // one crisp highlight
       g.beginPath(); g.ellipse(0, T2Y, DOME_RX, DOME_RX * 0.17, 0, 0.1, Math.PI - 0.1);
       g.lineWidth = 1.4 * px; g.strokeStyle = rgba(CY, 0.75); g.stroke();                  // cyan collar
-      // 6. the rim's neon line, crisp (its glow is in the light layer)
-      g.beginPath(); g.ellipse(0, Y0, RX, RY, 0, 0, Math.PI * 2); g.lineWidth = 1.6 * px; g.strokeStyle = rgba(VI, 1); g.stroke();
       return cv;
     }
 
     // ---------- resting light (painted once, drawn brighter on beats/hits) ----------
     function paintLight(R, dpr) {
-      const cv = canvas(SW * R, SH * R, dpr), g = unitCtx(cv, R, dpr, SW / 2, SO);
+      const [cv, g] = boxCanvas(R, dpr, BL);
       const px = 1 / R;
       g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
       g.globalAlpha = 0.34; g.strokeStyle = rgba(VI, 1); g.lineWidth = Math.max(3 * px, 0.06);
@@ -9755,9 +9773,114 @@
       return { cv, m };
     }
 
+
+    // ---------- the turning deck (every frame: flat-shaded plates, a few cheap fills) ----------
+    function plateCol(v) {
+      const q = Math.max(0, Math.min(63, Math.round(v * 63)));
+      return shadeQ[q] || (shadeQ[q] = shade(q / 63));
+    }
+    function drawDeck(x, cy, R, ph, Q) {
+      const n = 22, dA = Math.PI * 2 / n;
+      const P = (kk, a) => {                               // kk 0 = rim edge, 1 = foot of the first tier
+        const rx = RX + (T1RX - RX) * kk, ry = RY + (T1RY - RY) * kk, oy = Y0 + (T1Y - Y0) * kk;
+        return [x + Math.cos(a) * rx * R, cy + (oy + Math.sin(a) * ry) * R];
+      };
+      for (const back of [true, false]) for (let i = 0; i < n; i++) {
+        const a0 = ph + i * dA, a1 = a0 + dA, am = a0 + dA / 2;
+        if ((Math.sin(am) < 0) !== back) continue;
+        const lc = Math.cos(am + 2.3), fc = Math.cos(am - 2.0);
+        // fixed light from the upper left: plates brighten and glint as they turn through it
+        const lit = 0.24 + 0.44 * Math.max(0, lc) + 0.12 * Math.max(0, Math.sin(am)) + (i % 2 ? 0.06 : -0.04)
+                  + 0.34 * Math.pow(Math.max(0, lc), 10) + 0.22 * Math.pow(Math.max(0, fc), 14);
+        const [ox0, oy0] = P(0, a0), [ox1, oy1] = P(0, a1), [ix1, iy1] = P(1, a1), [ix0, iy0] = P(1, a0);
+        ctx.beginPath(); ctx.moveTo(ox0, oy0); ctx.lineTo(ox1, oy1); ctx.lineTo(ix1, iy1); ctx.lineTo(ix0, iy0); ctx.closePath();
+        ctx.fillStyle = plateCol(lit * 0.9); ctx.fill();
+      }
+      ctx.beginPath();                                     // plate seams, carried down the front wall
+      for (let i = 0; i < n; i++) {
+        const a = ph + i * dA, [ox, oy] = P(0, a), [ix, iy] = P(1, a);
+        ctx.moveTo(ox, oy); ctx.lineTo(ix, iy);
+        if (Math.sin(a) > 0.12) { ctx.moveTo(ox, oy + 0.5); ctx.lineTo(ox, oy + WALL * R); }
+      }
+      ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(5,5,12,0.78)'; ctx.stroke();
+      ctx.beginPath();                                     // violet keel stripes and chevrons ride the deck
+      for (let k = 0; k < 4; k++) {
+        const a = ph + 0.14 + k * Math.PI / 2;
+        if (Math.sin(a) < -0.6) continue;                  // far side: under the tier
+        const [x0, y0] = P(0.06, a), [x1, y1] = P(0.94, a);
+        ctx.moveTo(x0, y0); ctx.lineTo(x1, y1);
+        if (Q > 0) for (let j = 0; j < 3; j++) {            // a run of dashes trailing each stripe round the deck
+          const b0 = a + 0.08 + j * 0.1;
+          const [c0x, c0y] = P(0.32, b0), [cmx, cmy] = P(0.32, b0 + 0.03), [c1x, c1y] = P(0.32, b0 + 0.06);
+          ctx.moveTo(c0x, c0y); ctx.lineTo(cmx, cmy); ctx.lineTo(c1x, c1y);
+        }
+      }
+      ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.4, R * 0.024); ctx.strokeStyle = rgba(VI, 0.95); ctx.stroke();
+    }
+
+    // ---------- the gravity swirl: matter orbiting in the rim plane ----------
+    // Painted once per palette as a flat disk in circle space (a fixed-seed generator, so
+    // no Math.random), then drawn turning and squashed into the rim's plane.
+    function seeded(seed) {
+      let s = seed >>> 0;
+      return () => { s = (s + 0x6D2B79F5) >>> 0; let v = s; v = Math.imul(v ^ (v >>> 15), v | 1); v ^= v + Math.imul(v ^ (v >>> 7), v | 61); return ((v ^ (v >>> 14)) >>> 0) / 4294967296; };
+    }
+    function paintDisk(R, dpr, rIn, rOut, n, seed, pal) {
+      const hs = rOut + 0.06, cv = canvas(hs * 2 * R, hs * 2 * R, dpr), g = unitCtx(cv, R, dpr, hs, hs);
+      const px = 1 / R, rnd = seeded(seed), out = pal === 'out';
+      const body = pal === 'nova' ? [255, 170, 110] : pal === 'sing' ? [140, 70, 240] : VI;
+      const pick = (f, roll) => {
+        if (pal === 'nova') return f > 0.8 ? mixc(GD, WH, 0.6) : roll < 0.45 ? GD : roll < 0.7 ? [255, 150, 90] : roll < 0.86 ? CY : VI;
+        if (pal === 'sing') return f > 0.8 ? mixc(VI, WH, 0.6) : roll < 0.5 ? VI : roll < 0.8 ? [130, 70, 230] : [210, 160, 255];
+        if (out) return roll < 0.03 ? GD : roll < 0.4 ? IN : roll < 0.75 ? VI : [130, 120, 240];
+        return f > 0.8 ? mixc(CY, WH, 0.45) : roll < 0.06 ? GD : roll < 0.38 ? [150, 140, 255] : roll < 0.62 ? IN : VI;
+      };
+      g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+      const gr = g.createRadialGradient(0, 0, rIn, 0, 0, rOut);   // diffuse matter, so it reads as a disk, not lines
+      gr.addColorStop(0, rgba(body, out ? 0.10 : 0.2)); gr.addColorStop(0.4, rgba(IN, out ? 0.07 : 0.09)); gr.addColorStop(1, rgba(IN, 0));
+      g.fillStyle = gr; g.beginPath(); g.arc(0, 0, rOut, 0, Math.PI * 2); g.arc(0, 0, rIn, 0, Math.PI * 2, true); g.fill();
+      const am = out ? 0.7 : 1;
+      for (let i = 0; i < n; i++) {
+        const r = rIn + (rOut - rIn) * Math.pow(rnd(), 1.5), f = 1 - (r - rIn) / (rOut - rIn);
+        const a0 = rnd() * Math.PI * 2, len = 0.3 + rnd() * 1.5 * (0.55 + 0.45 * f), roll = rnd();
+        const c = pick(f, roll), w = (0.8 + rnd() * 2.4) * px * 1.8;
+        g.strokeStyle = rgba(c, 1);
+        g.globalAlpha = (0.05 + 0.08 * f) * am; g.lineWidth = w * 3.5;
+        g.beginPath(); g.arc(0, 0, r, a0, a0 + len); g.stroke();
+        g.globalAlpha = (0.16 + 0.44 * f * f) * (0.6 + 0.4 * rnd()) * am; g.lineWidth = w;
+        g.beginPath(); g.arc(0, 0, r, a0 + len * 0.1, a0 + len * 0.9); g.stroke();
+      }
+      if (!out) {                                          // a hot inner edge, broken so the turning reads
+        const hc = pal === 'nova' ? mixc(GD, WH, 0.5) : pal === 'sing' ? mixc(VI, WH, 0.5) : mixc(CY, WH, 0.4);
+        for (let j = 0; j < 9; j++) {
+          const a0 = j * Math.PI * 2 / 9 + rnd() * 0.3, len = 0.35 + rnd() * 0.4;
+          g.strokeStyle = rgba(hc, 1);
+          g.globalAlpha = 0.18; g.lineWidth = 16 * px; g.beginPath(); g.arc(0, 0, rIn + 0.025, a0, a0 + len); g.stroke();
+          g.globalAlpha = 0.7; g.lineWidth = 4 * px; g.beginPath(); g.arc(0, 0, rIn + 0.025, a0, a0 + len); g.stroke();
+        }
+      }
+      return { cv, hs };
+    }
+    // one half of a swirl layer: side < 0 is the far half (above the plane on screen), > 0 the near half
+    function swirlPass(L, ang, cx, cyP, k, side, alpha) {
+      if (alpha <= 0.01) return;
+      const s = L.hs * targetR;
+      ctx.save();
+      ctx.beginPath();
+      if (side < 0) ctx.rect(cx - s - 4, cyP - s - 4, s * 2 + 8, s + 4); else ctx.rect(cx - s - 4, cyP, s * 2 + 8, s + 4);
+      ctx.clip();
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = Math.min(1, alpha);
+      ctx.translate(cx, cyP); ctx.scale(1, k); ctx.rotate(ang);
+      ctx.drawImage(L.cv, -s, -s, s * 2, s * 2);
+      ctx.restore();
+    }
+
     function build(R, dpr) {
-      return { hull: paintHull(R, dpr), light: paintLight(R, dpr), arms: paintArms(R, dpr), beam: paintBeamRing(R, dpr),
-               haloA: paintHalo(R, dpr, false), haloB: paintHalo(R, dpr, true) };
+      return { hullBase: paintHullBase(R, dpr), hullTop: paintHullTop(R, dpr), light: paintLight(R, dpr),
+               arms: paintArms(R, dpr), beam: paintBeamRing(R, dpr),
+               haloA: paintHalo(R, dpr, false), haloB: paintHalo(R, dpr, true),
+               diskIn: paintDisk(R, dpr, 1.3, 1.85, 150, 11, 'base'), diskOut: paintDisk(R, dpr, 1.55, 2.35, 110, 23, 'out'),
+               diskNova: paintDisk(R, dpr, 1.3, 1.85, 150, 11, 'nova'), diskSing: paintDisk(R, dpr, 1.3, 1.85, 150, 11, 'sing') };
     }
 
     // ---------- hit feedback (cosmetic; judging already happened) ----------
@@ -9778,6 +9901,8 @@
       // per-hit pulse: each hit restarts it (never adds up), so fast streams stay crisp
       for (const h of pendingHits) {
         hitAt = t; hitPow = h.power;
+        kick = Math.min(3.4, kick + 1.5 * h.power);        // every hit spins the engine up a little
+        hitN++; swaySign = hitN % 2 ? 1 : -1;              // and rocks it, alternating sides
         const n = Q === 0 ? 3 : Q === 1 ? 4 : 5;
         const rot0 = (strands.length * 1.7) % (Math.PI * 2);
         for (let i = 0; i < n; i++) strands.push({ t0: t, c: h.color, a: rot0 + i * Math.PI * 2 / n, span: Math.PI * 2 / n * 0.62 });
@@ -9810,9 +9935,20 @@
       const dim = down >= 0 ? (0.5 + 0.5 * Math.abs(Math.cos(down * 18))) * (1 - down / 0.7) : 0;   // power-down flicker
 
       const heat = Math.min(1, (fever ? 0.25 : 0) + nova * 0.3 + sing * 0.35);
-      const cy = y + (motion ? Math.sin(t * 1.7) * R * 0.014 : 0);    // a slow hover
+      // spin: idles slowly, kicked by hits, faster in Fever and much faster in the tiers
+      const spinMul = 1 + (fever ? 0.45 : 0) + 0.8 * nova + 1.7 * sing + 1.4 * charge2 + 1.8 * charge3 + 4 * singPull + 1.2 * novaFl;
+      if (motion) {
+        kick *= Math.exp(-dt / 0.45);
+        phi = (phi + dt * (0.7 * spinMul + kick)) % (Math.PI * 2);
+        th1 = (th1 + dt * (1.5 * spinMul + kick * 0.8)) % (Math.PI * 2);
+        th2 = (th2 + dt * (0.6 * spinMul + kick * 0.3)) % (Math.PI * 2);
+      }
+      // body language: a slow banking wobble, and a springy bounce + sway on each hit
+      const sinceHit = t - hitAt, he = sinceHit >= 0 && sinceHit < 1.2 ? Math.exp(-sinceHit / 0.17) * hitPow : 0;
+      const tilt = motion ? 0.026 * Math.sin(t * 0.83) + 0.011 * Math.sin(t * 2.1 + 1.3) + swaySign * 0.045 * he * Math.cos(sinceHit * 13) : 0;
+      const dip = motion ? R * 0.035 * he * Math.cos(sinceHit * 16) : 0;
+      const cy = y + (motion ? Math.sin(t * 1.7) * R * 0.014 : 0) + dip;    // a slow hover, plus the bounce
       const vx = x, vy = cy + CORE_Y * R, vrx = CORE_RX * R, vry = CORE_RY * R;
-      const sx = x - SW * R / 2, sy = cy - SO * R;
       const coreCol = sing ? mixc(VI, WH, 0.35) : nova ? mixc(CY, GD, 0.45) : CY;
       const lightCol = sing ? [200, 140, 255] : nova ? mixc(CY, GD, 0.55) : CY;
       const gW = glow(WH), gCore = glow(coreCol);
@@ -9846,9 +9982,30 @@
         }
       }
 
+      ctx.restore();
+
+      // ---------- the craft moves as one (the halo and timing line above never move) ----------
+      ctx.save();
+      if (tilt && Q > 0) { ctx.translate(x, y); ctx.rotate(tilt); ctx.translate(-x, -y); }   // Low: bounce only, no rotated draws
+      const KP = RY / RX, dyP = cy + Y0 * R;                // the rim plane, where the swirl orbits
+      const swA = Math.min(1, 0.62 + p * 0.25 + hp * 0.35 + heat * 0.2 + novaFl * 0.5 + singFl * 0.5 + charge2 * 0.25) * (1 - dim * 0.5);
+      const inner = sing ? S.diskSing : nova ? S.diskNova : S.diskIn;
+      const mixT = (lvlKind === 'nova' || lvlKind === 'sing') && la >= 0 && la < 0.5 ? la / 0.5 : 1;   // new palette fades in
+      const prevInner = lvlKind === 'sing' ? S.diskNova : S.diskIn;
+      const swirl = (side, k, aMul, outer = true) => {
+        if (Q > 0 && outer) swirlPass(S.diskOut, th2, x, dyP, k, side, swA * 0.8 * aMul);
+        if (mixT < 1) swirlPass(prevInner, th1, x, dyP, k, side, swA * aMul * (1 - mixT));
+        swirlPass(inner, th1, x, dyP, k, side, swA * aMul * mixT);
+      };
+      if (Q > 0) swirl(-1, KP * 2.8, 0.6 + 0.3 * sing + 0.4 * singPull, false);   // the far side, lensed up over the dome
+      swirl(-1, KP, 1);                                      // the far half, behind the hull
+
       // ---------- tractor beam: light rings drawn up into the core ----------
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
       const bA = Math.min(1, 0.6 + p * 0.3 + hp * 0.25 + heat * 0.25 + novaFl * 0.4 + singPull * 0.5);
       const bSpeed = 0.5 * (1 + 0.5 * nova + 1.2 * sing + 1.5 * singPull);
+      ctx.globalAlpha = 0.2 * bA; ctx.drawImage(glow(CY), x - 0.5 * R, cy + (CORE_Y - 0.05) * R, R, 0.95 * R);
       for (let j = 0; j < 3; j++) {
         const kk = ((motion ? t * bSpeed : 0) + j / 3) % 1;
         const e = kk * kk, rr = R * (0.15 + 0.44 * (1 - e)), w = rr / S.beam.r0;
@@ -9860,7 +10017,9 @@
       // ---------- the hull ----------
       ctx.save();
       if (dim > 0) ctx.globalAlpha = 1 - dim * 0.25;
-      ctx.drawImage(S.hull, sx, sy, SW * R, SH * R);
+      drawBox(S.hullBase, BB, x, cy, R);
+      drawDeck(x, cy, R, phi, Q);                           // the turning deck
+      drawBox(S.hullTop, BT, x, cy, R);
       ctx.restore();
 
       // ---------- the core: black eye, turning arms, crisp pulses ----------
@@ -9878,8 +10037,8 @@
       ctx.globalCompositeOperation = 'lighter';
       const lightBoost = Math.min(1, p * 0.45 + hp * 0.55 + heat * 0.3 + novaFl * 0.6 + charge2 * 0.4);
       ctx.globalAlpha = Math.max(0, 1 - dim * 0.6);
-      ctx.drawImage(S.light, sx, sy, SW * R, SH * R);
-      if (lightBoost > 0.04) { ctx.globalAlpha = lightBoost; ctx.drawImage(S.light, sx, sy, SW * R, SH * R); }
+      drawBox(S.light, BL, x, cy, R);
+      if (lightBoost > 0.04) { ctx.globalAlpha = lightBoost; drawBox(S.light, BL, x, cy, R); }
       // core ring: steady, brighter on hits, charge and tiers
       const coreA = Math.min(1, 0.55 + p * 0.25 + hp * 0.6 + cp + charge2 * 0.5 + heat * 0.25 + novaFl + singFl);
       ctx.globalAlpha = coreA * (1 - dim * 0.6);
@@ -9903,10 +10062,10 @@
       const wy = cy + (Y0 + WALL * 0.5) * R;
       ctx.lineCap = 'round';
       for (let i = 0; i < N; i++) {
-        const a = (i + 0.5) * Math.PI * 2 / N, sa = Math.sin(a), ca = Math.cos(a);
+        const al = (i + 0.5) * Math.PI * 2 / N, a = al + phi, sa = Math.sin(a), ca = Math.cos(a);   // lights ride the turning rim
         const front = sa > 0;
         if (!front && Math.abs(ca) < 0.62) continue;     // the far middle is behind the upper hull
-        let d = ((a - head) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
+        let d = ((al - head) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI;
         const headW = Math.exp(-(d * d) / 0.12);
         const marq = (i + step) % 3 === 0 ? 1 : 0.3;
         let b = 0.18 + 0.32 * marq + 0.75 * headW + hp * 0.7 + charge2 * 0.25 + novaFl * 0.8;
@@ -9929,6 +10088,11 @@
         ctx.globalAlpha = 0.35 + 0.55 * Math.pow(bl, 6);
         ctx.drawImage(glow(VI), x - R * 0.05, cy + (T2Y - DOME_H) * R - R * 0.05, R * 0.1, R * 0.1);
       }
+
+      ctx.restore();
+      swirl(1, KP, 1);                                       // the near half passes in front of the hull
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
 
       // ---------- Supernova: reactor charge and release ----------
       if (charge2 > 0.02 && Q > 0) {                     // charge rings tightening onto the core
@@ -9981,6 +10145,7 @@
       }
       strands = strands.filter((s) => t - s.t0 < 0.26 && t >= s.t0);
       ctx.restore();
+      ctx.restore();                                         // craft transform
     }
     return { draw, hit };
   })();
