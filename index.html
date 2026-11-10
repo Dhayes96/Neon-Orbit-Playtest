@@ -85,7 +85,7 @@
     }
 
     #game { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
-    /* Deep Space: WebGL sky + black hole, drawn under the (transparent) game canvas */
+    /* Deep Space: WebGL lensed sky, drawn under the (transparent) game canvas (UFO craft on top) */
     #space { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; pointer-events: none; background: #000; }
     /* Low graphics on: the Deep Space detail controls don't apply */
     .setting-block.gfx-low #spaceSeg, .setting-block.gfx-low #spaceDesc, .setting-block.gfx-low .toggle-row:not(:first-of-type) { opacity: 0.4; }
@@ -1246,7 +1246,7 @@
           <button data-sq="ultra">Ultra</button>
         </div>
         <div class="seg-desc" id="spaceDesc"></div>
-        <label class="toggle-row" style="margin-top:10px"><span>Black hole motion</span><input type="checkbox" class="toggle" id="spaceMotionToggle"></label>
+        <label class="toggle-row" style="margin-top:10px"><span>Craft &amp; ring motion</span><input type="checkbox" class="toggle" id="spaceMotionToggle"></label>
         <label class="toggle-row"><span>Warp galaxies &amp; supernovas</span><input type="checkbox" class="toggle" id="spaceCosmosToggle"></label>
         <div class="seg-desc">Motion: matter spiraling in and light circling the ring. Warp: spiral galaxies and supernovas during Combo Fever.</div>
       </div>
@@ -7847,6 +7847,7 @@
       createBurst(bestNote.tx, bestNote.ty, color, 12, 0.7);
       if (bossActive) { damageBoss(BOSS_DMG.ok); bossPerfectStreak = 0; }      // OK: 0.5
     }
+    CraftFX.hit(color, text === 'PERFECT' ? 1 : 0.55);   // cosmetic: core flash, hull ripple, ring sinks in
 
     const baseMult = 1 + Math.floor(combo / 12) * 0.25;
     const mult = baseMult * FEVER_MULTS[fever ? Math.max(1, feverLevel) : 0];
@@ -8915,12 +8916,17 @@
         col += uTint * 0.5 * uBgPulse * clamp(1.0 - th / (max(uWH.x, uWH.y) * 0.8), 0.0, 1.0);
 
         float aa = 1.4 / (uScale * R);
+#ifdef UFO
+        float hole = 1.0;                            // no shadow: the craft sits in the lensed sky
+#else
         float hole = smoothstep(RSH - aa, RSH + aa, thR);
         col *= hole;
+#endif
 
         float cs = cos(TILT), sn = sin(TILT);
         vec2 d = vec2(cs * pc.x - sn * pc.y, sn * pc.x + cs * pc.y) / R;
 
+#ifndef UFO
         if (abs(d.x) < gRout * 1.05 && (abs(d.y) < gRout * COSI + 0.15 || thR < 1.9 + 0.5 * uHz)) {
           // far half of the disk: its light is bent over the top and under the bottom
           float sphi = abs(d.y) / thR;
@@ -8938,9 +8944,11 @@
           vec4 dk = dkF + dkN;                       // one premultiplied layer: no seam
           col = col * (1.0 - min(dk.a, 0.96)) + dk.rgb;
         }
+#endif
 
         // Photon ring: crisp n=1 ring, fainter n=2 sub-ring inside it, soft glow, with
         // light circling the hole (brightest where the disk spins toward us).
+#ifndef UFO
         if (thR > 0.55 && thR < 1.6) {
         float ang = atan(pc.y, pc.x);
         float crescent = 0.62 + 0.38 * cos(ang);
@@ -8961,7 +8969,12 @@
         col += mix(vec3(1.0), uC1, 0.4) * ringI * crescent * (0.6 + 0.9 * spots) * shim * (0.75 + uPulse * 1.7 + uFever * 0.4);
         col += mix(vec3(1.0), uC1, 0.5) * 0.035 * smoothstep(RSH * 0.55, RSH, thR) * (1.0 - hole) * crescent;
         }
+#endif
         col += uC1 * (0.035 + uPulse * 0.07) * exp(-max(thR - RSH, 0.0) * 1.6) * hole;
+#ifdef UFO
+        // the gravity core's light: cyan at the craft, violet where the sky bends
+        col += mix(vec3(0.29, 0.94, 1.0), vec3(0.66, 0.43, 1.0), smoothstep(0.15, 1.1, thR)) * (0.09 + uPulse * 0.16 + uFever * 0.05) * exp(-thR * 1.5);
+#endif
 
         // Prism Guard's rim: a thin prismatic edge (red/green/blue split) and faint hex facets.
         if (shM > 0.001) {
@@ -8989,8 +9002,10 @@
         gl_FragColor = vec4(col, 1.0);
 #endif
       }`;
-    const SKY_SRC = '#define PASS_SKY 1\n' + MAIN_FS;
-    const COMP_SRC = MAIN_FS;
+    // UFO: the craft (drawn on the game canvas) replaces the black hole's shadow,
+    // accretion disk and photon ring. The lensed sky around it is unchanged.
+    const SKY_SRC = '#define UFO 1\n#define PASS_SKY 1\n' + MAIN_FS;
+    const COMP_SRC = '#define UFO 1\n' + MAIN_FS;
 
     function compile(type, src) {
       const s = gl.createShader(type);
@@ -9504,25 +9519,240 @@
     const c = document.getElementById('spaceCosmosToggle'); if (c) c.checked = s.spaceCosmos !== false;
   }
 
-  // 2D stand-in for the black hole, only used when WebGL is unavailable.
-  function drawBlackHole2D(x, y, t, p) {
+  // ================= UFO GRAVITY CRAFT (approved art direction, Nov 2026) =================
+  // A compact, layered saucer sits inside the target ring, powered by a gravity core
+  // (a reactor ring around its canopy); the lensed sky still warps around it. Rings that are hit sink under
+  // the hull into the core. Purely cosmetic: timing, judging, input and patterns are
+  // untouched, and it never calls Math.random (gameplay owns that sequence).
+  // Cost: the hull is painted once into an offscreen sprite (per size and DPR); each
+  // frame draws that sprite plus a few additive glow sprites. No shadowBlur.
+  const CraftFX = (() => {
+    const K = 0.38;                              // ellipse squash: we look down ~22° onto the saucer
+    const CY = [74, 240, 255], VI = [168, 110, 255], WH = [236, 248, 255];
+    const CORE_Y = -0.166, CORE_R = 0.30;        // gravity core: a reactor ring around the canopy (target radii)
+    const SW = 2.0, SH = 0.80, SO = 0.46;        // sprite box (target radii) and the centre's offset from its top
+    let hull = null, hullKey = '';
+    const glows = {};
+    let hitPending = 0, hitAt = -9, hitPow = 0;
+    let pendingAbs = [], absorbs = [];
+    const rgba = (c, a) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+    const ease = (k) => 1 - Math.pow(1 - Math.min(1, Math.max(0, k)), 3);
+
+    function glow(c) {                           // soft radial dot, one 64 px sprite per colour
+      const key = c.join(',');
+      if (glows[key]) return glows[key];
+      const s = document.createElement('canvas'); s.width = s.height = 64;
+      const g = s.getContext('2d');
+      const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      gr.addColorStop(0, rgba(c, 1)); gr.addColorStop(0.22, rgba(c, 0.6)); gr.addColorStop(0.55, rgba(c, 0.16)); gr.addColorStop(1, rgba(c, 0));
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+      return (glows[key] = s);
+    }
+    function ell(g, x, y, rx, ry) { g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); }
+    function lin(g, x0, y0, x1, y1, stops) { const gr = g.createLinearGradient(x0, y0, x1, y1); stops.forEach(([o, c]) => gr.addColorStop(o, c)); return gr; }
+
+    // Paint the static hull in units of the target radius (1 unit = R css px), as two
+    // layers so the reactor ring's far side can pass behind the canopy.
+    function layer(R, dpr) {
+      const cv = document.createElement('canvas');
+      cv.width = Math.ceil(SW * R * dpr); cv.height = Math.ceil(SH * R * dpr);
+      const g = cv.getContext('2d');
+      g.setTransform(R * dpr, 0, 0, R * dpr, cv.width / 2, SO * R * dpr);
+      return [cv, g];
+    }
+    function paintHull(R, dpr) {
+      const [cv, g] = layer(R, dpr);
+      const px = 1 / R;                          // one css pixel, in units
+      // 2. rim wall (the saucer's edge), seen along the front
+      ell(g, 0, 0.035, 0.92, 0.92 * K);
+      g.fillStyle = lin(g, 0, -0.1, 0, 0.39, [[0, '#3a3f58'], [0.5, '#1b1d2a'], [1, '#0a0b12']]); g.fill();
+      g.beginPath(); g.ellipse(0, 0.035, 0.92, 0.92 * K, 0, 0.05, Math.PI - 0.05);
+      g.lineWidth = 1.2 * px; g.strokeStyle = 'rgba(190,200,240,0.32)'; g.stroke();
+      g.beginPath(); g.ellipse(0, 0.012, 0.92, 0.92 * K, 0, 0.12, Math.PI - 0.12);
+      g.lineWidth = 1 * px; g.strokeStyle = rgba(CY, 0.22); g.stroke();
+      // 3. main deck: brushed dark metal, lit from the upper left
+      ell(g, 0, -0.02, 0.92, 0.92 * K);
+      g.fillStyle = lin(g, -0.7, -0.38, 0.7, 0.32, [[0, '#8c95bc'], [0.42, '#3b405a'], [1, '#161824']]); g.fill();
+      g.save(); g.clip();
+      const sh = g.createRadialGradient(-0.34, -0.16, 0, -0.34, -0.16, 0.62);
+      sh.addColorStop(0, 'rgba(215,225,255,0.30)'); sh.addColorStop(1, 'rgba(215,225,255,0)');
+      g.fillStyle = sh; g.fillRect(-1, -0.4, 2, 0.8);
+      g.lineWidth = 1 * px;                      // panel seams + a groove
+      for (let i = 0; i < 12; i++) {
+        const a = (i + 0.5) * Math.PI / 6, c = Math.cos(a), s = Math.sin(a);
+        g.beginPath(); g.moveTo(0.64 * c, -0.02 + 0.64 * K * s); g.lineTo(0.905 * c, -0.02 + 0.905 * K * s);
+        g.strokeStyle = 'rgba(6,7,12,0.55)'; g.stroke();
+        g.beginPath(); g.moveTo(0.64 * c + px, -0.02 + 0.64 * K * s + px); g.lineTo(0.905 * c + px, -0.02 + 0.905 * K * s + px);
+        g.strokeStyle = 'rgba(170,180,225,0.10)'; g.stroke();
+      }
+      ell(g, 0, -0.02, 0.78, 0.78 * K); g.strokeStyle = 'rgba(6,7,12,0.5)'; g.stroke();
+      ell(g, 0, -0.02 + px, 0.78, 0.78 * K); g.strokeStyle = 'rgba(170,180,225,0.10)'; g.stroke();
+      g.restore();
+      g.beginPath(); g.ellipse(0, -0.02, 0.92, 0.92 * K, 0, Math.PI + 0.12, Math.PI * 2 - 0.12);
+      g.lineWidth = 1.5 * px; g.strokeStyle = 'rgba(210,220,255,0.6)'; g.stroke();     // back edge catches the light
+      // 4. two raised tiers (layered, Abyss-style), each with a thin light trim
+      const tier = (y0, rx, h, top, trim) => {
+        ell(g, 0, y0, rx, rx * K); g.fillStyle = lin(g, 0, y0 - rx * K, 0, y0 + rx * K, [[0, '#20232f'], [1, '#0b0c12']]); g.fill();
+        ell(g, 0, y0 - h, rx * 0.97, rx * 0.97 * K);
+        g.fillStyle = lin(g, -rx, y0 - h - rx * K, rx, y0 - h + rx * K, top); g.fill();
+        g.beginPath(); g.ellipse(0, y0 - h, rx * 0.97, rx * 0.97 * K, 0, 0.18, Math.PI - 0.18);
+        g.lineWidth = 1.3 * px; g.strokeStyle = trim; g.stroke();
+      };
+      tier(-0.055, 0.62, 0.042, [[0, '#7c85ac'], [0.5, '#353a52'], [1, '#171925']], rgba(CY, 0.75));
+      tier(-0.130, 0.40, 0.036, [[0, '#727ba0'], [0.5, '#30344b'], [1, '#151622']], rgba(VI, 0.8));
+      // the reactor channel the gravity core runs in (lit live, see draw)
+      ell(g, 0, CORE_Y, CORE_R, CORE_R * K); g.lineWidth = 0.075; g.strokeStyle = '#05060c'; g.stroke();
+      g.lineWidth = 1 * px; g.strokeStyle = rgba(CY, 0.28); g.stroke();
+      // 5. canopy (own layer): dark glass with a violet depth and one crisp highlight
+      const [cv2, g2] = layer(R, dpr);
+      return { base: cv, dome: paintDome(g2, px), cv2 };
+    }
+    function paintDome(g, px) {
+      const dy = -0.172, dr = 0.23;
+      g.beginPath(); g.ellipse(0, dy, dr, dr * K, 0, 0, Math.PI); g.ellipse(0, dy, dr, 0.17, 0, Math.PI, Math.PI * 2); g.closePath();
+      const dg = g.createRadialGradient(-0.05, dy - 0.10, 0, 0, dy - 0.04, 0.28);
+      dg.addColorStop(0, 'rgba(196,165,255,0.95)'); dg.addColorStop(0.35, '#3d1f74'); dg.addColorStop(1, '#0b0618');
+      g.fillStyle = dg; g.fill();
+      g.lineWidth = 1.2 * px; g.strokeStyle = rgba(CY, 0.6); g.stroke();
+      g.beginPath(); g.ellipse(-0.035, dy - 0.055, 0.15, 0.085, 0, Math.PI * 1.08, Math.PI * 1.52);
+      g.lineWidth = 1.6 * px; g.strokeStyle = 'rgba(255,255,255,0.6)'; g.stroke();
+      return g.canvas;
+    }
+
+    // A hit (cosmetic only): flash the core, ripple the hull, and pull the ring in.
+    function hit(color, power) {
+      hitPending = 1; hitPow = power;
+      pendingAbs.push(color);
+      if (pendingAbs.length > 6) pendingAbs.shift();
+    }
+
+    function draw(t, x, y, p) {
+      const R = targetR, dpr = DPR;
+      const key = Math.round(R * 4) + '|' + dpr;
+      if (!hull || key !== hullKey) { hull = paintHull(R, dpr); hullKey = key; }
+      if (hitPending) { hitAt = t; hitPending = 0; }
+      for (const c of pendingAbs) absorbs.push({ c, t0: t });
+      pendingAbs = [];
+      const motion = SpaceFX.motion, hk = t - hitAt;
+      const fl = hk >= 0 && hk < 0.35 ? (1 - hk / 0.35) * hitPow : 0;
+      const heat = Math.min(1, (fever ? 0.3 : 0) + feverLevel * 0.2);
+      const cy = y + (motion ? Math.sin(t * 1.7) * R * 0.014 : 0);   // a slow hover
+      const coreY = cy + CORE_Y * R, crx = CORE_R * R, cry = CORE_R * K * R;
+      const gC = glow(CY), gV = glow(VI), gW = glow(WH);
+      const ph = motion ? (SpaceFX.active ? SpaceFX.ringPhase : t * 2.5) : 0;
+      const sx = x - SW * R / 2, sy = cy - SO * R, sw = SW * R, sh = SH * R;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      // light spilling from under the rim
+      ctx.globalAlpha = Math.min(1, 0.30 + p * 0.25 + heat * 0.25 + fl * 0.4);
+      ctx.drawImage(gV, x - R * 1.15, cy + R * 0.02, R * 2.3, R * 0.62);
+      ctx.globalAlpha = Math.min(1, 0.26 + p * 0.25 + heat * 0.15 + fl * 0.4);
+      ctx.drawImage(gC, x - R * 0.7, cy + R * 0.18, R * 1.4, R * 0.34);
+      ctx.restore();
+
+      ctx.drawImage(hull.base, sx, sy, sw, sh);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      // rim lights on the far edge (dimmer, smaller), before the canopy covers them
+      const N = 22;
+      const lights = (front) => {
+        for (let i = 0; i < N; i++) {
+          const th = (i + 0.5) * Math.PI * 2 / N;
+          if ((Math.sin(th) > 0) !== front) continue;
+          const lx = x + Math.cos(th) * 0.915 * R;
+          const ly = cy + (front ? 0.008 + Math.sin(th) * 0.915 * K : -0.02 + Math.sin(th) * 0.905 * K) * R;
+          const w = motion ? Math.pow(0.5 + 0.5 * Math.cos(th - ph * 1.3), 6) : 0.3;
+          const b = Math.min(1, (0.34 + 0.66 * w + p * 0.35 + fl * 0.5) * (front ? 1 : 0.55));
+          const d = R * (0.075 + 0.085 * b) * (front ? 1 : 0.7);
+          ctx.globalAlpha = b;
+          ctx.drawImage(i % 2 ? gV : gC, lx - d, ly - d * 0.7, d * 2, d * 1.4);
+          ctx.globalAlpha = Math.min(1, 0.45 + b * 0.55);
+          ctx.drawImage(gW, lx - R * 0.018, ly - R * 0.014, R * 0.036, R * 0.028);
+        }
+      };
+      lights(false);
+      // gravity core, far half (the canopy will hide its middle)
+      const coreA = Math.min(1, 0.55 + p * 0.35 + heat * 0.2 + fl);
+      const coreLine = (a0, a1) => {
+        ctx.globalAlpha = coreA;
+        ctx.strokeStyle = rgba(CY, 1); ctx.lineWidth = Math.max(1.2, R * 0.03);
+        ctx.beginPath(); ctx.ellipse(x, coreY, crx, cry, 0, a0, a1); ctx.stroke();
+        ctx.globalAlpha = Math.min(1, coreA * 0.8 + fl);
+        ctx.strokeStyle = rgba(WH, 1); ctx.lineWidth = Math.max(0.8, R * 0.011);
+        ctx.beginPath(); ctx.ellipse(x, coreY, crx, cry, 0, a0, a1); ctx.stroke();
+      };
+      coreLine(Math.PI, Math.PI * 2);
+      // rings that were hit get pulled into the core, flattening into the craft's plane
+      ctx.lineCap = 'round';
+      for (const a of absorbs) {
+        const k = (t - a.t0) / 0.30;
+        if (k < 0 || k >= 1) continue;
+        const e = ease(k);
+        const rx = R + (crx - R) * e, ry = R + (cry - R) * e;
+        ctx.globalAlpha = (1 - k * k) * 0.9;
+        ctx.strokeStyle = a.c;
+        ctx.lineWidth = 4.5 * (1 - k) + 1.2;
+        ctx.beginPath(); ctx.ellipse(x, cy + (coreY - cy) * e, rx, ry, 0, 0, Math.PI * 2); ctx.stroke();
+      }
+      absorbs = absorbs.filter((a) => t - a.t0 < 0.30 && t >= a.t0);
+      ctx.restore();
+
+      ctx.drawImage(hull.dome, sx, sy, sw, sh);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      // gravity core, near half + its glow, and hot spots racing round it
+      coreLine(0, Math.PI);
+      ctx.globalAlpha = Math.min(1, 0.35 + p * 0.3 + heat * 0.2 + fl * 0.6);
+      ctx.drawImage(gC, x - crx * 1.5, coreY - cry * 0.4, crx * 3, cry * 2.6);
+      if (motion) {
+        for (let j = 0; j < 3; j++) {
+          const a = ph * 2.2 + j * Math.PI * 2 / 3;
+          if (Math.sin(a) < -0.2) continue;        // far side is behind the canopy
+          const hx = x + Math.cos(a) * crx, hy = coreY + Math.sin(a) * cry;
+          ctx.globalAlpha = Math.min(1, 0.7 + fl);
+          ctx.drawImage(gW, hx - R * 0.05, hy - R * 0.03, R * 0.10, R * 0.06);
+        }
+      }
+      if (fl > 0) { ctx.globalAlpha = fl; ctx.drawImage(gW, x - crx * 1.3, coreY - cry * 1.6, crx * 2.6, cry * 3.2); }
+      lights(true);
+      // canopy glow breathes with the beat
+      ctx.globalAlpha = 0.22 + p * 0.25 + heat * 0.15;
+      ctx.drawImage(gV, x - R * 0.26, cy - R * 0.36, R * 0.52, R * 0.30);
+      // hit ripple: runs out from the core across the deck
+      if (hk >= 0 && hk < 0.42) {
+        const k = hk / 0.42, s = ease(k);
+        ctx.save();
+        ctx.beginPath(); ctx.ellipse(x, cy - 0.02 * R, 0.92 * R, 0.92 * K * R, 0, 0, Math.PI * 2); ctx.clip();
+        ctx.globalAlpha = (1 - k) * 0.7 * hitPow;
+        ctx.strokeStyle = rgba(CY, 1);
+        ctx.lineWidth = R * 0.05 * (1 - k) + 1;
+        const rr = crx + (0.92 * R - crx) * s;
+        ctx.beginPath(); ctx.ellipse(x, coreY + (cy - 0.02 * R - coreY) * s, rr, rr * K, 0, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+    return { draw, hit };
+  })();
+
+  // Low graphics / no WebGL: a cheap stand-in for the lensing glow around the craft.
+  function drawGravityWell2D(x, y, t, p) {
     const R = targetR;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const g = ctx.createRadialGradient(x, y, R * 0.9, x, y, R * 3.2);
-    g.addColorStop(0, hexToRgba(theme.c1, 0.45 + p * 0.3));
-    g.addColorStop(0.2, hexToRgba(theme.c2, 0.16));
+    const g = ctx.createRadialGradient(x, y, R * 0.5, x, y, R * 2.8);
+    g.addColorStop(0, hexToRgba(theme.c1, 0.22 + p * 0.2));
+    g.addColorStop(0.35, 'rgba(120,90,255,0.10)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(x, y, R * 3.2, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 0.55 + p * 0.3;
-    ctx.strokeStyle = hexToRgba(theme.c1, 0.6);
-    ctx.lineWidth = R * 0.18;
-    ctx.beginPath(); ctx.ellipse(x, y, R * 2.4, R * 0.42, -0.1, 0, Math.PI * 2); ctx.stroke();
-    ctx.restore();
-    ctx.save();
-    ctx.fillStyle = '#000';
-    ctx.beginPath(); ctx.arc(x, y, R * 0.9, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x, y, R * 2.8, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.18 + p * 0.12;            // a faint Einstein ring where the sky bends
+    ctx.strokeStyle = 'rgba(150,200,255,0.8)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(x, y, R * 1.24, 0, Math.PI * 2); ctx.stroke();
     ctx.restore();
   }
 
@@ -10881,11 +11111,12 @@
     }
 
     if (SPACE_MODE) {
-      // The target is the black hole's photon ring: same radius, width and hit
-      // flare as before, so timing reads exactly the same.
-      if (!SpaceFX.active) drawBlackHole2D(x, y, t, p);
+      // The target ring is unchanged (same radius, width and hit flare), so timing
+      // reads exactly the same. The UFO gravity craft sits inside it.
+      if (!SpaceFX.active) drawGravityWell2D(x, y, t, p);
       ring(x, y, targetR + p * 18, theme.c1, 5 + p * 7, 0.86 - p * 0.45);
       drawPhotonRingFX(x, y, targetR + p * 18, p, t);   // white-hot core + light circling the ring
+      CraftFX.draw(t, x, y, p);
     } else {
       ring(x, y, targetR + p * 18, theme.c1, 5 + p * 7, 0.86 - p * 0.45);
       ring(x, y, targetR * 0.72, theme.c2, 2, 0.5);
