@@ -2360,6 +2360,8 @@
   }
 
   let save = loadSave();
+  // Private dev mode (see the DEV block near the end). Stays null in builds without it.
+  let DevMode = null;
 
   // ================= 3. DOM refs =================
 
@@ -4873,7 +4875,7 @@
     if (secs < 2 || secs > 3 * 3600) return false;          // 2s .. 3h
     if (r.score > secs * 9000 + 5000) return false;          // generous score/second ceiling
     if (r.stage > secs * 2 + 5) return false;                // stages can't outpace time
-    if ((r.bosses || 0) > 6) return false;
+    if ((r.bosses || 0) > 9) return false;
     return true;
   }
 
@@ -4881,6 +4883,7 @@
 
   // Commit a finished run into the local boards, rolling week/day as needed.
   function commitRunRecord(rec) {
+    if (DevMode && DevMode.runFlagged) return { devRun: true };   // dev shortcut runs stay off the board
     reportRunEnd(rec);   // every run reports, including implausible ones
     if (!isPlausibleRun(rec)) { trackEvent('record_rejected', { score: rec && rec.score }); return { rejected: true }; }
     const R = save.records;
@@ -4950,7 +4953,7 @@
     // Reward themes (secret palettes won in a gauntlet) join the grid once unlocked.
     const rewardThemes = ['hellgrid', 'voidblack', 'whitegrid'].filter(id => save.themeUnlocks && save.themeUnlocks[id]).map(id => SECRET_THEMES[id]);
     for (const t of THEMES.concat(rewardThemes)) {
-      const locked = !(save.themeUnlocks && save.themeUnlocks[t.id]) && save.level < t.unlock;
+      const locked = !(save.themeUnlocks && save.themeUnlocks[t.id]) && save.level < t.unlock && !(DevMode && DevMode.on);
       const b = document.createElement('button');
       b.className = 'theme-swatch' + (locked ? ' locked' : '') + (t.id === save.theme ? ' equipped' : '');
       b.innerHTML =
@@ -4968,7 +4971,7 @@
         let vibeChanged = false;
         if (save.settings.autoMatchVibe) {
           const wantVibe = THEME_DEFAULT_VIBE[t.id];
-          if (wantVibe && MUSIC_VIBES[wantVibe] && save.level >= MUSIC_VIBES[wantVibe].unlock
+          if (wantVibe && MUSIC_VIBES[wantVibe] && (save.level >= MUSIC_VIBES[wantVibe].unlock || (DevMode && DevMode.on))
               && save.settings.musicVibe !== wantVibe) {
             save.settings.musicVibe = wantVibe;
             vibeChanged = true;
@@ -4999,7 +5002,7 @@
     const pickerVibes = VIBE_ORDER.concat(rewardVibes);
     for (const id of pickerVibes) {
       const v = MUSIC_VIBES[id];
-      const locked = v.reward ? false : (save.level < v.unlock);
+      const locked = v.reward ? false : (save.level < v.unlock && !(DevMode && DevMode.on));
       const b = document.createElement('button');
       b.className = 'theme-swatch' + (locked ? ' locked' : '') + (id === curVibe ? ' equipped' : '');
       b.innerHTML = `${v.displayName}` +
@@ -5600,7 +5603,7 @@
     // Turning it on immediately snaps the vibe to the current theme's default.
     if (e.target.checked) {
       const wantVibe = THEME_DEFAULT_VIBE[save.theme];
-      if (wantVibe && MUSIC_VIBES[wantVibe] && save.level >= MUSIC_VIBES[wantVibe].unlock) {
+      if (wantVibe && MUSIC_VIBES[wantVibe] && (save.level >= MUSIC_VIBES[wantVibe].unlock || (DevMode && DevMode.on))) {
         save.settings.musicVibe = wantVibe;
         restartVibeIfPlaying();
       }
@@ -5724,6 +5727,7 @@
     const cur = playerName();
     const next = (window.prompt('Display name (max 18 characters)', cur) || '').trim();
     if (!next) return;
+    if (DevMode && DevMode.tryCode(next)) return;   // the private dev passcode never becomes a name
     // A recognised code grants a nameplate rather than changing the name.
     const code = next.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (PLATE_CODES[code]) {
@@ -6230,6 +6234,7 @@
     state = 'playing';
     startTime = clockNow();
     lastNow = startTime;
+    if (DevMode) DevMode.newRun();
     _runAudioSeen = false; pauseInfo = null;
     pauseOverlayEl.classList.remove('show', 'counting');
     notes = []; lastScheduledHitT = -Infinity; particles = []; sparks = []; shockwaves = [];
@@ -6523,14 +6528,14 @@
       if (save.daily.date !== today) save.daily = { date: today, score: 0 };
       if (score > save.daily.score) { save.daily.score = score; newBest = true; }
     } else {
-      if (score > (save.bests[save.difficulty] || 0)) {
+      if (score > (save.bests[save.difficulty] || 0) && !(DevMode && DevMode.runFlagged)) {
         save.bests[save.difficulty] = score;
         newBest = true;
       }
     }
 
     // --- XP + leveling ---
-    const gained = Math.max(5, Math.round(
+    const gained = (DevMode && DevMode.runFlagged) ? 0 : Math.max(5, Math.round(   // dev shortcut runs earn no XP
       (score / 50 + maxCombo * 2 + perfects * 3) * diff.xpMult
     ));
     const unlocksBefore = THEMES.filter(t => save.level >= t.unlock).length;
@@ -6619,6 +6624,7 @@
     const el = $('boardBadges');
     if (!el) return;
     if (!res || res.rejected) { el.textContent = ''; el.classList.add('hidden'); return; }
+    if (res.devRun) { el.innerHTML = '<span class="bb">DEV RUN · NOT RECORDED</span>'; el.classList.remove('hidden'); return; }
     const tags = [];
     if (res.allTime) tags.push('PERSONAL BEST');
     if (res.weekly) tags.push('WEEKLY BEST');
@@ -12642,6 +12648,219 @@
   window.addEventListener('keydown', firstGesture, true);
   window.addEventListener('touchend', firstGesture, true);   // iOS: unlock must happen in touchend/click
   window.addEventListener('click', firstGesture, true);
+
+  /* DEV:BEGIN */
+  // ================= DEV MODE (private) =================
+  // Typing the dev passcode as your leaderboard name turns this on. It unlocks
+  // everything (remembering what you had, so turning it off restores your real
+  // progress) and adds a DEV MODE panel on the menu: start any boss or secret
+  // gauntlet, start at any stage, practice with no energy loss, and an FPS
+  // readout. Runs that use a shortcut are kept off the leaderboard and bests.
+  // The passcode is stored only as a hash. This whole block is deleted from the
+  // CrazyGames build by tools/build-crazygames.mjs.
+  DevMode = (() => {
+    const KEY_HASH = 4260230919282620;
+    const cyrb53 = (str, seed = 0) => {
+      let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;
+      for (let i = 0, ch; i < str.length; i++) { ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }
+      h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507); h1 ^= Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+      h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507); h2 ^= Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+      return 4294967296 * (2097151 & h2) + (h1 >>> 0);
+    };
+    const D = () => save.dev || (save.dev = { on: false, snap: null, fps: false, noDrain: false });
+    // read-only check: normal players never get a save.dev entry written for them
+    const isOn = () => !!(save.dev && save.dev.on);
+    let flagged = false, pendingJump = 0, pendingDefeat = false;
+
+    // ---------- UI ----------
+    const css = document.createElement('style');
+    css.textContent = `
+      #devScreen .card { width: min(480px, 94vw); text-align: left; max-height: calc(100vh - 40px); overflow-y: auto; }
+      #devScreen h2 { text-align: center; color: #ffe14d; letter-spacing: 0.1em; margin: 0 0 4px; }
+      .dev-note { font-size: 12px; opacity: 0.75; text-align: center; margin: 0 0 12px; }
+      .dev-h { font-size: 10.5px; font-weight: 900; letter-spacing: 0.16em; color: var(--c3); margin: 14px 0 6px; }
+      .dev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .dev-grid .btn { min-height: 44px; font-size: 12px; padding: 8px 10px; line-height: 1.15; }
+      .dev-grid .btn small { display: block; font-size: 9.5px; opacity: 0.7; font-weight: 700; letter-spacing: 0.08em; }
+      .dev-row { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin: 6px 0; font-size: 13px; }
+      #devFps { position: fixed; left: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 60; pointer-events: none;
+        font: 800 11px ui-monospace, monospace; color: #7dff68; background: rgba(0,0,0,0.55); padding: 4px 7px; border-radius: 6px; }
+      #devBtn { border-color: #ffe14d !important; color: #ffe14d !important; }
+      .dev-pause { display: none; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 14px; max-width: 360px; }
+      #pauseOverlay.show .dev-pause.on { display: flex; }
+      .dev-pause .btn { min-height: 40px; font-size: 11.5px; padding: 6px 12px; }
+    `;
+    document.head.appendChild(css);
+    const scr = document.createElement('div');
+    scr.className = 'overlay hidden'; scr.id = 'devScreen';
+    scr.innerHTML = `<div class="card">
+      <h2>DEV MODE</h2>
+      <p class="dev-note">Everything is unlocked. Shortcut runs don't count toward the leaderboard or your bests. Turn dev mode off to restore your normal progress.</p>
+      <p class="dev-h">MAIN BOSSES</p><div class="dev-grid" id="devBosses"></div>
+      <p class="dev-h">SECRET GAUNTLETS</p><div class="dev-grid" id="devSecrets"></div>
+      <p class="dev-h">START AT STAGE</p><div class="dev-grid" id="devStages"></div>
+      <p class="dev-h">PRACTICE</p>
+      <label class="dev-row"><span>No energy loss (can't die)</span><input type="checkbox" id="devNoDrain"></label>
+      <label class="dev-row"><span>Show FPS and frame time</span><input type="checkbox" id="devFpsT"></label>
+      <div class="btn-stack"><button class="btn ghost" id="devOff">Turn dev mode off</button><button class="btn" id="devBack">Back</button></div>
+    </div>`;
+    document.body.appendChild(scr);
+    const fpsEl = document.createElement('div'); fpsEl.id = 'devFps'; fpsEl.style.display = 'none'; document.body.appendChild(fpsEl);
+    const menuBtn = document.createElement('button');
+    menuBtn.className = 'btn ghost'; menuBtn.id = 'devBtn'; menuBtn.textContent = 'Dev Mode';
+    $('startBtn').parentNode.appendChild(menuBtn);
+    const pauseRow = document.createElement('div');
+    pauseRow.className = 'dev-pause';
+    pauseRow.innerHTML = `<button class="btn ghost" data-dev="nova">Next hit: Supernova</button><button class="btn ghost" data-dev="sing">Next hit: Singularity</button>
+      <button class="btn ghost" data-dev="energy">Refill energy</button><button class="btn ghost" data-dev="boss">Skip to next boss</button>`;
+    $('pauseOverlay').appendChild(pauseRow);
+
+    function button(label, sub, fn) {
+      const b = document.createElement('button'); b.className = 'btn ghost';
+      b.innerHTML = label + (sub ? `<small>${sub}</small>` : '');
+      b.addEventListener('click', () => { sfxConfirm(); fn(); });
+      return b;
+    }
+    function fill() {
+      const bosses = $('devBosses'); bosses.innerHTML = '';
+      for (const st of BOSS_STAGES) {
+        const def = BOSSES[st]; if (!def) continue;
+        bosses.appendChild(button(def.name, 'Stage ' + st + (def.secretBoss ? ' · secret' : ''), () => startAt(st)));
+      }
+      const secrets = $('devSecrets'); secrets.innerHTML = '';
+      for (const key of Object.keys(SECRET_GAUNTLETS)) {
+        const cfg = SECRET_GAUNTLETS[key], bossName = (cfg.boss && cfg.boss().name) || key;
+        const world = SECRET_THEMES[cfg.theme] || THEMES.find(t => t.id === cfg.theme);
+        secrets.appendChild(button(world ? world.name : (cfg.label || key), 'from the start', () => startSecret(key, false)));
+        secrets.appendChild(button(bossName, 'boss fight', () => startSecret(key, true)));
+      }
+      const stages = $('devStages'); stages.innerHTML = '';
+      for (const n of [5, 9, 19, 29, 39, 49, 60, 69, 90, 99]) stages.appendChild(button('Stage ' + n, '', () => startAt(n)));
+      $('devNoDrain').checked = !!D().noDrain; $('devFpsT').checked = !!D().fps;
+    }
+    function show() { fill(); for (const k in screens) screens[k].classList.add('hidden'); scr.classList.remove('hidden'); }
+    function hide() { scr.classList.add('hidden'); showScreen('menu'); }
+    function sync() {
+      menuBtn.style.display = isOn() ? '' : 'none';
+      pauseRow.classList.toggle('on', isOn());
+      fpsEl.style.display = isOn() && D().fps ? '' : 'none';
+    }
+
+    // ---------- unlock all / restore ----------
+    function unlockAll() {
+      const d = D();
+      if (!d.snap) d.snap = JSON.parse(JSON.stringify({
+        bossUnlocks: save.bossUnlocks, vibeUnlocks: save.vibeUnlocks, themeUnlocks: save.themeUnlocks,
+        equippedAbility: save.equippedAbility, theme: save.theme, musicVibe: save.settings.musicVibe,
+        coreOverdrive: !!save.coreOverdrive
+      }));
+      save.bossUnlocks = save.bossUnlocks || {};
+      for (const k of Object.keys(BOSSES)) if (BOSSES[k] && BOSSES[k].id) save.bossUnlocks[BOSSES[k].id] = true;
+      for (const id of Object.values(ABILITY_UNLOCK_BOSS)) save.bossUnlocks[id] = true;
+      save.vibeUnlocks = Object.assign(save.vibeUnlocks || {}, { voidMetal: true, cybermetal: true, ascension: true });
+      save.themeUnlocks = Object.assign(save.themeUnlocks || {}, { hellgrid: true, voidblack: true, whitegrid: true });
+      save.coreOverdrive = true;
+    }
+    function restore() {
+      const d = D(), s = d.snap;
+      if (s) {
+        save.bossUnlocks = s.bossUnlocks; save.vibeUnlocks = s.vibeUnlocks; save.themeUnlocks = s.themeUnlocks;
+        save.coreOverdrive = !!s.coreOverdrive;
+        const ab = s.equippedAbility, boss = ABILITY_UNLOCK_BOSS[ab];
+        save.equippedAbility = (ab === 'none' || (boss && save.bossUnlocks[boss])) ? ab : 'none';
+        const th = THEMES.find(t => t.id === save.theme);
+        if (th && !(save.themeUnlocks[th.id]) && save.level < th.unlock) { save.theme = s.theme; applyTheme(save.theme); }
+        const v = MUSIC_VIBES[save.settings.musicVibe];
+        if (v && ((v.reward && !save.vibeUnlocks[save.settings.musicVibe]) || (!v.reward && save.level < v.unlock))) save.settings.musicVibe = s.musicVibe;
+      }
+      d.on = false; d.snap = null; d.noDrain = false; d.fps = false;
+    }
+
+    // ---------- shortcuts ----------
+    function flagRun() { flagged = true; }
+    function jump(n) {
+      if (!(state === 'playing')) return false;
+      hitsTotal = stageHitsNeeded(n, diff);
+      stageUp(n);
+      return true;
+    }
+    function startAt(n) {
+      scr.classList.add('hidden'); hideScreens();
+      startGame(false); flagRun();
+      requestAnimationFrame(() => { if (!jump(n)) pendingJump = n; });
+    }
+    function startSecret(key, toBoss) {
+      scr.classList.add('hidden'); hideScreens();
+      startSecretGauntlet(key); flagRun();
+      if (toBoss) requestAnimationFrame(() => { if (state === 'playing') startDragonEncounter(); });
+    }
+    function nextBossStage() { return BOSS_STAGES.find(s => s > stage && !bossDefeatedStagesThisRun.has(s)) || 0; }
+
+    // ---------- pause-screen actions ----------
+    const bossBtn = pauseRow.querySelector('[data-dev=boss]');
+    pauseRow.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-dev]'); if (!b || !isOn() || state !== 'paused') return;
+      const k = b.dataset.dev; flagRun(); sfxSelect();
+      if (k === 'nova') { combo = 99; comboTier = COMBO_MILESTONES.findIndex(m => m.combo >= 100); if (feverLevel < 1) setFeverLevel(1); perfectRun = Math.max(perfectRun, 99); showToast('DEV', theme.c3, 'NEXT HIT: SUPERNOVA'); }
+      if (k === 'sing') { combo = 249; comboTier = COMBO_MILESTONES.findIndex(m => m.combo >= 250); if (feverLevel < 2) setFeverLevel(2); perfectRun = Math.max(perfectRun, 249); singLost = false; showToast('DEV', theme.c3, 'NEXT PERFECT: SINGULARITY'); }
+      if (k === 'energy') { energy = 100; showToast('DEV', theme.c3, 'ENERGY FULL'); }
+      if (k === 'boss') {
+        if (bossActive) { pendingDefeat = true; showToast('DEV', theme.c3, 'BOSS DEFEATED ON RESUME'); requestResume(); }
+        else { const nb = doomMode ? -1 : nextBossStage(); if (nb) { pendingJump = nb; showToast('DEV', theme.c3, nb > 0 ? 'BOSS AFTER RESUME' : 'SECRET BOSS AFTER RESUME'); requestResume(); } }
+      }
+    });
+
+    // ---------- wiring ----------
+    menuBtn.addEventListener('click', () => { sfxClick(); show(); });
+    $('devBack').addEventListener('click', () => { sfxBack(); hide(); });
+    $('devOff').addEventListener('click', () => { sfxBack(); restore(); persist(); sync(); hide(); refreshMenu(); showToast('DEV MODE OFF', theme.c2, 'NORMAL PROGRESS RESTORED'); });
+    $('devNoDrain').addEventListener('change', (e) => { D().noDrain = e.target.checked; persist(); });
+    $('devFpsT').addEventListener('change', (e) => { D().fps = e.target.checked; persist(); sync(); });
+
+    // FPS / frame time, plus deferred jumps once a run is actually playing
+    let fT = performance.now(), frames = [], lastShow = 0;
+    (function tick(now) {
+      if (isOn()) {
+        const dt = now - fT; fT = now; if (dt > 0 && dt < 1000) frames.push(dt);
+        if (frames.length > 120) frames.shift();
+        if (D().fps && now - lastShow > 500 && frames.length) {
+          lastShow = now;
+          const s = frames.slice().sort((a, b) => a - b), p50 = s[Math.floor(s.length * 0.5)], p95 = s[Math.floor(s.length * 0.95)];
+          fpsEl.textContent = `${Math.round(1000 / p50)} FPS · p50 ${p50.toFixed(1)}ms · p95 ${p95.toFixed(1)}ms`;
+        }
+        if (state === 'paused') {   // the boss button reads differently mid-fight
+          const lbl = bossActive ? 'Defeat this boss' : 'Skip to next boss';
+          if (bossBtn.textContent !== lbl) bossBtn.textContent = lbl;
+        }
+        if (pendingDefeat && state === 'bossBattle' && bossActive) { pendingDefeat = false; bossHealth = 0; finishBossDamage(); }
+        if (pendingJump && state === 'playing') {
+          const n = pendingJump; pendingJump = 0;
+          if (n < 0) startDragonEncounter(); else jump(n);
+        }
+        if (D().noDrain && (state === 'playing' || state === 'bossBattle') && energy < 35) { energy = 35; flagRun(); }
+      }
+      requestAnimationFrame(tick);
+    })(performance.now());
+    sync();
+
+    return {
+      get on() { return !!(save.dev && save.dev.on); },
+      // a run that used a shortcut (or practice mode) stays off the board and bests
+      get runFlagged() { return flagged; },
+      // startGame calls this, so every new run starts clean (shortcuts re-flag it right after)
+      newRun() { flagged = false; pendingJump = 0; pendingDefeat = false; },
+      tryCode(name) {
+        if (cyrb53(String(name).trim()) !== KEY_HASH) return false;
+        const d = D(), was = d.on;
+        d.on = true; unlockAll(); persist(); sync(); refreshMenu();
+        sfxSuccess(); buzz([30, 40, 30, 40, 90]);
+        showToast('DEV MODE', '#ffe14d', was ? 'ALREADY ON' : 'EVERYTHING UNLOCKED');
+        setTimeout(show, 450);
+        return true;
+      }
+    };
+  })();
+  /* DEV:END */
 
   refreshMenu();
   showScreen('menu');

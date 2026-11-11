@@ -68,6 +68,10 @@ editRe('remove results feedback mailto link', /\n\s*<a class="feedback-link" id=
 edit('Shift+B mapper toggle inert', "if (e.code === 'KeyB' && e.shiftKey && !e.repeat) {", "if (false && e.code === 'KeyB' && e.shiftKey && !e.repeat) {   // CrazyGames build: Beat Mapper disabled");
 edit('?mapper=1 inert', 'if (/[?&]mapper=1/.test(location.search)) {', 'if (false) {   // CrazyGames build: ?mapper=1 disabled');
 
+// 4b. Private dev mode: the whole block is deleted, not just hidden. The game keeps only
+//     `DevMode && ...` checks, which do nothing while DevMode stays null.
+editRe('remove dev mode block', /\n  \/\* DEV:BEGIN \*\/[\s\S]*?\/\* DEV:END \*\/\n/, '\n');
+
 // 5. Rename (free-text names) hidden.
 edit('hide Rename button', '<button class="btn tiny" id="renameBtn">Rename</button>', '<button class="btn tiny" id="renameBtn" hidden style="display:none">Rename</button>');
 
@@ -84,7 +88,7 @@ editRe('version label v1.0 (decision 4A)', /const VERSION = 'v[0-9][0-9A-Za-z.\-
   `const VERSION = '${CG_VERSION}';   // CrazyGames build: decision 4A (live site keeps its own VERSION)`);
 
 // Final guard: none of these may remain anywhere in the CrazyGames file.
-const BANNED = ['googletagmanager', 'gtag(', 'playrhythmvoid.com', 'mailto:'];
+const BANNED = ['googletagmanager', 'gtag(', 'playrhythmvoid.com', 'mailto:', 'DEV:BEGIN', 'DevMode = (', 'devScreen', 'KEY_HASH', '4260230919282620'];
 const left = BANNED.filter((b) => s.includes(b));
 if (left.length) throw new Error('[build-crazygames] banned strings still present: ' + left.join(', '));
 if (s === src) throw new Error('[build-crazygames] no changes applied');
