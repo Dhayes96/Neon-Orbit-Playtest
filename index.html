@@ -12819,9 +12819,9 @@
     if (kind === 'hex') drawHexatron(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
     else if (kind === 'tri') drawTriarch(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
     else if (kind === 'prism') drawVantaPrism(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
-    else if (kind === 'dragon') drawCyberDragon(t, r * breathe, spin + extraSpin, cols, flash, lowFrac);
-    else if (kind === 'ufo') drawUfo(t, r * breathe, spin + extraSpin, cols, flash, lowFrac);
-    else if (kind === 'mech') drawMech(t, r * breathe, spin + extraSpin, cols, flash, lowFrac);
+    else if (kind === 'dragon') drawCyberDragon(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
+    else if (kind === 'ufo') drawUfo(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
+    else if (kind === 'mech') drawMech(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
     else if (kind === 'cube') drawCubex(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
     else if (kind === 'clock') drawMetronox(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
     else if (kind === 'nullstar') drawNullstar(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
@@ -13764,458 +13764,356 @@
     ctx.restore();
   }
 
-  // VORAXIS — the secret Cyber Dragon. A mechanical serpent head with swept
-  // horns, molten core throat, jagged wing membranes and a coiling neck of
-  // segments trailing behind. Molten reds/oranges, breathing fire in later
-  // phases. Built from cheap layered geometry so it stays smooth on phones.
-  function drawCyberDragon(t, r, spin, cols, flash, lowFrac) {
-    const rage = 1 - Math.max(0, Math.min(1, lowFrac));   // 0 → 1 as it weakens
+  // VORAXIS — the Star-Eater, in 3D: a sculpted, faceted dragon skull with swept
+  // horns, a molten throat that opens as it rages, hot slit eyes, wings that
+  // flap with real depth and a coiling neck of armoured segments behind it.
+  function voraxisSkull() {
+    return meshOnce('vxSkull', () => {
+      const O = [[0, -0.78], [0.66, -0.36], [0.54, 0.34], [0, 0.92], [-0.54, 0.34], [-0.66, -0.36]];
+      const V = O.map(p => [p[0], p[1], 0]);
+      V.push([0, -0.58, 0.3], [0, 0.08, 0.42], [0, 0.7, 0.3]);         // ridge: brow (6), crest (7), snout (8)
+      for (const p of O) V.push([p[0] * 0.92, p[1] * 0.92, -0.2]);      // back rim (9..14)
+      const tri = [[0, 1, 6], [0, 6, 5], [1, 7, 6], [1, 2, 7], [2, 8, 7], [2, 3, 8], [5, 6, 7], [5, 7, 4], [4, 7, 8], [4, 8, 3]];
+      const F = tri.map(v => ({ v }));
+      for (let i = 0; i < 6; i++) { const j = (i + 1) % 6; F.push({ v: [i, j, 9 + j, 9 + i] }); }
+      F.push({ v: [9, 10, 11, 12, 13, 14] });
+      for (const f of F) f.n = faceNormal(V.map(v => [v[0], v[1] - 0.05, v[2] - 0.08]), f.v);
+      return { V, F };
+    });
+  }
+  function curvePts(x0, y0, cx, cy, x1, y1, n) {
+    const p = [];
+    for (let i = 0; i <= n; i++) { const u = i / n, v = 1 - u; p.push([v * v * x0 + 2 * v * u * cx + u * u * x1, v * v * y0 + 2 * v * u * cy + u * u * y1]); }
+    return p;
+  }
+  function mirrorMesh(key, M) {
+    return meshOnce(key, () => ({ V: M.V.map(v => [-v[0], v[1], v[2]]), F: M.F.map(f => ({ v: f.v, n: [-f.n[0], f.n[1], f.n[2]], cap: f.cap })) }));
+  }
+  function drawCyberDragon(t, r, spin, cols, flash, lowFrac, extraSpin) {
+    const rage = 1 - Math.max(0, Math.min(1, lowFrac));
     const flap = Math.sin(t * 2.2);
-
-    // --- wings (behind the body) ---
+    const [lu] = lookAtTarget(0.25);
+    const P = { yaw: Math.sin(t * 0.6) * 0.24 + lu * 0.6 + (extraSpin || 0), pitch: -0.12 + Math.sin(t * 0.9) * 0.04, roll: Math.sin(t * 0.9) * 0.05, S: r };
+    const pt = (x, y, z) => proj3(rot3([x, y, z], P.yaw, P.pitch, P.roll), P.S);
+    // wings (behind): swept back, flapping
+    const wing = meshOnce('vxWing', () => extrude([[0.3, -0.15], [1.5, -0.95], [1.35, -0.25], [1.75, 0.1], [1.2, 0.15], [1.4, 0.55], [0.5, 0.3]], 0.05));
     for (const dir of [-1, 1]) {
-      ctx.save(); ctx.scale(dir, 1);
-      ctx.rotate(-0.12 + flap * 0.1);
-      armorStyle(cols[0], 16, 3);
+      const M = dir < 0 ? mirrorMesh('vxWingL', wing) : wing;
+      drawMesh(M, P, { tint: cols[0], edge: cols[0], lw: 2.4, glow: 10 }, { tz: -0.5, yaw: dir * 0.4, roll: dir * (-0.12 + flap * 0.12) });
+      // membrane glow lines along the wing, in 3D
+      ctx.save(); ctx.strokeStyle = hexToRgba(cols[1], 0.6); ctx.lineWidth = 1.6; ctx.shadowColor = cols[1]; ctx.shadowBlur = 6;
       ctx.beginPath();
-      ctx.moveTo(r * 0.3, -r * 0.15);
-      ctx.lineTo(r * 1.5, -r * 0.95 - flap * r * 0.1);
-      ctx.lineTo(r * 1.35, -r * 0.25);
-      ctx.lineTo(r * 1.75, r * 0.1);
-      ctx.lineTo(r * 1.2, r * 0.15);
-      ctx.lineTo(r * 1.4, r * 0.55);
-      ctx.lineTo(r * 0.5, r * 0.3);
-      ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      // membrane glow lines
-      ctx.strokeStyle = hexToRgba(cols[1], 0.65); ctx.shadowColor = cols[1]; ctx.lineWidth = 1.6;
-      ctx.beginPath();
-      ctx.moveTo(r * 0.35, -r * 0.1); ctx.lineTo(r * 1.42, -r * 0.85);
-      ctx.moveTo(r * 0.35, r * 0.02); ctx.lineTo(r * 1.6, r * 0.05);
-      ctx.moveTo(r * 0.4, r * 0.16); ctx.lineTo(r * 1.3, r * 0.5);
-      ctx.stroke();
-      ctx.restore();
+      for (const [a, b] of [[[0.35, -0.1], [1.42, -0.85]], [[0.35, 0.02], [1.6, 0.05]], [[0.4, 0.16], [1.3, 0.5]]]) {
+        const q = { tz: -0.5, yaw: dir * 0.4, roll: dir * (-0.12 + flap * 0.12) };
+        const A2 = proj3(rot3(partXf([dir * a[0], a[1], 0.06], q), P.yaw, P.pitch, P.roll), P.S), B2 = proj3(rot3(partXf([dir * b[0], b[1], 0.06], q), P.yaw, P.pitch, P.roll), P.S);
+        ctx.moveTo(A2[0], A2[1]); ctx.lineTo(B2[0], B2[1]);
+      }
+      ctx.stroke(); ctx.restore();
     }
-
-    // --- coiling neck segments trailing down-left/right behind the head ---
-    ctx.save();
+    // the neck: armoured hex segments coiling down and away
+    const seg = meshOnce('vxSeg', () => extrude(regPoly(6, 1, 0), 0.4));
     for (let i = 6; i >= 1; i--) {
       const k = i / 6;
-      const a = Math.sin(t * 1.4 - i * 0.5) * 0.35;
-      const sx = Math.sin(t * 1.1 - i * 0.6) * r * 0.35 * k;
-      const sy = r * (0.75 + i * 0.34);
-      const sr = r * (0.42 - i * 0.035);
-      ctx.save();
-      ctx.translate(sx, sy); ctx.rotate(a * 0.5);
-      armorStyle(cols[0], 10, 2.5);
-      drawPolygon(0, 0, sr, 6, 0); ctx.fill(); ctx.stroke();
-      // molten seam
-      ctx.strokeStyle = hexToRgba(cols[2], 0.7); ctx.shadowColor = cols[2]; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.moveTo(-sr * 0.5, 0); ctx.lineTo(sr * 0.5, 0); ctx.stroke();
-      ctx.restore();
+      const sx = Math.sin(t * 1.1 - i * 0.6) * 0.35 * k, sy = 0.75 + i * 0.34, sr = 0.42 - i * 0.035;
+      drawMesh(seg, P, { tint: cols[0], edge: cols[0], lw: 2.2, glow: 6 }, { s: sr, tx: sx, ty: sy, tz: -0.25 - i * 0.14, roll: Math.sin(t * 1.4 - i * 0.5) * 0.18, pitch: 0.5 });
+      const c = pt(sx, sy, -0.25 - i * 0.14 + sr * 0.42);
+      ctx.save(); ctx.strokeStyle = hexToRgba(cols[2], 0.7); ctx.lineWidth = 1.4; ctx.shadowColor = cols[2]; ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.moveTo(c[0] - sr * r * 0.5, c[1]); ctx.lineTo(c[0] + sr * r * 0.5, c[1]); ctx.stroke(); ctx.restore();
     }
-    ctx.restore();
-
-    // --- head ---
-    ctx.save();
-    ctx.rotate(Math.sin(t * 0.9) * 0.05);
-    // swept horns
+    // horns: swept back
+    const horn = meshOnce('vxHorn', () => extrude([...curvePts(0.32, -0.5, 1.0, -1.25, 1.28, -1.5, 6), ...curvePts(1.28, -1.5, 0.85, -1.05, 0.5, -0.42, 6).slice(1)], 0.07));
     for (const dir of [-1, 1]) {
-      ctx.save(); ctx.scale(dir, 1);
-      armorStyle(cols[1], 14, 3);
-      ctx.beginPath();
-      ctx.moveTo(r * 0.32, -r * 0.5);
-      ctx.quadraticCurveTo(r * 1.0, -r * 1.25, r * 1.28, -r * 1.5);
-      ctx.quadraticCurveTo(r * 0.85, -r * 1.05, r * 0.5, -r * 0.42);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.restore();
+      const M = dir < 0 ? mirrorMesh('vxHornL', horn) : horn;
+      drawMesh(M, P, { tint: cols[1], edge: cols[1], lw: 2.4, glow: 10 }, { tz: -0.05, yaw: dir * 0.35 });
     }
-    // skull plate
-    armorStyle(cols[0], 18 + flash * 22, 4);
-    if (flash > 0.4) ctx.strokeStyle = '#fff';
-    ctx.beginPath();
-    ctx.moveTo(0, -r * 0.78);
-    ctx.lineTo(r * 0.66, -r * 0.36);
-    ctx.lineTo(r * 0.54, r * 0.34);
-    ctx.lineTo(0, r * 0.92);            // snout
-    ctx.lineTo(-r * 0.54, r * 0.34);
-    ctx.lineTo(-r * 0.66, -r * 0.36);
-    ctx.closePath();
-    ctx.fill(); ctx.stroke();
-
-    // jaw / molten throat (opens as it rages)
-    const gape = r * (0.12 + rage * 0.16 + Math.max(0, Math.sin(t * 3)) * 0.06);
+    // the skull: faceted and lit
+    drawMesh(voraxisSkull(), P, { tint: cols[0], edge: flash > 0.4 ? '#ffffff' : cols[0], lw: 3.2, glow: 14 + flash * 18 });
+    // crest seam along the ridge
+    const A0 = pt(0, -0.58, 0.31), A1 = pt(0, 0.08, 0.43), A2 = pt(0, 0.68, 0.31);
+    ctx.save(); ctx.strokeStyle = hexToRgba(cols[2], 0.85); ctx.lineWidth = 2; ctx.shadowColor = cols[2]; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.moveTo(A0[0], A0[1]); ctx.lineTo(A1[0], A1[1]); ctx.stroke(); ctx.restore();
+    // molten throat, opening with rage
+    const gape = (0.12 + rage * 0.16 + Math.max(0, Math.sin(t * 3)) * 0.06);
+    const th = pt(0, 0.52, 0.34);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const throat = ctx.createRadialGradient(0, r * 0.5, 0, 0, r * 0.5, gape * 3);
-    throat.addColorStop(0, hexToRgba(cols[2], 0.95));
-    throat.addColorStop(0.5, hexToRgba(cols[1], 0.5));
-    throat.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = throat;
-    ctx.beginPath(); ctx.ellipse(0, r * 0.5, gape * 1.6, gape * 2.4, 0, 0, Math.PI * 2); ctx.fill();
+    const tg = ctx.createRadialGradient(th[0], th[1], 0, th[0], th[1], gape * r * 3);
+    tg.addColorStop(0, hexToRgba(cols[2], 0.95)); tg.addColorStop(0.5, hexToRgba(cols[1], 0.5)); tg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = tg; ctx.beginPath(); ctx.ellipse(th[0], th[1], gape * r * 1.5, gape * r * 2.2, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
-
-    // teeth
-    ctx.save();
-    ctx.fillStyle = 'rgba(240,240,255,0.9)'; ctx.shadowColor = '#fff'; ctx.shadowBlur = 6;
+    // teeth, set into the snout
+    ctx.save(); ctx.fillStyle = 'rgba(240,240,255,0.92)'; ctx.shadowColor = '#fff'; ctx.shadowBlur = 5;
     for (let i = -2; i <= 2; i++) {
-      const tx = i * r * 0.15;
-      ctx.beginPath(); ctx.moveTo(tx - r * 0.05, r * 0.4); ctx.lineTo(tx, r * 0.62); ctx.lineTo(tx + r * 0.05, r * 0.4); ctx.closePath(); ctx.fill();
+      const z = 0.3 - Math.abs(i) * 0.04;
+      const a = pt(i * 0.14 - 0.05, 0.4, z), b = pt(i * 0.14, 0.62 + rage * 0.04, z + 0.02), c = pt(i * 0.14 + 0.05, 0.4, z);
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.closePath(); ctx.fill();
     }
     ctx.restore();
-
-    // eyes — hot slits that brighten with rage
+    // hot slit eyes on the upper facets
     for (const dir of [-1, 1]) {
-      ctx.save(); ctx.translate(dir * r * 0.3, -r * 0.18); ctx.rotate(dir * 0.3);
-      ctx.fillStyle = cols[2]; ctx.shadowColor = cols[0]; ctx.shadowBlur = 20 + rage * 20;
+      const e = pt(dir * 0.3, -0.2, 0.24);
+      const facing = Math.max(0.35, Math.cos(P.yaw + dir * 0.6));      // the far eye foreshortens as it turns
+      ctx.save(); ctx.translate(e[0], e[1]); ctx.rotate(dir * 0.3 + P.roll); ctx.scale(facing, 1);
+      ctx.fillStyle = cols[2]; ctx.shadowColor = cols[0]; ctx.shadowBlur = 18 + rage * 18;
       ctx.beginPath(); ctx.ellipse(0, 0, r * 0.16, r * (0.05 + flash * 0.02), 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = '#fff';
-      ctx.beginPath(); ctx.ellipse(0, 0, r * 0.06, r * 0.02, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(0, 0, r * 0.06, r * 0.02, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
-
-    // crown ridge along the skull
-    ctx.strokeStyle = hexToRgba(cols[2], 0.8); ctx.shadowColor = cols[2]; ctx.shadowBlur = 12; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(0, -r * 0.72); ctx.lineTo(0, r * 0.1); ctx.stroke();
-    ctx.restore();
-
-    // --- final-phase fire breath plume ---
+    // final-phase fire breath, from the snout
     if (bossPhase >= 2 && save.settings.environmentDetail !== 'off') {
+      const sn = pt(0, 1.2, 0.3);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const puff = 0.5 + 0.5 * Math.sin(t * 4);
       ctx.globalAlpha = 0.2 + puff * 0.25;
-      const fire = ctx.createRadialGradient(0, r * 1.25, 0, 0, r * 1.25, r * (0.9 + puff * 0.4));
-      fire.addColorStop(0, hexToRgba(cols[2], 0.9));
-      fire.addColorStop(0.4, hexToRgba(cols[1], 0.5));
-      fire.addColorStop(1, 'rgba(0,0,0,0)');
+      const fire = ctx.createRadialGradient(sn[0], sn[1], 0, sn[0], sn[1], r * (0.9 + puff * 0.4));
+      fire.addColorStop(0, hexToRgba(cols[2], 0.9)); fire.addColorStop(0.4, hexToRgba(cols[1], 0.5)); fire.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = fire;
-      ctx.beginPath(); ctx.ellipse(0, r * 1.3, r * 0.55, r * (0.9 + puff * 0.4), 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(sn[0], sn[1] + r * 0.05, r * 0.55, r * (0.9 + puff * 0.4), 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
   }
 
-  // THE VISITOR — a saucer-class craft. Domed cockpit, rotating light ring,
-  // hull vents, a tractor beam that charges before dense patterns, and a slow
-  // hover bob. Beat sync is subtle: the ring lights step on the kick.
-  function drawUfo(t, r, spin, cols, flash, lowFrac) {
+  // THE VISITOR — a saucer-class craft, now seen from a little above so the top
+  // of the hull reads as a real disc: grooved plating turning slowly, a rim band
+  // with lamps that step on the kick and go round the BACK of the dome, a glass
+  // dome with the core eye inside, and the tractor beam underneath. It banks.
+  function drawUfo(t, r, spin, cols, flash, lowFrac, extraSpin) {
     const rage = 1 - Math.max(0, Math.min(1, lowFrac));
     const beat = musicBeatPhase();
     const bob = Math.sin(t * 1.3) * r * 0.05;
-    const tiltA = Math.sin(t * 0.7) * 0.07;
-    const RW = r * 1.75, RH = r * 0.42;          // saucer half-extents
-
+    const bank = Math.sin(t * 0.7) * 0.08 + (extraSpin || 0) * 0.3;
+    const RW = r * 1.75;                                   // hull radius
+    const view = 0.3 + Math.sin(t * 0.5) * 0.03;          // how far we look down on it
+    const RY = RW * view;                                  // projected depth of the disc
+    const band = r * 0.2;                                  // rim band thickness
+    const hullYaw = spin * 0.8;
     ctx.save();
     ctx.translate(0, bob);
-    ctx.rotate(tiltA);
-
-    // --- tractor beam (charges before attacks, brighter as it weakens) ---
+    ctx.rotate(bank);
+    // tractor beam (charges before attacks, brighter as it weakens)
     if (save.settings.environmentDetail !== 'off') {
       const chg = 0.35 + 0.4 * Math.abs(Math.sin(t * 0.9)) + rage * 0.25;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.10 + chg * 0.16;
-      const beam = ctx.createLinearGradient(0, RH * 0.6, 0, RH * 0.6 + r * 4.2);
-      beam.addColorStop(0, hexToRgba(cols[0], 0.85));
-      beam.addColorStop(0.5, hexToRgba(cols[1], 0.30));
-      beam.addColorStop(1, 'rgba(0,0,0,0)');
+      const y0 = band + RY * 0.9;
+      const beam = ctx.createLinearGradient(0, y0, 0, y0 + r * 4.2);
+      beam.addColorStop(0, hexToRgba(cols[0], 0.85)); beam.addColorStop(0.5, hexToRgba(cols[1], 0.30)); beam.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = beam;
-      ctx.beginPath();
-      ctx.moveTo(-RW * 0.30, RH * 0.6);
-      ctx.lineTo(RW * 0.30, RH * 0.6);
-      ctx.lineTo(RW * 1.05, RH * 0.6 + r * 4.2);
-      ctx.lineTo(-RW * 1.05, RH * 0.6 + r * 4.2);
-      ctx.closePath(); ctx.fill();
-      // scan rungs travelling down the beam
-      ctx.globalAlpha = 0.13 + chg * 0.12;
-      ctx.strokeStyle = cols[2]; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(-RW * 0.3, y0); ctx.lineTo(RW * 0.3, y0); ctx.lineTo(RW * 1.05, y0 + r * 4.2); ctx.lineTo(-RW * 1.05, y0 + r * 4.2); ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 0.13 + chg * 0.12; ctx.strokeStyle = cols[2]; ctx.lineWidth = 1.6;
       for (let i = 0; i < 4; i++) {
-        const p = ((t * 0.5 + i * 0.25) % 1);
-        const y = RH * 0.6 + p * r * 4.0;
-        const wdt = RW * (0.30 + p * 0.75);
-        ctx.beginPath(); ctx.moveTo(-wdt, y); ctx.lineTo(wdt, y); ctx.stroke();
+        const p = ((t * 0.5 + i * 0.25) % 1), y = y0 + p * r * 4.0, wdt = RW * (0.3 + p * 0.75);
+        ctx.beginPath(); ctx.ellipse(0, y, wdt, wdt * view * 0.5, 0, 0, Math.PI * 2); ctx.stroke();
       }
       ctx.restore();
     }
-
-    // --- underside glow pool ---
+    // underside: a shallow lit bowl
     ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    const ug = ctx.createRadialGradient(0, RH * 0.5, 0, 0, RH * 0.5, RW * 1.1);
-    ug.addColorStop(0, hexToRgba(cols[0], 0.42 + rage * 0.2));
-    ug.addColorStop(0.6, hexToRgba(cols[1], 0.16));
-    ug.addColorStop(1, 'rgba(0,0,0,0)');
+    const ug = ctx.createRadialGradient(-RW * 0.25, band, RW * 0.1, 0, band + RY * 0.4, RW);
+    ug.addColorStop(0, '#1d2d48'); ug.addColorStop(0.7, '#0a1220'); ug.addColorStop(1, '#04070e');
     ctx.fillStyle = ug;
-    ctx.beginPath(); ctx.ellipse(0, RH * 0.5, RW * 1.1, RH * 1.1, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, band, RW * 0.98, RY + r * 0.42, 0, 0, Math.PI); ctx.ellipse(0, band, RW * 0.98, RY * 0.98, 0, Math.PI, 0, true); ctx.fill();
+    ctx.strokeStyle = hexToRgba(cols[0], 0.25 + flash * 0.3); ctx.lineWidth = 9; ctx.stroke();
+    ctx.strokeStyle = flash > 0.4 ? '#fff' : cols[0]; ctx.lineWidth = 3; ctx.stroke();
+    ctx.globalCompositeOperation = 'lighter'; ctx.shadowBlur = 0;
+    const gl = ctx.createRadialGradient(0, band + RY + r * 0.3, 0, 0, band + RY + r * 0.3, RW * 0.7);
+    gl.addColorStop(0, hexToRgba(cols[0], 0.5 + rage * 0.2)); gl.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.ellipse(0, band + RY + r * 0.3, RW * 0.7, RY * 0.7, 0, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
-
-    // --- lower hull ---
+    // the rim band (the hull's edge, seen as a ribbon)
     ctx.save();
-    ctx.strokeStyle = flash > 0.4 ? '#fff' : cols[0];
-    ctx.shadowColor = cols[0]; ctx.shadowBlur = 20 + flash * 24; ctx.lineWidth = 3.5;
-    ctx.fillStyle = 'rgba(8,14,26,0.96)';
-    ctx.beginPath();
-    ctx.moveTo(-RW, 0);
-    ctx.quadraticCurveTo(-RW * 0.5, RH * 1.5, 0, RH * 1.62);
-    ctx.quadraticCurveTo(RW * 0.5, RH * 1.5, RW, 0);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-    // hull vents
-    ctx.strokeStyle = hexToRgba(cols[2], 0.45); ctx.lineWidth = 1.4; ctx.shadowBlur = 6;
-    for (let i = -2; i <= 2; i++) {
-      ctx.beginPath();
-      ctx.moveTo(i * RW * 0.3, RH * 0.25);
-      ctx.lineTo(i * RW * 0.24, RH * 1.15);
-      ctx.stroke();
-    }
+    const bg = ctx.createLinearGradient(-RW, 0, RW, 0);
+    bg.addColorStop(0, '#0c1626'); bg.addColorStop(0.3, '#2a4466'); bg.addColorStop(0.55, '#101c30'); bg.addColorStop(1, '#070c16');
+    ctx.fillStyle = bg;
+    ctx.beginPath(); ctx.ellipse(0, 0, RW, RY, 0, 0, Math.PI); ctx.ellipse(0, band, RW, RY, 0, Math.PI, 0, true); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = hexToRgba(cols[0], 0.8); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(0, band, RW, RY, 0, 0, Math.PI); ctx.stroke();
     ctx.restore();
-
-    // --- rotating light ring around the rim (steps on the beat) ---
-    const lamps = 12;
-    const step = Math.floor(beat * 4);
-    for (let i = 0; i < lamps; i++) {
-      const a = spin * 0.8 + (i / lamps) * Math.PI * 2;
-      const lx = Math.cos(a) * RW * 0.94, ly = Math.sin(a) * RH * 0.94;
+    // lamps: the back half first (dimmer), the front half after the dome
+    const lamps = 14, step = Math.floor(beat * 4);
+    const lamp = (i, front) => {
+      const a = hullYaw + i / lamps * Math.PI * 2, s = Math.sin(a);
+      if ((s >= 0) !== front) return;
+      const x = Math.cos(a) * RW * 0.99, y = s * RY * 0.99 + band * 0.5;
       const on = ((i + step) % 3 === 0);
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = on ? '#ffffff' : cols[1];
-      ctx.shadowColor = on ? cols[2] : cols[1];
-      ctx.shadowBlur = on ? 18 : 8;
-      ctx.globalAlpha = on ? 0.95 : 0.5;
-      ctx.beginPath(); ctx.arc(lx, ly, on ? 3.6 : 2.4, 0, Math.PI * 2); ctx.fill();
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const lr = (on ? 3.8 : 2.6) * (front ? 1 : 0.75);
+      ctx.globalAlpha = (on ? 0.35 : 0.18) * (front ? 1 : 0.5); ctx.fillStyle = on ? cols[2] : cols[1];
+      ctx.beginPath(); ctx.arc(x, y, lr * 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = (on ? 0.95 : 0.5) * (front ? 1 : 0.5); ctx.fillStyle = on ? '#ffffff' : cols[1];
+      ctx.beginPath(); ctx.arc(x, y, lr, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
-    }
-
-    // --- upper hull plate ---
+    };
+    for (let i = 0; i < lamps; i++) lamp(i, false);
+    // the top of the hull: a plated disc turning slowly
     ctx.save();
-    ctx.strokeStyle = flash > 0.4 ? '#fff' : cols[0];
-    ctx.shadowColor = cols[0]; ctx.shadowBlur = 16 + flash * 18; ctx.lineWidth = 3.5;
-    ctx.fillStyle = 'rgba(14,22,38,0.97)';
+    const tg = ctx.createRadialGradient(-RW * 0.35, -RY * 0.5, RW * 0.05, 0, 0, RW);
+    tg.addColorStop(0, '#3c5a80'); tg.addColorStop(0.5, '#16263e'); tg.addColorStop(1, '#0a1424');
+    ctx.fillStyle = tg;
+    ctx.beginPath(); ctx.ellipse(0, 0, RW, RY, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = hexToRgba(cols[0], 0.25 + flash * 0.3); ctx.lineWidth = 9; ctx.stroke();
+    ctx.strokeStyle = flash > 0.4 ? '#fff' : cols[0]; ctx.lineWidth = 3.2; ctx.stroke();
+    ctx.strokeStyle = hexToRgba(cols[2], 0.35); ctx.lineWidth = 1.2;
+    for (const k of [0.72, 0.5]) { ctx.beginPath(); ctx.ellipse(0, 0, RW * k, RY * k, 0, 0, Math.PI * 2); ctx.stroke(); }
     ctx.beginPath();
-    ctx.moveTo(-RW, 0);
-    ctx.quadraticCurveTo(-RW * 0.55, -RH * 0.9, 0, -RH * 1.0);
-    ctx.quadraticCurveTo(RW * 0.55, -RH * 0.9, RW, 0);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-    // chrome seam
-    ctx.strokeStyle = hexToRgba(cols[2], 0.75); ctx.lineWidth = 1.6; ctx.shadowBlur = 8;
-    ctx.beginPath(); ctx.moveTo(-RW * 0.95, -RH * 0.06); ctx.lineTo(RW * 0.95, -RH * 0.06); ctx.stroke();
+    for (let i = 0; i < 12; i++) {
+      const a = hullYaw * 0.5 + i / 12 * Math.PI * 2;
+      ctx.moveTo(Math.cos(a) * RW * 0.5, Math.sin(a) * RY * 0.5); ctx.lineTo(Math.cos(a) * RW * 0.95, Math.sin(a) * RY * 0.95);
+    }
+    ctx.stroke();
     ctx.restore();
-
-    // --- cockpit dome + core ---
+    // the dome: a glass hemisphere with the core eye inside
+    const domeR = r * 0.62, domeH = domeR * 0.95, dy = -RY * 0.05;
     ctx.save();
-    const domeR = r * 0.62;
-    const dg = ctx.createRadialGradient(-domeR * 0.3, -RH * 1.1 - domeR * 0.3, domeR * 0.1, 0, -RH * 0.9, domeR);
-    dg.addColorStop(0, hexToRgba(cols[2], 0.55));
-    dg.addColorStop(0.6, hexToRgba(cols[0], 0.28));
-    dg.addColorStop(1, 'rgba(6,12,24,0.9)');
-    ctx.fillStyle = dg;
-    ctx.strokeStyle = cols[0]; ctx.shadowColor = cols[0]; ctx.shadowBlur = 20; ctx.lineWidth = 2.5;
-    ctx.beginPath(); ctx.ellipse(0, -RH * 0.9, domeR, domeR * 0.82, 0, Math.PI, Math.PI * 2); ctx.fill(); ctx.stroke();
-    // the core eye inside the dome
-    const core = r * 0.15 + flash * 4;
-    ctx.fillStyle = '#fff'; ctx.shadowColor = cols[1]; ctx.shadowBlur = 26;
-    ctx.beginPath(); ctx.arc(0, -RH * 1.05, core, 0, Math.PI * 2); ctx.fill();
+    const dg = ctx.createRadialGradient(-domeR * 0.35, dy - domeH * 0.7, domeR * 0.08, 0, dy - domeH * 0.35, domeR * 1.1);
+    dg.addColorStop(0, hexToRgba(cols[2], 0.6)); dg.addColorStop(0.55, hexToRgba(cols[0], 0.26)); dg.addColorStop(1, 'rgba(6,12,24,0.92)');
+    ctx.fillStyle = dg; ctx.strokeStyle = cols[0]; ctx.shadowColor = cols[0]; ctx.shadowBlur = 8; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.ellipse(0, dy, domeR, domeH, 0, Math.PI, Math.PI * 2); ctx.ellipse(0, dy, domeR, domeR * view, 0, 0, Math.PI); ctx.closePath(); ctx.fill(); ctx.stroke();
+    const core = r * 0.15 + flash * 4, cy = dy - domeH * 0.45;
+    const [eu, ev] = lookAtTarget(r * 0.05);
+    ctx.fillStyle = '#fff'; ctx.shadowColor = cols[1]; ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(eu * 0.5, cy + ev * 0.5, core, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = hexToRgba(cols[1], 0.9);
-    ctx.beginPath(); ctx.ellipse(0, -RH * 1.05, core * 0.42, core * (0.8 + Math.sin(t * 2.6) * 0.18), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(eu, cy + ev, core * 0.42, core * (0.8 + Math.sin(t * 2.6) * 0.18), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'lighter'; ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.22)';
+    ctx.beginPath(); ctx.ellipse(-domeR * 0.38, dy - domeH * 0.62, domeR * 0.22, domeR * 0.1, -0.5, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
-
-    // --- final-phase energy corona ---
+    for (let i = 0; i < lamps; i++) lamp(i, true);
+    // final-phase energy corona
     if (bossPhase >= 3) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.16 + 0.12 * Math.sin(t * 6);
       const cg = ctx.createRadialGradient(0, 0, r * 0.4, 0, 0, RW * 1.5);
-      cg.addColorStop(0, hexToRgba(cols[1], 0.8));
-      cg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = cg;
-      ctx.beginPath(); ctx.ellipse(0, 0, RW * 1.5, RH * 2.4, 0, 0, Math.PI * 2); ctx.fill();
+      cg.addColorStop(0, hexToRgba(cols[1], 0.8)); cg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = cg; ctx.beginPath(); ctx.ellipse(0, 0, RW * 1.5, RY * 3, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
-
     ctx.restore();
   }
 
-  // ARCHON — a towering mech with an electric greatsword. Heavy armour, glowing
-  // reactor, visor scan, shoulder pistons, back vents. The sword charges before
-  // dense patterns and throws a slash trail on attack waves.
-  function drawMech(t, r, spin, cols, flash, lowFrac) {
+  // ARCHON — the Iron Verdict, in 3D: solid armour plates you can see the sides
+  // of, shoulder blocks on pistons, a head with a scanning visor, a reactor that
+  // pulses on the kick and an electric greatsword held across the arena.
+  function drawMech(t, r, spin, cols, flash, lowFrac, extraSpin) {
     const rage = 1 - Math.max(0, Math.min(1, lowFrac));
     const beat = musicBeatPhase();
-    const pulse = Math.pow(1 - beat, 2);           // reactor pulses on the kick
-    const piston = Math.sin(t * 2.2) * r * 0.03;
-    const charge = 0.4 + 0.6 * Math.abs(Math.sin(t * 0.8));   // sword charge cycle
-
+    const pulse = Math.pow(1 - beat, 2);
+    const piston = Math.sin(t * 2.2) * 0.03;
+    const charge = 0.4 + 0.6 * Math.abs(Math.sin(t * 0.8));
+    const P = { yaw: Math.sin(t * 0.45) * 0.3 + (extraSpin || 0), pitch: -0.1 + Math.sin(t * 0.6) * 0.03, roll: Math.sin(t * 0.5) * 0.03, S: r };
+    const pt = (v, q) => proj3(rot3(partXf(v, q), P.yaw, P.pitch, P.roll), P.S);
     ctx.save();
     ctx.translate(0, Math.sin(t * 1.1) * r * 0.02);
-
-    // ---------------- back-mounted energy vents ----------------
+    // back-mounted energy vents (glow, behind everything)
     for (const dir of [-1, 1]) {
       ctx.save(); ctx.scale(dir, 1);
       ctx.globalCompositeOperation = 'lighter';
       const v = ctx.createLinearGradient(r * 0.5, -r * 0.9, r * 1.5, -r * 1.6);
-      v.addColorStop(0, hexToRgba(cols[1], 0.55 + rage * 0.3));
-      v.addColorStop(1, 'rgba(0,0,0,0)');
+      v.addColorStop(0, hexToRgba(cols[1], 0.55 + rage * 0.3)); v.addColorStop(1, 'rgba(0,0,0,0)');
       ctx.fillStyle = v;
-      ctx.beginPath();
-      ctx.moveTo(r * 0.45, -r * 0.85); ctx.lineTo(r * 1.5, -r * 1.55);
-      ctx.lineTo(r * 1.62, -r * 1.2); ctx.lineTo(r * 0.6, -r * 0.6);
-      ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(r * 0.45, -r * 0.85); ctx.lineTo(r * 1.5, -r * 1.55); ctx.lineTo(r * 1.62, -r * 1.2); ctx.lineTo(r * 0.6, -r * 0.6); ctx.closePath(); ctx.fill();
       ctx.restore();
     }
-
-    // ---------------- shoulders + pistons ----------------
+    // shoulders on pistons
+    const sh = meshOnce('arShoulder', () => extrude([[-0.18, -0.3], [0.42, -0.36], [0.52, 0.12], [-0.14, 0.24]], 0.22));
     for (const dir of [-1, 1]) {
-      ctx.save(); ctx.scale(dir, 1);
-      ctx.translate(r * 0.78, -r * 0.34 + (dir > 0 ? piston : -piston));
-      armorStyle(cols[0], 14, 3);
-      ctx.beginPath();
-      ctx.moveTo(-r * 0.18, -r * 0.30); ctx.lineTo(r * 0.42, -r * 0.36);
-      ctx.lineTo(r * 0.52, r * 0.12); ctx.lineTo(-r * 0.14, r * 0.24);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      // piston rod
-      ctx.strokeStyle = hexToRgba(cols[2], 0.8); ctx.lineWidth = 3; ctx.shadowColor = cols[2];
-      ctx.beginPath(); ctx.moveTo(r * 0.06, r * 0.16); ctx.lineTo(r * 0.10, r * 0.5); ctx.stroke();
-      // heat slit
+      const M = dir < 0 ? mirrorMesh('arShoulderL', sh) : sh;
+      const q = { tx: dir * 0.78, ty: -0.34 + (dir > 0 ? piston : -piston), tz: 0.02, yaw: dir * 0.25 };
+      drawMesh(M, P, { tint: cols[0], edge: cols[0], lw: 2.6, glow: 6 }, q);
+      const a = pt([dir * 0.06, 0.16, 0.1], q), b = pt([dir * 0.1, 0.5, 0.1], q);
+      ctx.save(); ctx.strokeStyle = hexToRgba(cols[2], 0.8); ctx.lineWidth = 3; ctx.shadowColor = cols[2]; ctx.shadowBlur = 6;
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+      const c = pt([dir * 0.02, -0.16, 0.23], q), d = pt([dir * 0.36, -0.2, 0.23], q);
       ctx.strokeStyle = hexToRgba(cols[1], 0.6 + rage * 0.4); ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(r * 0.02, -r * 0.16); ctx.lineTo(r * 0.36, -r * 0.2); ctx.stroke();
-      ctx.restore();
+      ctx.beginPath(); ctx.moveTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); ctx.stroke(); ctx.restore();
     }
-
-    // ---------------- torso ----------------
+    // torso
+    const torso = meshOnce('arTorso', () => extrude([[-0.52, -0.52], [0.52, -0.52], [0.62, 0.3], [0.3, 0.86], [-0.3, 0.86], [-0.62, 0.3]], 0.3));
+    drawMesh(torso, P, { tint: cols[0], edge: flash > 0.4 ? '#ffffff' : cols[0], lw: 3.4, glow: 10 + flash * 12 });
+    const A = planeXf(P, [0, 0, 0.3], [1, 0, 0], [0, 1, 0]);
     ctx.save();
-    armorStyle(cols[0], 18 + flash * 20, 4);
-    if (flash > 0.4) ctx.strokeStyle = '#fff';
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.52, -r * 0.52);
-    ctx.lineTo(r * 0.52, -r * 0.52);
-    ctx.lineTo(r * 0.62, r * 0.30);
-    ctx.lineTo(r * 0.30, r * 0.86);
-    ctx.lineTo(-r * 0.30, r * 0.86);
-    ctx.lineTo(-r * 0.62, r * 0.30);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-    // armour seams
-    ctx.strokeStyle = hexToRgba(cols[2], 0.45); ctx.lineWidth = 1.4; ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.46, r * 0.06); ctx.lineTo(r * 0.46, r * 0.06);
-    ctx.moveTo(-r * 0.34, r * 0.44); ctx.lineTo(r * 0.34, r * 0.44);
-    ctx.stroke();
+    ctx.transform(A[0], A[1], A[2], A[3], A[4], A[5]);
+    ctx.strokeStyle = hexToRgba(cols[2], 0.45); ctx.lineWidth = 0.014;
+    ctx.beginPath(); ctx.moveTo(-0.46, 0.06); ctx.lineTo(0.46, 0.06); ctx.moveTo(-0.34, 0.44); ctx.lineTo(0.34, 0.44); ctx.stroke();
+    // reactor core
+    const cr = 0.2 + pulse * 0.035 + flash * 0.03;
+    ctx.globalCompositeOperation = 'lighter';
+    const rg = ctx.createRadialGradient(0, 0.06, 0, 0, 0.06, cr * 2.6);
+    rg.addColorStop(0, hexToRgba(cols[1], 0.9)); rg.addColorStop(0.45, hexToRgba(cols[0], 0.35)); rg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(0, 0.06, cr * 2.6, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = cols[1]; ctx.shadowColor = cols[1]; ctx.shadowBlur = 20; ctx.lineWidth = 0.03;
+    ctx.beginPath(); ctx.arc(0, 0.06, cr, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, 0.06, cr * 0.45, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
-
-    // ---------------- reactor core (pulses with the kick) ----------------
-    const cr = r * (0.20 + pulse * 0.035) + flash * 4;
+    // head with a scanning visor
+    const head = meshOnce('arHead', () => extrude([[-0.24, -0.16], [0.24, -0.16], [0.28, 0.14], [-0.28, 0.14]], 0.2));
+    const hq = { ty: -0.78, tz: 0.04, yaw: lookAtTarget(0.35)[0] };
+    drawMesh(head, P, { tint: cols[0], edge: cols[0], lw: 2.6, glow: 10 }, hq);
+    const HA = planeXf(P, [0, 0, 0.2], [1, 0, 0], [0, 1, 0], hq);
+    ctx.save();
+    ctx.transform(HA[0], HA[1], HA[2], HA[3], HA[4], HA[5]);
+    const scan = Math.sin(t * 1.7) * 0.12;
+    ctx.beginPath(); ctx.rect(-0.22, -0.06, 0.44, 0.1); ctx.clip();
+    ctx.fillStyle = hexToRgba(cols[0], 0.35); ctx.fillRect(-0.22, -0.06, 0.44, 0.1);
+    ctx.fillStyle = '#fff'; ctx.shadowColor = cols[0]; ctx.shadowBlur = 16;
+    ctx.fillRect(scan - 0.05, -0.06, 0.1, 0.1);
+    ctx.restore();
+    // THE ELECTRIC SWORD: a real blade with thickness, held across the arena
+    const ang = -0.62 + Math.sin(t * 0.7) * 0.06 + (bossPhase >= 2 ? -0.12 : 0);
+    const sq = { tx: 1.02, ty: -0.3, tz: 0.3, roll: ang };
+    const bL = 2.25, bW = 0.17;
+    const hilt = meshOnce('arHilt', () => extrude([[-bW * 0.55, 0], [bW * 0.55, 0], [bW * 0.55, 0.42], [-bW * 0.55, 0.42]], 0.07));
+    const guard = meshOnce('arGuard', () => extrude([[-bW * 1.5, -0.06], [bW * 1.5, -0.06], [bW * 1.5, 0.04], [-bW * 1.5, 0.04]], 0.09));
+    drawMesh(hilt, P, { tint: cols[0], edge: cols[0], lw: 2, glow: 6 }, sq);
+    const blade = meshOnce('arBlade', () => extrude([[-bW, -0.02], [-bW * 0.72, -bL * 0.86], [0, -bL], [bW * 0.72, -bL * 0.86], [bW, -0.02]], 0.035));
+    ctx.save(); ctx.shadowColor = cols[0];
+    drawMesh(blade, P, { tint: '#b8d4ee', edge: hexToRgba(cols[0], 0.95), lw: 2.2, glow: 8 + charge * 10, alpha: 0.96 }, sq);
+    ctx.restore();
+    drawMesh(guard, P, { tint: cols[0], edge: cols[0], lw: 2, glow: 6 }, sq);
+    const bp = (x, y) => pt([x, y, 0.04], sq);
+    // fuller line + electricity crawling the edges
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    const rg = ctx.createRadialGradient(0, r * 0.06, 0, 0, r * 0.06, cr * 2.6);
-    rg.addColorStop(0, hexToRgba(cols[1], 0.9));
-    rg.addColorStop(0.45, hexToRgba(cols[0], 0.35));
-    rg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = rg;
-    ctx.beginPath(); ctx.arc(0, r * 0.06, cr * 2.6, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-    ctx.save();
-    ctx.strokeStyle = cols[1]; ctx.shadowColor = cols[1]; ctx.shadowBlur = 22; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, r * 0.06, cr, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = '#fff'; ctx.shadowBlur = 26;
-    ctx.beginPath(); ctx.arc(0, r * 0.06, cr * 0.45, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
-
-    // ---------------- head + scanning visor ----------------
-    ctx.save();
-    ctx.translate(0, -r * 0.78);
-    armorStyle(cols[0], 14, 3);
-    ctx.beginPath();
-    ctx.moveTo(-r * 0.24, -r * 0.16); ctx.lineTo(r * 0.24, -r * 0.16);
-    ctx.lineTo(r * 0.28, r * 0.14); ctx.lineTo(-r * 0.28, r * 0.14);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-    // visor: a scanning bar of light
-    const scan = Math.sin(t * 1.7) * r * 0.12;
-    ctx.save();
-    ctx.beginPath(); ctx.rect(-r * 0.22, -r * 0.06, r * 0.44, r * 0.1); ctx.clip();
-    ctx.fillStyle = hexToRgba(cols[0], 0.35);
-    ctx.fillRect(-r * 0.22, -r * 0.06, r * 0.44, r * 0.1);
-    ctx.fillStyle = '#fff'; ctx.shadowColor = cols[0]; ctx.shadowBlur = 18;
-    ctx.fillRect(scan - r * 0.05, -r * 0.06, r * 0.1, r * 0.1);
-    ctx.restore();
-    ctx.restore();
-
-    // ---------------- THE ELECTRIC SWORD ----------------
-    // Held high on the right, angled across the arena. Charges, hums, arcs.
-    ctx.save();
-    ctx.translate(r * 1.02, -r * 0.30);
-    ctx.rotate(-0.62 + Math.sin(t * 0.7) * 0.06 + (bossPhase >= 2 ? -0.12 : 0));
-    const bladeL = r * 2.25, bladeW = r * 0.17;
-
-    // hilt + guard
-    ctx.save();
-    armorStyle(cols[0], 10, 2.5);
-    ctx.beginPath(); ctx.rect(-bladeW * 0.55, 0, bladeW * 1.1, r * 0.42); ctx.fill(); ctx.stroke();
-    ctx.beginPath(); ctx.rect(-bladeW * 1.5, -r * 0.06, bladeW * 3, r * 0.1); ctx.fill(); ctx.stroke();
-    ctx.restore();
-
-    // blade body
-    ctx.save();
-    const bg = ctx.createLinearGradient(0, 0, 0, -bladeL);
-    bg.addColorStop(0, 'rgba(180,200,220,0.95)');
-    bg.addColorStop(0.6, 'rgba(120,150,180,0.85)');
-    bg.addColorStop(1, 'rgba(220,240,255,0.95)');
-    ctx.fillStyle = bg;
-    ctx.strokeStyle = hexToRgba(cols[0], 0.9); ctx.lineWidth = 2;
-    ctx.shadowColor = cols[0]; ctx.shadowBlur = 18 + charge * 22;
-    ctx.beginPath();
-    ctx.moveTo(-bladeW, -r * 0.02);
-    ctx.lineTo(-bladeW * 0.72, -bladeL * 0.86);
-    ctx.lineTo(0, -bladeL);
-    ctx.lineTo(bladeW * 0.72, -bladeL * 0.86);
-    ctx.lineTo(bladeW, -r * 0.02);
-    ctx.closePath(); ctx.fill(); ctx.stroke();
-    // fuller line
-    ctx.strokeStyle = hexToRgba(cols[2], 0.7); ctx.lineWidth = 1.4; ctx.shadowBlur = 8;
-    ctx.beginPath(); ctx.moveTo(0, -r * 0.1); ctx.lineTo(0, -bladeL * 0.9); ctx.stroke();
-    ctx.restore();
-
-    // electricity crawling the edges
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
+    let f0 = bp(0, -0.1), f1 = bp(0, -bL * 0.9);
+    ctx.strokeStyle = hexToRgba(cols[2], 0.7); ctx.lineWidth = 1.4;
+    ctx.beginPath(); ctx.moveTo(f0[0], f0[1]); ctx.lineTo(f1[0], f1[1]); ctx.stroke();
     const arcs = save.settings.environmentDetail === 'off' ? 1 : 3;
     for (let k = 0; k < arcs; k++) {
       const seed = Math.floor(t * 9 + k * 13);
       ctx.strokeStyle = k % 2 ? 'rgba(210,240,255,0.95)' : hexToRgba(cols[0], 0.9);
-      ctx.shadowColor = cols[0]; ctx.shadowBlur = 14;
-      ctx.lineWidth = k % 2 ? 1.4 : 2.2;
+      ctx.shadowBlur = 0; ctx.lineWidth = k % 2 ? 1.4 : 2.4;
       ctx.beginPath();
-      const segs = 8, side = (k % 2 ? 1 : -1) * bladeW * 0.85;
-      for (let m = 0; m <= segs; m++) {
-        const p = m / segs;
-        const y = -bladeL * (0.06 + p * 0.9);
-        const jitter = Math.sin(seed * 7.13 + m * 4.7) * bladeW * 0.75 * charge;
-        if (m === 0) ctx.moveTo(side, y); else ctx.lineTo(side + jitter, y);
+      const side = (k % 2 ? 1 : -1) * bW * 0.85;
+      for (let m = 0; m <= 8; m++) {
+        const p = m / 8, y = -bL * (0.06 + p * 0.9), j = Math.sin(seed * 7.13 + m * 4.7) * bW * 0.75 * charge;
+        const q2 = bp(side + (m ? j : 0), y);
+        if (m === 0) ctx.moveTo(q2[0], q2[1]); else ctx.lineTo(q2[0], q2[1]);
       }
       ctx.stroke();
     }
-    // charge halo at the tip before dense phases
     if (bossPhase >= 1) {
-      ctx.globalAlpha = 0.25 + charge * 0.4;
-      const tipG = ctx.createRadialGradient(0, -bladeL, 0, 0, -bladeL, r * 0.6);
-      tipG.addColorStop(0, hexToRgba(cols[2], 0.9));
-      tipG.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = tipG;
-      ctx.beginPath(); ctx.arc(0, -bladeL, r * 0.6, 0, Math.PI * 2); ctx.fill();
+      const tip = bp(0, -bL);
+      ctx.globalAlpha = 0.25 + charge * 0.4; ctx.shadowBlur = 0;
+      const tipG = ctx.createRadialGradient(tip[0], tip[1], 0, tip[0], tip[1], r * 0.6);
+      tipG.addColorStop(0, hexToRgba(cols[2], 0.9)); tipG.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = tipG; ctx.beginPath(); ctx.arc(tip[0], tip[1], r * 0.6, 0, Math.PI * 2); ctx.fill();
     }
     ctx.restore();
-
     // slash trail in the final phase
     if (bossPhase >= 3) {
+      const piv = bp(0, 0);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.18 + 0.16 * Math.sin(t * 5);
       ctx.strokeStyle = cols[2]; ctx.shadowColor = cols[0]; ctx.shadowBlur = 20; ctx.lineWidth = r * 0.1;
-      ctx.beginPath();
-      ctx.arc(0, 0, bladeL * 0.92, -Math.PI * 0.85, -Math.PI * 0.2);
-      ctx.stroke();
+      ctx.beginPath(); ctx.arc(piv[0], piv[1], bL * r * 0.92, -Math.PI * 0.85 + ang + 0.62, -Math.PI * 0.2 + ang + 0.62); ctx.stroke();
       ctx.restore();
     }
-    ctx.restore();
-
     ctx.restore();
   }
 
