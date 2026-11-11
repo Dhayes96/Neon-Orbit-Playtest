@@ -852,6 +852,16 @@
     .board-you .bname.plate-engineer {
       color: #fff6c9; text-shadow: 0 0 12px rgba(255,210,61,0.85);
     }
+    .rename-card { width: min(420px, 92vw); text-align: center; }
+    .rename-card h2 { margin: 0 0 14px; font-size: 20px; letter-spacing: 0.08em; }
+    #renameInput {
+      width: 100%; box-sizing: border-box; padding: 14px 16px; border-radius: 16px;
+      border: 2px solid rgba(255,255,255,0.28); background: rgba(0,0,0,0.45); color: #fff;
+      font: inherit; font-size: 18px; font-weight: 800; text-align: center; outline: none;
+    }
+    #renameInput:focus { border-color: var(--c1); box-shadow: 0 0 18px var(--glow1); }
+    .rename-hint { margin: 10px 0 16px; font-size: 12px; color: rgba(255,255,255,0.65); }
+    .rename-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .board-you .bname.plate-voidbreaker {
       color: #ffffff; text-shadow: 0 0 10px rgba(255,233,168,0.9), 0 0 22px rgba(176,38,255,0.7);
     }
@@ -1174,6 +1184,17 @@
   </div>
 
   <!-- ================= THE SIGNAL (lore, as a comic) ================= -->
+  <!-- In-game rename sheet: window.prompt is blocked inside sandboxed frames
+       (previews, embeds), so names (and codes) are typed here instead. -->
+  <div class="overlay hidden" id="renameSheet" role="dialog" aria-modal="true" aria-labelledby="renameH">
+    <div class="card rename-card">
+      <h2 id="renameH">Display name</h2>
+      <input id="renameInput" type="text" maxlength="24" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-describedby="renameHint">
+      <p class="rename-hint" id="renameHint">Up to 18 characters. Shown on your leaderboard.</p>
+      <div class="rename-btns"><button class="btn ghost" id="renameCancel">Cancel</button><button class="btn" id="renameSave">Save</button></div>
+    </div>
+  </div>
+
   <div class="overlay hidden" id="loreScreen">
     <div class="card">
       <h2 class="sr-only">The Signal</h2>
@@ -5830,9 +5851,22 @@
     }
   }
   $('boardBtn').addEventListener('click', () => { sfxClick(); refreshBoard(); showScreen('board'); });
-  $('renameBtn').addEventListener('click', () => {
-    const cur = playerName();
-    const next = (window.prompt('Display name (max 18 characters)', cur) || '').trim();
+  const renameSheet = $('renameSheet'), renameInput = $('renameInput');
+  function openRename() {
+    renameInput.value = playerName();
+    renameSheet.classList.remove('hidden');
+    setTimeout(() => { try { renameInput.focus(); renameInput.select(); } catch (e) {} }, 40);
+  }
+  function closeRename() { renameSheet.classList.add('hidden'); try { renameInput.blur(); } catch (e) {} }
+  $('renameBtn').addEventListener('click', () => { sfxClick(); openRename(); });
+  $('renameCancel').addEventListener('click', () => { sfxBack(); closeRename(); });
+  $('renameSave').addEventListener('click', () => { const v = renameInput.value; closeRename(); applyRename(v); });
+  renameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); $('renameSave').click(); }
+    else if (e.key === 'Escape') { e.preventDefault(); closeRename(); }
+  });
+  function applyRename(raw) {
+    const next = String(raw || '').trim();
     if (!next) return;
     if (DevMode && DevMode.tryCode(next)) return;   // the private dev passcode never becomes a name
     // A recognised code grants a nameplate rather than changing the name.
@@ -5848,7 +5882,7 @@
     }
     save.player.name = next.slice(0, 18);
     persist(); sfxSelect(); refreshBoard(); refreshMenu();
-  });
+  }
   $('boardShareBtn').addEventListener('click', () => {
     const R = save.records || {};
     const best = R.weekly && R.weekly.rec ? R.weekly.rec : R.allTime;
@@ -8409,6 +8443,8 @@
   // ignored so one physical hold never machine-guns taps.
   let spaceDown = false;
   window.addEventListener('keydown', (e) => {
+    // typing a name never drives the game (or the Shift+B mapper)
+    if (e.target && e.target.id === 'renameInput') return;
     /* Beat Mapper (dev): Shift+B toggles it, Space records a tap while it is
        open. Checked before gameplay so it can never eat a real tap. */
     if (e.code === 'KeyB' && e.shiftKey && !e.repeat) {
