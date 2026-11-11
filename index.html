@@ -2151,28 +2151,28 @@
     },
     20: {
       id: 'hexatron', name: 'HEXATRON', subtitle: 'THE SIGNAL WARDEN',
-      kind: 'hex', hp: 340, energyReward: 20, ability: 'hexSaw',
+      kind: 'hex', hp: 340, energyReward: 20, ability: 'hexSaw', auraCol: '#00525a',
       colors: ['#00f5ff', '#ff2bd6', '#7dff68'], barColor: '#00f5ff',
       scale: 1.0,
       music: { kick: 1.25, tense: 0.45, metal: 0.5, sub: 0.9 }
     },
     30: {
       id: 'triarch', name: 'TRIARCH', subtitle: 'THE RAZOR EMPEROR',
-      kind: 'tri', hp: 430, energyReward: 22, ability: 'triLaser',
+      kind: 'tri', hp: 430, energyReward: 22, ability: 'triLaser', auraCol: '#5e0a16',
       colors: ['#ff2e4d', '#ffd23d', '#ff4fa3'], barColor: '#ff2e4d',
       scale: 1.05,
       music: { kick: 1.35, tense: 0.6, metal: 0.85, sub: 0.95, stab: true }
     },
     40: {
       id: 'vantaPrism', name: 'VANTA PRISM', subtitle: 'THE NULL SHARD',
-      kind: 'prism', hp: 520, energyReward: 25, ability: 'prismGuard',
+      kind: 'prism', hp: 520, energyReward: 25, ability: 'prismGuard', auraCol: '#3a1866',
       colors: ['#b06bff', '#7dff68', '#ffffff'], barColor: '#b06bff',
       scale: 1.08,
       music: { kick: 1.2, tense: 0.7, metal: 0.4, sub: 1.0, eerie: true }
     },
     50: {
       id: 'eclipseSovereign', name: 'ECLIPSE SOVEREIGN', subtitle: 'THE LAST ORBIT',
-      kind: 'eclipse', hp: 640, energyReward: 999, ability: 'eventHorizon',
+      kind: 'eclipse', hp: 640, energyReward: 999, ability: 'eventHorizon', auraCol: '#40105e',
       colors: ['#b026ff', '#ffd23d', '#ff2e4d'], barColor: '#ffd23d',
       scale: 1.15,
       music: { kick: 1.45, tense: 0.85, metal: 0.7, sub: 1.15, heavy: true, stab: true }
@@ -12816,16 +12816,16 @@
     }
 
     const kind = activeBoss.kind;
-    if (kind === 'hex') drawHexatron(t, r * breathe, spin + extraSpin, cols, flash);
-    else if (kind === 'tri') drawTriarch(t, r * breathe, spin + extraSpin, cols, flash);
-    else if (kind === 'prism') drawVantaPrism(t, r * breathe, spin + extraSpin, cols, flash, lowFrac);
+    if (kind === 'hex') drawHexatron(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
+    else if (kind === 'tri') drawTriarch(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
+    else if (kind === 'prism') drawVantaPrism(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
     else if (kind === 'dragon') drawCyberDragon(t, r * breathe, spin + extraSpin, cols, flash, lowFrac);
     else if (kind === 'ufo') drawUfo(t, r * breathe, spin + extraSpin, cols, flash, lowFrac);
     else if (kind === 'mech') drawMech(t, r * breathe, spin + extraSpin, cols, flash, lowFrac);
     else if (kind === 'cube') drawCubex(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
     else if (kind === 'clock') drawMetronox(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
     else if (kind === 'nullstar') drawNullstar(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
-    else drawEclipseSovereign(t, r * breathe, spin + extraSpin, cols, flash);
+    else drawEclipseSovereign(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
 
     ctx.restore();
   }
@@ -13015,38 +13015,59 @@
     const swing = Math.cos(Math.PI * bf);              // ±1 exactly on each beat
     const tick = Math.pow(1 - (((bf % 1) + 1) % 1), 5); // spike as each beat lands
     const gearRot = spin * 0.55;
+    // 3D: the whole clock body tilts as one solid brass disc with real thickness.
+    // `tilt` maps the flat drawing onto the turned plane; `slab` draws a part twice,
+    // once pushed back along the view as its dark edge, then the face itself.
+    const yaw = Math.sin(t * 0.5) * 0.38 + (extraSpin || 0), pitch = -0.2 + Math.sin(t * 0.7) * 0.05;
+    const ax = rot3([1, 0, 0], yaw, pitch, 0), ay = rot3([0, 1, 0], yaw, pitch, 0), az = rot3([0, 0, -1], yaw, pitch, 0);
+    const tilt = () => ctx.transform(ax[0], ax[1], ay[0], ay[1], 0, 0);
+    const slab = (depth, drawFn) => {
+      const steps = 3;
+      for (let s = steps; s >= 1; s--) {
+        ctx.save(); ctx.translate(az[0] * depth * s / steps, az[1] * depth * s / steps); tilt();
+        drawFn(true, s / steps); ctx.restore();
+      }
+      ctx.save(); tilt(); drawFn(false, 0); ctx.restore();
+    };
+    const edgeFill = (k) => 'rgba(' + Math.round(70 - k * 40) + ',' + Math.round(42 - k * 24) + ',' + Math.round(10 - k * 5) + ',0.98)';
 
     // side gears (behind), meshing with the big wheel
     ctx.save();
     for (const dir of [-1, 1]) {
-      ctx.save(); ctx.translate(dir * r * 0.98, -r * 0.6);
+      slab(r * 0.09, (back, k) => {
+      ctx.translate(dir * r * 0.98, -r * 0.6);
+      if (back) { ctx.fillStyle = edgeFill(k); gearPath(r * 0.36, r * 0.29, 12, -gearRot * 2 * dir + Math.PI / 12); ctx.fill(); return; }
       armorStyle(cols[0], 8 + tick * 10, 2.5);
       gearPath(r * 0.36, r * 0.29, 12, -gearRot * 2 * dir + Math.PI / 12);
       ctx.fill(); ctx.stroke();
       ctx.strokeStyle = hexToRgba(cols[2], 0.5); ctx.lineWidth = 1.5; ctx.shadowBlur = 0;
       ctx.beginPath(); ctx.arc(0, 0, r * 0.1, 0, Math.PI * 2); ctx.stroke();
-      ctx.restore();
+      });
     }
     if (bossPhase >= 2) {
       for (const dir of [-1, 1]) {
-        ctx.save(); ctx.translate(dir * r * 1.08, r * 0.3);
+        slab(r * 0.07, (back, k) => {
+        ctx.translate(dir * r * 1.08, r * 0.3);
+        if (back) { ctx.fillStyle = edgeFill(k); gearPath(r * 0.24, r * 0.19, 9, gearRot * 2.7 * dir); ctx.fill(); return; }
         armorStyle(cols[1], 8, 2);
         gearPath(r * 0.24, r * 0.19, 9, gearRot * 2.7 * dir);
         ctx.fill(); ctx.stroke();
-        ctx.restore();
+        });
       }
     }
     ctx.restore();
 
-    // the big wheel
-    ctx.save();
-    armorStyle(flash > 0.4 ? '#ffffff' : cols[0], 14 + flash * 18 + tick * 8, 3.5 + bossPhase * 0.4);
-    gearPath(r * 1.0, r * 0.88, 28, gearRot);
-    ctx.fill(); ctx.stroke();
-    ctx.restore();
+    // the big wheel: a thick brass slab
+    slab(r * 0.16, (back, k) => {
+      if (back) { ctx.fillStyle = edgeFill(k); gearPath(r * 1.0, r * 0.88, 28, gearRot); ctx.fill(); return; }
+      armorStyle(flash > 0.4 ? '#ffffff' : cols[0], 14 + flash * 18 + tick * 8, 3.5 + bossPhase * 0.4);
+      gearPath(r * 1.0, r * 0.88, 28, gearRot);
+      ctx.fill(); ctx.stroke();
+    });
 
-    // clock face
+    // clock face (on the tilted plane, sunk slightly into the wheel)
     ctx.save();
+    tilt();
     const fg = ctx.createRadialGradient(0, -r * 0.2, r * 0.05, 0, 0, r * 0.8);
     fg.addColorStop(0, '#162436'); fg.addColorStop(1, '#05070d');
     ctx.fillStyle = fg; ctx.strokeStyle = cols[2]; ctx.lineWidth = 2;
@@ -13123,11 +13144,14 @@
       ctx.beginPath(); ctx.moveTo(-r * 0.06, -w); ctx.lineTo(len, 0); ctx.lineTo(-r * 0.06, w); ctx.closePath(); ctx.fill();
       ctx.restore();
     };
+    ctx.save(); tilt();
     hand(hourA, r * 0.42, r * 0.05, cols[0]);
     hand(minA, r * 0.64, r * 0.035, cols[2]);
+    ctx.restore();
 
-    // cyclops eye at the hub, watching the player's target
+    // cyclops eye at the hub, watching the player's target (a domed lens on the face)
     ctx.save();
+    tilt();
     const lx = Math.max(-1, Math.min(1, (tgt.x - bossX()) / (W * 0.4))) * r * 0.045;
     const ly = Math.max(-1, Math.min(1, (tgt.y - bossY()) / (H * 0.4))) * r * 0.045;
     ctx.fillStyle = '#1a1204'; ctx.strokeStyle = cols[0]; ctx.lineWidth = 3;
@@ -13158,6 +13182,18 @@
     else if (kind === 'tri') drawPolygon(0, 0, s * 1.1, 3, -Math.PI / 2);
     else if (kind === 'prism') { ctx.moveTo(0, -s * 1.2); ctx.lineTo(s * 0.65, 0); ctx.lineTo(0, s * 1.2); ctx.lineTo(-s * 0.65, 0); ctx.closePath(); }
     else { ctx.arc(0, 0, s, 1.008, Math.PI * 2 - 1.008); ctx.arc(s * 0.45, 0, s * 0.85, -1.473, 1.473, true); ctx.closePath(); }   // crescent
+  }
+  function sigilMesh(kind) {
+    return meshOnce('sigil-' + kind, () => {
+      if (kind === 'cube') return extrude(regPoly(4, 0.95, Math.PI / 4), 0.67);
+      if (kind === 'hex') return extrude(regPoly(6, 1, -Math.PI / 2), 0.34);
+      if (kind === 'tri') return extrude(regPoly(3, 1.15, -Math.PI / 2), 0.3);
+      if (kind === 'prism') return bipyramid(4, 0.62, 1.2, 1.2);
+      const cr = [];                                    // the eclipse: an extruded crescent
+      for (let i = 0; i <= 10; i++) { const a = 1.008 + i / 10 * (Math.PI * 2 - 2.016); cr.push([Math.cos(a), Math.sin(a)]); }
+      for (let i = 10; i >= 0; i--) { const a = -1.473 + i / 10 * 2.946; cr.push([0.45 + Math.cos(a) * 0.85, Math.sin(a) * 0.85]); }
+      return extrude(cr, 0.25);
+    });
   }
   function drawNullstar(t, r, spin, cols, flash, lowFrac, extraSpin) {
     const rage = 1 - clamp01(lowFrac);
@@ -13222,11 +13258,11 @@
         const ox = Math.cos(a) * r * 1.55 * fly, oy = sy * r * 0.5 * fly - r * 0.08;
         const s = r * (0.13 + 0.04 * (sy + 1) / 2);
         const sg = NULL_SIGILS[i];
-        ctx.save(); ctx.translate(ox, oy); ctx.rotate(t * 0.8 + i);
+        // each Warden comes back as a little solid of itself, tumbling as it orbits
+        ctx.save(); ctx.translate(ox, oy);
         ctx.globalAlpha *= (front ? 1 : 0.55) * introK;
-        ctx.fillStyle = 'rgba(4,2,10,0.85)'; ctx.strokeStyle = sg.col; ctx.lineWidth = 2.2;
-        ctx.shadowColor = sg.col; ctx.shadowBlur = 12;
-        drawSigil(sg.kind, s); ctx.fill(); ctx.stroke();
+        drawMesh(sigilMesh(sg.kind), { yaw: t * 0.9 + i * 1.3, pitch: 0.35 + Math.sin(t * 0.7 + i) * 0.3, roll: t * 0.4 + i, S: s },
+          { tint: sg.col, edge: sg.col, lw: 1.8, glow: front ? 8 : 0 });
         ctx.restore();
         // a thin tether feeding the star
         ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -13304,203 +13340,427 @@
     ctx.fillStyle = 'rgba(6,4,14,0.82)';
   }
 
-  // HEXATRON — wide armored hex guardian: side fins/blades, nested rotating
-  // hex frames that open/close, bright contracting central eye.
-  function drawHexatron(t, r, spin, cols, flash) {
-    const openK = 0.5 + 0.5 * Math.sin(t * 0.8);   // armor open/close
-    ctx.save(); ctx.rotate(spin * 0.3);
-    // side blade fins (left/right), flare during dense play (bossPhase)
-    for (const dir of [-1, 1]) {
-      ctx.save();
-      ctx.translate(dir * r * (1.05 + openK * 0.12), 0);
-      ctx.rotate(dir * (0.25 + openK * 0.12));
-      armorStyle(cols[0], 16, 3);
-      ctx.beginPath();
-      ctx.moveTo(0, -r * 0.5); ctx.lineTo(dir * r * 0.7, -r * 0.12);
-      ctx.lineTo(dir * r * 0.62, r * 0.3); ctx.lineTo(0, r * 0.5); ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      // pink accent edge
-      ctx.strokeStyle = cols[1]; ctx.shadowColor = cols[1]; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0, -r * 0.4); ctx.lineTo(dir * r * 0.55, 0); ctx.stroke();
-      ctx.restore();
-    }
-    ctx.restore();
-
-    // outer hex frame
-    ctx.save(); ctx.rotate(spin);
-    armorStyle(cols[0], 14 + flash * 20, 4 + bossPhase * 0.5);
-    if (flash > 0.4) ctx.strokeStyle = '#fff';
-    drawPolygon(0, 0, r, 6, 0); ctx.fill(); ctx.stroke();
-    ctx.restore();
-    // mid frame counter-rotates
-    ctx.save(); ctx.rotate(-spin * 1.7);
-    ctx.lineWidth = 2.5; ctx.strokeStyle = cols[1]; ctx.shadowColor = cols[1]; ctx.shadowBlur = 12;
-    drawPolygon(0, 0, r * 0.72, 6, Math.PI / 6); ctx.stroke();
-    ctx.restore();
-    // inner ring + contracting eye
-    const eye = r * (0.2 + 0.06 * Math.sin(t * 2.2)) + flash * 4;
-    ctx.save();
-    ctx.strokeStyle = cols[0]; ctx.shadowColor = cols[0]; ctx.shadowBlur = 16; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.34, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = cols[2]; ctx.shadowColor = cols[2]; ctx.shadowBlur = 22;
-    ctx.beginPath(); ctx.arc(0, 0, eye, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.globalAlpha *= 0.8;
-    ctx.beginPath(); ctx.arc(0, 0, eye * 0.4, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
+  // ================= v4.1: 3D BOSS TOOLKIT =================
+  // Plain 2D canvas, real 3D: meshes are rotated, given a gentle perspective,
+  // back-face culled, painter-sorted and lit by one key light from the top-left.
+  // Faces get an affine frame so eyes and mouths can be painted ON a surface.
+  // Cosmetic only: no Math.random, no gameplay state written.
+  const KEY_LIGHT = (() => { const v = [-0.42, -0.62, 0.66], l = Math.hypot(v[0], v[1], v[2]); return [v[0] / l, v[1] / l, v[2] / l]; })();
+  const _rgbCache = {};
+  function rgbOf(hex) { return _rgbCache[hex] || (_rgbCache[hex] = [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16)]); }
+  function shadeFill(tint, lit, alpha) {
+    const c = rgbOf(tint), k = 0.07 + 0.38 * lit, sp = lit > 0.86 ? (lit - 0.86) * 2.4 : 0;
+    const r = Math.min(255, 8 + c[0] * k + 255 * sp), g = Math.min(255, 6 + c[1] * k + 255 * sp), b = Math.min(255, 18 + c[2] * k + 255 * sp);
+    return 'rgba(' + (r | 0) + ',' + (g | 0) + ',' + (b | 0) + ',' + (alpha == null ? 0.94 : alpha) + ')';
   }
-
-  // TRIARCH — razor triangular war machine: three big razor points that light
-  // before attacks, spinning inner triangle, aggressive vertical eye.
-  function drawTriarch(t, r, spin, cols, flash) {
-    // three razor points
-    ctx.save(); ctx.rotate(spin * 0.5);
-    for (let i = 0; i < 3; i++) {
-      const a = i / 3 * Math.PI * 2 - Math.PI / 2;
-      const lit = 0.5 + 0.5 * Math.sin(t * 2.4 + i * 2.1);   // telegraph glow
-      ctx.save();
-      ctx.rotate(a + Math.PI / 2);
-      armorStyle(cols[0], 12 + lit * 20, 3);
-      ctx.beginPath();
-      ctx.moveTo(0, -r * 1.28); ctx.lineTo(-r * 0.26, -r * 0.5); ctx.lineTo(r * 0.26, -r * 0.5); ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      // hot accent tip
-      ctx.strokeStyle = i === 0 ? cols[1] : cols[2]; ctx.shadowColor = ctx.strokeStyle;
-      ctx.globalAlpha *= (0.5 + lit * 0.5); ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.moveTo(0, -r * 1.2); ctx.lineTo(0, -r * 0.6); ctx.stroke();
-      ctx.restore();
+  function regPoly(n, r, a0) { const p = []; for (let i = 0; i < n; i++) { const a = a0 + i / n * Math.PI * 2; p.push([Math.cos(a) * r, Math.sin(a) * r]); } return p; }
+  // An xy polygon extruded along z: front cap at +d (faces the player at rest).
+  function extrude(pts, d) {
+    const n = pts.length, V = [], F = [];
+    let cx = 0, cy = 0; for (const p of pts) { cx += p[0]; cy += p[1]; } cx /= n; cy /= n;
+    for (const p of pts) V.push([p[0], p[1], d]);
+    for (const p of pts) V.push([p[0], p[1], -d]);
+    F.push({ v: pts.map((_, i) => i), n: [0, 0, 1], cap: 1 });
+    F.push({ v: pts.map((_, i) => n + i), n: [0, 0, -1], cap: -1 });
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n, a = pts[i], b = pts[j];
+      let nx = b[1] - a[1], ny = -(b[0] - a[0]); const l = Math.hypot(nx, ny) || 1; nx /= l; ny /= l;
+      if (nx * ((a[0] + b[0]) / 2 - cx) + ny * ((a[1] + b[1]) / 2 - cy) < 0) { nx = -nx; ny = -ny; }
+      F.push({ v: [i, j, n + j, n + i], n: [nx, ny, 0] });
     }
-    ctx.restore();
-
-    // outer triangle body
-    ctx.save(); ctx.rotate(spin * 0.5);
-    armorStyle(cols[0], 14 + flash * 20, 4 + bossPhase * 0.5);
-    if (flash > 0.4) ctx.strokeStyle = '#fff';
-    drawPolygon(0, 0, r, 3, 0); ctx.fill(); ctx.stroke();
-    ctx.restore();
-    // inner spinning triangle
-    ctx.save(); ctx.rotate(-spin * 2 + Math.PI);
-    ctx.strokeStyle = cols[2]; ctx.shadowColor = cols[2]; ctx.shadowBlur = 12; ctx.lineWidth = 2.5;
-    drawPolygon(0, 0, r * 0.6, 3, 0); ctx.stroke();
-    ctx.restore();
-    // vertical predator eye
-    const eyeH = r * (0.3 + flash * 0.1);
-    ctx.save();
-    ctx.fillStyle = cols[0]; ctx.shadowColor = cols[0]; ctx.shadowBlur = 22;
-    ctx.beginPath(); ctx.ellipse(0, r * 0.05, r * 0.1, eyeH, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.ellipse(0, r * 0.05, r * 0.04, eyeH * 0.5, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.restore();
+    return { V, F };
   }
-
-  // VANTA PRISM — floating black crystal: purple fractures pulse, orbiting
-  // shards that align before precision runs, faint green accents, refract beams
-  // when damaged. (No fake tappable rings — reflections are clearly decorative.)
-  function drawVantaPrism(t, r, spin, cols, flash, lowFrac) {
-    // orbiting shards (align = converge toward vertical as phase rises)
-    const align = Math.min(1, bossPhase / 3);
-    for (let i = 0; i < 5; i++) {
-      const base = i / 5 * Math.PI * 2;
-      const a = base + spin * (1 - align * 0.7);
-      const rad = r * (1.35 - align * 0.15);
-      const ox = Math.cos(a) * rad, oy = Math.sin(a) * rad * 0.8;
-      ctx.save(); ctx.translate(ox, oy); ctx.rotate(a);
-      armorStyle(cols[0], 12, 2);
-      ctx.beginPath(); ctx.moveTo(0, -r * 0.18); ctx.lineTo(r * 0.1, 0); ctx.lineTo(0, r * 0.18); ctx.lineTo(-r * 0.1, 0); ctx.closePath();
-      ctx.fill(); ctx.stroke();
-      ctx.restore();
+  function faceNormal(V, idx) {
+    const a = V[idx[0]], b = V[idx[1]], c = V[idx[2]];
+    const u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    let n = [u[1] * w[2] - u[2] * w[1], u[2] * w[0] - u[0] * w[2], u[0] * w[1] - u[1] * w[0]];
+    const l = Math.hypot(n[0], n[1], n[2]) || 1; n = [n[0] / l, n[1] / l, n[2] / l];
+    let m0 = 0, m1 = 0, m2 = 0; for (const i of idx) { m0 += V[i][0]; m1 += V[i][1]; m2 += V[i][2]; }
+    if (n[0] * m0 + n[1] * m1 + n[2] * m2 < 0) n = [-n[0], -n[1], -n[2]];    // convex, centred meshes: point outward
+    return n;
+  }
+  // Two cones base to base: a crystal (n sides, radius r, top/bottom heights).
+  function bipyramid(n, r, hTop, hBot) {
+    const V = [[0, -hTop, 0], [0, hBot, 0]], F = [];
+    for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; V.push([Math.cos(a) * r, 0, Math.sin(a) * r]); }
+    for (let i = 0; i < n; i++) { const j = (i + 1) % n; F.push({ v: [0, 2 + i, 2 + j] }); F.push({ v: [1, 2 + j, 2 + i] }); }
+    for (const f of F) f.n = faceNormal(V, f.v);
+    return { V, F };
+  }
+  const _meshCache = {};
+  function meshOnce(key, make) { return _meshCache[key] || (_meshCache[key] = make()); }
+  // local transform for a part: scale, own yaw / pitch / roll, then translate (in body space)
+  function partXf(v, q) {
+    if (!q) return v;
+    const s = q.s || 1;
+    const r = rot3([v[0] * s, v[1] * s, v[2] * s], q.yaw || 0, q.pitch || 0, q.roll || 0);
+    return [r[0] + (q.tx || 0), r[1] + (q.ty || 0), r[2] + (q.tz || 0)];
+  }
+  function partRot(n, q) { return q ? rot3(n, q.yaw || 0, q.pitch || 0, q.roll || 0) : n; }
+  // Draw a mesh. P is the body pose {yaw, pitch, roll, S}; q an optional part transform.
+  // st: {tint, edge, lw, glow, alpha, skipCap, edgeAlpha}. Returns projected points.
+  function drawMesh(M, P, st, q) {
+    const R = M.V.map(v => rot3(partXf(v, q), P.yaw, P.pitch, P.roll));
+    const Q = R.map(v => proj3(v, P.S));
+    const vis = [];
+    for (const f of M.F) {
+      if (st.skipCap && f.cap === st.skipCap) continue;
+      const n = rot3(partRot(f.n, q), P.yaw, P.pitch, P.roll);
+      if (n[2] <= 0.02) continue;
+      let z = 0; for (const i of f.v) z += R[i][2];
+      vis.push({ f, n, z: z / f.v.length });
     }
-    // main crystal body (tall diamond)
-    ctx.save(); ctx.rotate(Math.sin(t * 0.5) * 0.05);
-    armorStyle(cols[0], 16 + flash * 18, 3.5);
-    if (flash > 0.4) ctx.strokeStyle = '#fff';
+    vis.sort((a, b) => a.z - b.z);
+    ctx.save();
+    ctx.lineJoin = 'round';
+    for (const v of vis) {
+      const lit = Math.max(0, v.n[0] * KEY_LIGHT[0] + v.n[1] * KEY_LIGHT[1] + v.n[2] * KEY_LIGHT[2]);
+      ctx.fillStyle = shadeFill(st.tint, lit, st.alpha);
+      ctx.beginPath(); const ix = v.f.v; ctx.moveTo(Q[ix[0]][0], Q[ix[0]][1]); for (let i = 1; i < ix.length; i++) ctx.lineTo(Q[ix[i]][0], Q[ix[i]][1]); ctx.closePath();
+      ctx.fill();
+    }
+    ctx.strokeStyle = st.edge; ctx.lineWidth = st.lw || 2.5;
+    if (st.glow) { ctx.shadowColor = st.edge; ctx.shadowBlur = st.glow; }
+    if (st.edgeAlpha != null) ctx.globalAlpha *= st.edgeAlpha;
     ctx.beginPath();
-    ctx.moveTo(0, -r * 1.15); ctx.lineTo(r * 0.62, 0); ctx.lineTo(0, r * 1.15); ctx.lineTo(-r * 0.62, 0); ctx.closePath();
-    ctx.fill(); ctx.stroke();
-    // internal purple fractures (pulse like energy)
-    const pulse = 0.5 + 0.5 * Math.sin(t * 3);
-    ctx.strokeStyle = hexToRgba(cols[0], 0.5 + pulse * 0.5); ctx.shadowColor = cols[0]; ctx.shadowBlur = 10; ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.moveTo(0, -r * 1.0); ctx.lineTo(-r * 0.25, 0); ctx.lineTo(0, r * 1.0);
-    ctx.moveTo(0, -r * 0.6); ctx.lineTo(r * 0.35, r * 0.1);
+    for (const v of vis) { const ix = v.f.v; ctx.moveTo(Q[ix[0]][0], Q[ix[0]][1]); for (let i = 1; i < ix.length; i++) ctx.lineTo(Q[ix[i]][0], Q[ix[i]][1]); ctx.closePath(); }
     ctx.stroke();
-    // faint green accents
-    ctx.strokeStyle = hexToRgba(cols[1], 0.5 + pulse * 0.4); ctx.shadowColor = cols[1]; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.moveTo(-r * 0.2, -r * 0.3); ctx.lineTo(r * 0.2, r * 0.3); ctx.stroke();
-    // refract beams when damaged
-    if (lowFrac < 0.6) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = hexToRgba(cols[2], (0.6 - lowFrac) * 0.6); ctx.lineWidth = 1;
-      for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + spin; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * r * 1.6, Math.sin(a) * r * 1.6); ctx.stroke(); }
+    ctx.restore();
+    return { R, Q, vis };
+  }
+  // An affine frame on a plane (centre c, in-plane axes u, v, all in body space),
+  // so 2D drawing in local units lands on the surface. Returns ctx.transform args.
+  function planeXf(P, c, u, v, q) {
+    const e = 0.05;
+    const pt = (x) => proj3(rot3(partXf(x, q), P.yaw, P.pitch, P.roll), P.S);
+    const C = pt(c), U = pt([c[0] + u[0] * e, c[1] + u[1] * e, c[2] + u[2] * e]), Vv = pt([c[0] + v[0] * e, c[1] + v[1] * e, c[2] + v[2] * e]);
+    return [(U[0] - C[0]) / e, (U[1] - C[1]) / e, (Vv[0] - C[0]) / e, (Vv[1] - C[1]) / e, C[0], C[1]];
+  }
+  function lookAtTarget(maxU) {
+    return [Math.max(-1, Math.min(1, (tgt.x - bossX()) / (W * 0.4))) * maxU, Math.max(-1, Math.min(1, (tgt.y - bossY()) / (H * 0.4))) * maxU];
+  }
+
+  // HEXATRON — the Signal Warden, in 3D: an armoured hex block with one huge
+  // green eye and furious brows. A hex-saw ring spins behind it, its blade fins
+  // flare with the music, and its front plating splits open phase by phase to
+  // show the core the eye sits in.
+  function drawHexatron(t, r, spin, cols, flash, lowFrac, extraSpin) {
+    const rage = 1 - clamp01(lowFrac == null ? 1 : lowFrac);
+    const thump = Math.pow(1 - musicBeatPhase(), 3);
+    const openK = 0.5 + 0.5 * Math.sin(t * 0.8);
+    const P = { yaw: Math.sin(t * 0.55) * 0.42 + (extraSpin || 0), pitch: -0.2 + Math.sin(t * 0.8) * 0.06, roll: Math.sin(t * 0.4) * 0.05, S: r * 0.82 };
+    const d = 0.3, unfold = Math.min(1, bossPhase / 3) * 0.2 + flash * 0.03;
+    // 1. the saw ring, behind the body, spinning in the body's plane
+    ctx.save();
+    const teeth = 14, R0 = 1.16, R1 = 1.38 + thump * 0.04, sp = spin * 2.2;
+    const toS = (x, y, z) => proj3(rot3([x, y, z], P.yaw, P.pitch, P.roll), P.S);
+    ctx.lineJoin = 'round';
+    ctx.fillStyle = 'rgba(6,18,30,0.85)'; ctx.strokeStyle = cols[0]; ctx.lineWidth = 2; ctx.shadowColor = cols[0]; ctx.shadowBlur = 10;
+    ctx.beginPath();
+    for (let i = 0; i < teeth; i++) {
+      const a = sp + i / teeth * Math.PI * 2, a2 = a + Math.PI * 2 / teeth * 0.55, am = a + Math.PI * 2 / teeth * 0.15;
+      const p0 = toS(Math.cos(a) * R0, Math.sin(a) * R0, -0.12), p1 = toS(Math.cos(am) * R1, Math.sin(am) * R1, -0.12), p2 = toS(Math.cos(a2) * R0, Math.sin(a2) * R0, -0.12);
+      ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.closePath();
     }
-    // core
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.fillStyle = cols[2]; ctx.shadowColor = cols[0]; ctx.shadowBlur = 20;
-    ctx.beginPath(); ctx.arc(0, 0, r * 0.14 + flash * 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = hexToRgba(cols[1], 0.7); ctx.shadowColor = cols[1]; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    for (let i = 0; i <= 48; i++) { const a = i / 48 * Math.PI * 2, p = toS(Math.cos(a) * R0, Math.sin(a) * R0, -0.12); if (i) ctx.lineTo(p[0], p[1]); else ctx.moveTo(p[0], p[1]); }
+    ctx.stroke();
+    ctx.restore();
+    // 2. blade fins, left and right
+    const fin = meshOnce('hexFin', () => extrude([[0, -0.46], [0.66, -0.1], [0.58, 0.28], [0, 0.46]], 0.08));
+    for (const dir of [-1, 1]) {
+      const q = { tx: dir * (0.98 + openK * 0.1 + thump * 0.04), roll: dir * (0.22 + openK * 0.12), s: 1 };
+      const finM = dir < 0 ? meshOnce('hexFinL', () => ({ V: fin.V.map(v => [-v[0], v[1], v[2]]), F: fin.F.map(f => ({ v: f.v, n: [-f.n[0], f.n[1], f.n[2]], cap: f.cap })) })) : fin;
+      drawMesh(finM, P, { tint: cols[0], edge: cols[0], lw: 2.2, glow: 8 }, q);
+    }
+    // 3. the body: hex prism, front cap drawn by hand so it can split open
+    const body = meshOnce('hexBody', () => extrude(regPoly(6, 0.86, -Math.PI / 2), d));
+    drawMesh(body, P, { tint: cols[0], edge: flash > 0.4 ? '#ffffff' : cols[0], lw: 3 + bossPhase * 0.4, glow: 12 + flash * 16, skipCap: 1 });
+    const A = planeXf(P, [0, 0, d], [1, 0, 0], [0, 1, 0]);
+    const nF = rot3([0, 0, 1], P.yaw, P.pitch, P.roll);
+    const litF = Math.max(0, nF[0] * KEY_LIGHT[0] + nF[1] * KEY_LIGHT[1] + nF[2] * KEY_LIGHT[2]);
+    ctx.save();
+    ctx.transform(A[0], A[1], A[2], A[3], A[4], A[5]);
+    // the hot core behind the plates
+    const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, 0.8);
+    cg.addColorStop(0, hexToRgba(cols[2], 0.9)); cg.addColorStop(0.5, hexToRgba(cols[0], 0.5)); cg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(0, 0, 0.8, 0, Math.PI * 2); ctx.fill();
+    // six front plates, pushed outward as it weakens
+    const hx = regPoly(6, 0.86, -Math.PI / 2);
+    for (let i = 0; i < 6; i++) {
+      const a = hx[i], b = hx[(i + 1) % 6], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, ml = Math.hypot(mx, my);
+      const ox = mx / ml * unfold, oy = my / ml * unfold;
+      ctx.beginPath();
+      ctx.moveTo(ox, oy); ctx.lineTo(a[0] + ox, a[1] + oy); ctx.lineTo(b[0] + ox, b[1] + oy); ctx.closePath();
+      ctx.fillStyle = shadeFill(cols[0], litF * (0.85 + 0.15 * ((i % 2) ? 1 : 0.6)), 1);
+      ctx.fill();
+      ctx.lineWidth = 0.025; ctx.strokeStyle = hexToRgba(cols[0], unfold > 0.02 ? 0.7 : 0.3); ctx.stroke();
+    }
+    // inner pink frame, counter-rotating
+    ctx.save(); ctx.rotate(-spin * 1.3);
+    ctx.strokeStyle = cols[1]; ctx.lineWidth = 0.035; ctx.shadowColor = cols[1]; ctx.shadowBlur = 10;
+    ctx.beginPath(); regPoly(6, 0.62, -Math.PI / 2 + Math.PI / 6).forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.stroke();
+    ctx.restore();
+    // THE EYE: one huge green eye that follows the player
+    const [lu, lv] = lookAtTarget(0.09);
+    const blink = (t % 4.3) < 0.1 ? 0.12 : 1;
+    const er = 0.34, squint = 1 - flash * 0.45 - rage * 0.15;
+    ctx.save();
+    ctx.beginPath(); ctx.ellipse(0, 0.04, er * 1.15, er * blink * squint, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#e9fff0'; ctx.shadowColor = cols[2]; ctx.shadowBlur = 18; ctx.fill();
+    ctx.clip();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = cols[2]; ctx.beginPath(); ctx.arc(lu, 0.04 + lv, er * 0.62, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#0b2a10'; ctx.beginPath(); ctx.ellipse(lu, 0.04 + lv, er * (0.18 + rage * 0.06), er * 0.48, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(lu - er * 0.24, lv - er * 0.18, er * 0.12, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // furious brows
+    const bt = 0.16 + rage * 0.1 + flash * 0.06;
+    ctx.strokeStyle = '#ffffff'; ctx.lineCap = 'round'; ctx.lineWidth = 0.075; ctx.shadowColor = cols[1]; ctx.shadowBlur = 10;
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.moveTo(s * 0.5, -0.46 - bt * 0.6); ctx.lineTo(s * 0.12, -0.36 + bt * 0.35); ctx.stroke(); }
     ctx.restore();
   }
 
-  // ECLIPSE SOVEREIGN — largest: dark orb with glowing eclipse core, crown
-  // silhouette, multiple halos rotating at different speeds, blade wings, and a
-  // gold-purple corona in the final phase.
-  function drawEclipseSovereign(t, r, spin, cols, flash) {
-    // blade wings (symmetrical)
-    for (const dir of [-1, 1]) {
-      ctx.save(); ctx.scale(dir, 1);
-      armorStyle(cols[0], 14, 3);
-      ctx.beginPath();
-      ctx.moveTo(r * 0.4, -r * 0.2);
-      ctx.quadraticCurveTo(r * 1.5, -r * 0.6, r * 1.7, -r * 0.05);
-      ctx.quadraticCurveTo(r * 1.4, r * 0.1, r * 0.5, r * 0.35);
-      ctx.closePath(); ctx.fill(); ctx.stroke();
-      ctx.restore();
+  // TRIARCH — the Razor Emperor, in 3D: a smug armoured triangle with
+  // half-lidded eyes, a little gold crown spinning on top, and three razor
+  // blades that light up in turn before an attack.
+  function drawTriarch(t, r, spin, cols, flash, lowFrac, extraSpin) {
+    const rage = 1 - clamp01(lowFrac == null ? 1 : lowFrac);
+    const thump = Math.pow(1 - musicBeatPhase(), 3);
+    const P = { yaw: Math.sin(t * 0.5) * 0.4 + (extraSpin || 0), pitch: -0.16 + Math.sin(t * 0.7) * 0.05, roll: Math.sin(t * 0.6) * 0.07, S: r * 0.86 };
+    const d = 0.26;
+    // 1. razor blades out of each corner (behind the body)
+    const blade = meshOnce('triBlade', () => extrude([[0, -0.62], [0.13, 0.02], [0, 0.1], [-0.13, 0.02]], 0.05));
+    for (let i = 0; i < 3; i++) {
+      const a = -Math.PI / 2 + i / 3 * Math.PI * 2;          // locked to the corners
+      const lit = 0.5 + 0.5 * Math.sin(t * 2.4 + i * 2.1);
+      const reach = 1.06 + lit * 0.1 + thump * 0.04 + bossPhase * 0.03;
+      const q = { roll: a + Math.PI / 2, tx: Math.cos(a) * reach, ty: Math.sin(a) * reach, s: 1.2 };
+      drawMesh(blade, P, { tint: cols[0], edge: lit > 0.7 ? cols[1] : cols[0], lw: 2, glow: 6 + lit * 16 }, q);
     }
-    // orbiting halos at different speeds
-    const halos = [[1.55, 0.6, cols[1]], [1.9, -0.35, cols[0]], [2.25, 0.22, cols[1]]];
+    // 2. the body
+    const body = meshOnce('triBody', () => extrude(regPoly(3, 1.0, -Math.PI / 2), d));
+    drawMesh(body, P, { tint: cols[0], edge: flash > 0.4 ? '#ffffff' : cols[0], lw: 3 + bossPhase * 0.4, glow: 12 + flash * 16 });
+    // 3. the face, painted on the front
+    const A = planeXf(P, [0, 0, d], [1, 0, 0], [0, 1, 0]);
     ctx.save();
-    for (const [rr, sp, col] of halos) {
-      ctx.save(); ctx.rotate(t * sp);
-      ctx.strokeStyle = hexToRgba(col, 0.6); ctx.shadowColor = col; ctx.shadowBlur = 10; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.ellipse(0, 0, r * rr, r * rr * 0.32, 0, 0, Math.PI * 2); ctx.stroke();
+    ctx.transform(A[0], A[1], A[2], A[3], A[4], A[5]);
+    ctx.save(); ctx.rotate(-spin * 1.6);
+    ctx.strokeStyle = hexToRgba(cols[2], 0.6); ctx.lineWidth = 0.03; ctx.shadowColor = cols[2]; ctx.shadowBlur = 8;
+    ctx.beginPath(); regPoly(3, 0.5, -Math.PI / 2).forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.closePath(); ctx.stroke();
+    ctx.restore();
+    const [lu, lv] = lookAtTarget(0.05);
+    const lid = 0.45 - rage * 0.25 + flash * 0.3;              // smug half-lids; wide open when hit
+    for (const s of [-1, 1]) {
+      const ex = s * 0.22, ey = 0.12;
+      ctx.save();
+      ctx.beginPath(); ctx.ellipse(ex, ey, 0.15, 0.1, 0, 0, Math.PI * 2); ctx.fillStyle = '#fff6ea'; ctx.fill(); ctx.clip();
+      ctx.fillStyle = cols[1]; ctx.beginPath(); ctx.arc(ex + lu, ey + 0.03 + lv, 0.065, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#1a0606'; ctx.beginPath(); ctx.arc(ex + lu, ey + 0.03 + lv, 0.03, 0, Math.PI * 2); ctx.fill();
+      // heavy eyelid
+      ctx.fillStyle = shadeFill(cols[0], 0.55, 1); ctx.fillRect(ex - 0.2, ey - 0.14, 0.4, 0.14 * (1 - lid) + 0.06);
       ctx.restore();
+      ctx.strokeStyle = cols[1]; ctx.lineWidth = 0.035; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(ex - 0.15, ey - 0.06 + (1 - lid) * 0.07); ctx.lineTo(ex + 0.15, ey - 0.06 + (1 - lid) * 0.07); ctx.stroke();
+    }
+    // one eyebrow up (left), one flat; both slam down when it gets angry
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.05; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-0.36, -0.1 - 0.06 * (1 - rage)); ctx.quadraticCurveTo(-0.22, -0.2 * (1 - rage) - 0.02, -0.08, -0.06 + rage * 0.06); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0.08, -0.05 + rage * 0.05); ctx.lineTo(0.36, -0.06 - rage * 0.04); ctx.stroke();
+    // smirk
+    ctx.strokeStyle = cols[1]; ctx.lineWidth = 0.035;
+    ctx.beginPath(); ctx.moveTo(-0.12, 0.42); ctx.quadraticCurveTo(0.04, 0.47 - rage * 0.08, 0.16, 0.36 + rage * 0.06); ctx.stroke();
+    ctx.restore();
+    // 4. the crown: small, gold, spinning on its own above the top corner
+    const crown = meshOnce('triCrown', () => extrude([[-0.3, 0.12], [-0.3, -0.12], [-0.18, 0.0], [-0.08, -0.2], [0, -0.04], [0.08, -0.2], [0.18, 0.0], [0.3, -0.12], [0.3, 0.12]], 0.07));
+    const bob = Math.sin(t * 2.2) * 0.04 + thump * 0.03;
+    drawMesh(crown, P, { tint: '#ffd23d', edge: '#ffe98a', lw: 1.8, glow: 10, alpha: 0.98 }, { yaw: t * 1.3, ty: -1.02 + bob, tz: 0.05, s: 0.62, roll: -0.18 });
+  }
+
+  // VANTA PRISM — the Null Shard, in 3D: a tall black crystal turning slowly,
+  // translucent enough to show the violet heart inside. A rainbow pours in from
+  // the side and never comes out. Five shards orbit it and line up as it weakens;
+  // a small, quiet face floats in the middle.
+  function drawVantaPrism(t, r, spin, cols, flash, lowFrac, extraSpin) {
+    const rage = 1 - clamp01(lowFrac == null ? 1 : lowFrac);
+    const thump = Math.pow(1 - musicBeatPhase(), 3);
+    const P = { yaw: t * 0.45 + (extraSpin || 0) * 2, pitch: -0.22 + Math.sin(t * 0.6) * 0.06, roll: Math.sin(t * 0.5) * 0.05, S: r * 0.9 };
+    const align = Math.min(1, bossPhase / 3);
+    // 1. the swallowed rainbow, from the left edge into the crystal
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const rb = ['#ff3b3b', '#ff9a2e', '#ffe14d', '#62ff6b', '#38c8ff', '#9a6bff'];
+    const bx0 = -bossX() - 20;
+    ctx.lineWidth = r * 0.04;
+    for (let i = 0; i < rb.length; i++) {
+      const y = (i - 2.5) * r * 0.05 + Math.sin(t * 1.4 + i) * 1.5;
+      ctx.strokeStyle = hexToRgba(rb[i], 0.42);
+      ctx.beginPath(); ctx.moveTo(bx0, y - r * 0.2); ctx.lineTo(-r * 0.05, y * 0.2); ctx.stroke();
     }
     ctx.restore();
-    // small orbiting cores
+    // 2. orbiting shards: the ones behind first
+    const shard = meshOnce('vpShard', () => bipyramid(4, 0.11, 0.22, 0.22));
+    const shards = [];
+    for (let i = 0; i < 5; i++) {
+      const a = i / 5 * Math.PI * 2 + t * 0.7 * (1 - align * 0.7);
+      const rad = 1.45 - align * 0.12;
+      shards.push({ x: Math.cos(a) * rad, y: (1 - align) * Math.sin(a * 2 + t) * 0.12 - align * 0.0, z: Math.sin(a) * rad * 0.8, a, i });
+    }
+    const PS = { yaw: 0, pitch: P.pitch, roll: 0, S: P.S };
+    const drawShard = (s) => drawMesh(shard, PS, { tint: cols[0], edge: cols[0], lw: 1.6, glow: 0, alpha: 0.9 }, { yaw: t * 2 + s.i, roll: 0.3, tx: s.x, ty: s.y, tz: s.z });
+    for (const s of shards) if (rot3([s.x, s.y, s.z], 0, P.pitch, 0)[2] < 0) drawShard(s);
+    // 3. the violet heart
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const hg = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 0.75);
+    hg.addColorStop(0, hexToRgba(cols[2], 0.75 + thump * 0.2)); hg.addColorStop(0.3, hexToRgba(cols[0], 0.55)); hg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(0, 0, r * 0.75, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // 4. the crystal: translucent black facets
+    const body = meshOnce('vpBody', () => bipyramid(6, 0.6, 1.25, 1.25));
+    drawMesh(body, P, { tint: cols[0], edge: flash > 0.4 ? '#ffffff' : cols[0], lw: 2.6 + bossPhase * 0.3, glow: 10 + flash * 12, alpha: 0.72 - rage * 0.12 });
+    // green fracture light along the equator
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = hexToRgba(cols[1], 0.5 + 0.4 * Math.sin(t * 3)); ctx.lineWidth = 2;
+    ctx.beginPath();
+    let onSeam = false;
+    for (let i = 0; i <= 36; i++) {
+      const a = i / 36 * Math.PI * 2, R3 = rot3([Math.cos(a) * 0.6, 0, Math.sin(a) * 0.6], P.yaw, P.pitch, P.roll), p = proj3(R3, P.S);
+      if (R3[2] > 0) { if (onSeam) ctx.lineTo(p[0], p[1]); else { ctx.moveTo(p[0], p[1]); onSeam = true; } } else onSeam = false;
+    }
+    ctx.stroke();
+    // refracted beams when hurt
+    if (lowFrac < 0.6) {
+      ctx.strokeStyle = hexToRgba(cols[2], (0.6 - lowFrac) * 0.6); ctx.lineWidth = 1; ctx.shadowBlur = 0;
+      for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI * 2 + spin; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * r * 1.7, Math.sin(a) * r * 1.7); ctx.stroke(); }
+    }
+    ctx.restore();
+    // 5. the quiet face, floating in the middle (doesn't say much)
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const blink = (t % 5.2) < 0.12 ? 0.15 : 1;
+    ctx.fillStyle = 'rgba(240,235,255,0.9)';
+    for (const s of [-1, 1]) { ctx.beginPath(); ctx.ellipse(s * r * 0.11, -r * 0.06, r * 0.035, r * 0.035 * blink, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.strokeStyle = 'rgba(240,235,255,0.75)'; ctx.lineWidth = Math.max(1.5, r * 0.018); ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-r * 0.07, r * 0.08 + flash * r * 0.02); ctx.lineTo(r * 0.07, r * 0.08 - flash * r * 0.02); ctx.stroke();
+    ctx.restore();
+    // 6. shards in front
+    for (const s of shards) if (rot3([s.x, s.y, s.z], 0, P.pitch, 0)[2] >= 0) drawShard(s);
+  }
+
+  // ECLIPSE SOVEREIGN — the Last Orbit, in 3D: a black sun with a golden grin.
+  // A glossy dark sphere wearing a crown of spikes, wrapped in tilted halo rings
+  // that pass behind and in front of it, blade wings out the back, and a gold
+  // corona once it is nearly done.
+  function drawEclipseSovereign(t, r, spin, cols, flash, lowFrac, extraSpin) {
+    const rage = 1 - clamp01(lowFrac == null ? 1 : lowFrac);
+    const thump = Math.pow(1 - musicBeatPhase(), 3);
+    const P = { yaw: Math.sin(t * 0.4) * 0.35 + (extraSpin || 0), pitch: -0.15 + Math.sin(t * 0.55) * 0.05, roll: Math.sin(t * 0.3) * 0.05, S: r * 0.95 };
+    const toS = (x, y, z) => proj3(rot3([x, y, z], P.yaw, P.pitch, P.roll), P.S);
+    // 1. blade wings, behind
+    const wing = meshOnce('ecWing', () => extrude([[0.5, -0.25], [1.1, -0.62], [1.62, -0.5], [1.82, -0.08], [1.5, 0.02], [1.2, 0.12], [0.6, 0.32]], 0.06));
+    for (const dir of [-1, 1]) {
+      const flap = Math.sin(t * 1.6 + (dir < 0 ? 0 : 0.4)) * 0.08 + thump * 0.04;
+      const wM = dir < 0 ? meshOnce('ecWingL', () => ({ V: wing.V.map(v => [-v[0], v[1], v[2]]), F: wing.F.map(f => ({ v: f.v, n: [-f.n[0], f.n[1], f.n[2]], cap: f.cap })) })) : wing;
+      drawMesh(wM, P, { tint: cols[0], edge: cols[0], lw: 2.2, glow: 8 }, { tz: -0.45, roll: dir * flap, yaw: dir * 0.25 });
+    }
+    // 2. halo rings: three tilted circles; back halves now, front halves after the sphere
+    const halos = [[1.55, 0.6, cols[1], 1.15, 0.2], [1.9, -0.35, cols[0], 1.3, -0.35], [2.25, 0.22, cols[1], 1.05, 0.5]];
+    const haloPts = halos.map(([rr, sp, col, tiltX, tiltZ]) => {
+      const pts = [];
+      for (let i = 0; i <= 64; i++) {
+        const a = i / 64 * Math.PI * 2 + t * sp;
+        const v = rot3([Math.cos(a) * rr, 0, Math.sin(a) * rr], 0, tiltX, tiltZ);
+        const R = rot3(v, P.yaw, P.pitch, P.roll);
+        pts.push([proj3(R, P.S), R[2]]);
+      }
+      return { pts, col };
+    });
+    const drawHalo = (h, front) => {
+      ctx.save(); ctx.strokeStyle = hexToRgba(h.col, front ? 0.75 : 0.4); ctx.lineWidth = front ? 2.4 : 1.6; ctx.shadowColor = h.col; ctx.shadowBlur = front ? 10 : 0;
+      ctx.beginPath(); let on = false;
+      for (const [p, z] of h.pts) { if ((z >= 0) === front) { if (on) ctx.lineTo(p[0], p[1]); else { ctx.moveTo(p[0], p[1]); on = true; } } else on = false; }
+      ctx.stroke(); ctx.restore();
+    };
+    for (const h of haloPts) drawHalo(h, false);
+    // 3. crown of spikes on top: back spikes now
+    const spikes = [];
+    for (let i = 0; i < 7; i++) {
+      const lon = -Math.PI * 0.62 + i / 6 * Math.PI * 1.24, lat = -0.82 - (i % 2 ? 0 : 0.12);
+      const base = [Math.sin(lon) * Math.cos(lat) * 0.98, Math.sin(lat) * 0.98, Math.cos(lon) * Math.cos(lat) * 0.98];
+      const len = (i % 2 ? 0.34 : 0.55) + thump * 0.05 + rage * 0.1;
+      const tip = [base[0] * (1 + len), base[1] * (1 + len), base[2] * (1 + len)];
+      const side = [Math.cos(lon) * 0.11, 0, -Math.sin(lon) * 0.11];
+      const R = rot3(base, P.yaw, P.pitch, P.roll);
+      spikes.push({ z: R[2], p: [toS(base[0] - side[0], base[1], base[2] - side[2]), toS(tip[0], tip[1], tip[2]), toS(base[0] + side[0], base[1], base[2] + side[2])], big: !(i % 2) });
+    }
+    const drawSpike = (s) => {
+      ctx.save(); ctx.fillStyle = shadeFill(cols[1], s.big ? 0.8 : 0.6, 0.95); ctx.strokeStyle = cols[1]; ctx.lineWidth = 1.8; ctx.shadowColor = cols[1]; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.moveTo(s.p[0][0], s.p[0][1]); ctx.lineTo(s.p[1][0], s.p[1][1]); ctx.lineTo(s.p[2][0], s.p[2][1]); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore();
+    };
+    for (const s of spikes) if (s.z < 0) drawSpike(s);
+    // 4. the black sun: a glossy sphere lit from the top-left, rim-lit violet
+    const C = toS(0, 0, 0), Rs = P.S * 1.0;
+    ctx.save();
+    const sg = ctx.createRadialGradient(C[0] - Rs * 0.35, C[1] - Rs * 0.4, Rs * 0.05, C[0], C[1], Rs);
+    sg.addColorStop(0, '#3a2a55'); sg.addColorStop(0.35, '#120a22'); sg.addColorStop(0.85, '#04020a'); sg.addColorStop(1, '#1a0830');
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(C[0], C[1], Rs, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = flash > 0.4 ? '#ffffff' : cols[0]; ctx.lineWidth = 3.5; ctx.shadowColor = cols[0]; ctx.shadowBlur = 18 + flash * 14;
+    ctx.beginPath(); ctx.arc(C[0], C[1], Rs, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalCompositeOperation = 'lighter'; ctx.shadowBlur = 0;
+    ctx.fillStyle = 'rgba(255,255,255,0.16)';
+    ctx.beginPath(); ctx.ellipse(C[0] - Rs * 0.38, C[1] - Rs * 0.48, Rs * 0.22, Rs * 0.1, -0.6, 0, Math.PI * 2); ctx.fill();
+    // the final-phase corona
+    if (bossPhase >= 3) {
+      ctx.strokeStyle = cols[1]; ctx.lineWidth = 2;
+      for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2 + t * 0.2; const fl = Rs * (1.15 + 0.22 * Math.sin(t * 5 + i)); ctx.beginPath(); ctx.moveTo(C[0] + Math.cos(a) * Rs, C[1] + Math.sin(a) * Rs); ctx.lineTo(C[0] + Math.cos(a) * fl, C[1] + Math.sin(a) * fl); ctx.stroke(); }
+    }
+    ctx.restore();
+    // 5. the golden grin, painted on the front of the sphere
+    const A = planeXf(P, [0, 0, 0.98], [1, 0, 0], [0, 1, 0]);
+    ctx.save();
+    ctx.transform(A[0], A[1], A[2], A[3], A[4], A[5]);
+    const gold = flash > 0.4 ? '#ffffff' : cols[1];
+    ctx.strokeStyle = gold; ctx.fillStyle = gold; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.shadowColor = cols[1]; ctx.shadowBlur = 14;
+    // happy-evil eyes: ^ ^ (angry slashes once it is hurt)
+    ctx.lineWidth = 0.07;
+    for (const s of [-1, 1]) {
+      ctx.beginPath();
+      if (rage < 0.55) { ctx.moveTo(s * 0.48, -0.16); ctx.quadraticCurveTo(s * 0.3, -0.42, s * 0.12, -0.16); }
+      else { ctx.moveTo(s * 0.5, -0.36); ctx.lineTo(s * 0.12, -0.2); }
+      ctx.stroke();
+    }
+    // the grin: a wide crescent full of teeth
+    const wide = 0.62 + rage * 0.08 + thump * 0.03;
+    ctx.beginPath();
+    ctx.moveTo(-wide, 0.08); ctx.quadraticCurveTo(0, 0.82, wide, 0.08); ctx.quadraticCurveTo(0, 0.36, -wide, 0.08); ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0; ctx.fillStyle = '#120a22';
+    ctx.beginPath();
+    const tn = 7;
+    for (let i = 0; i <= tn; i++) {
+      const u = -wide * 0.86 + i / tn * wide * 1.72, top = 0.08 + (0.28 * (1 - Math.pow(u / wide, 2)));
+      const y0 = top + 0.02, y1 = top + (i % 2 ? 0.2 : 0.12) * (1 - Math.abs(u / wide) * 0.6);
+      if (i === 0) ctx.moveTo(u, y0); ctx.lineTo(u, y1); ctx.lineTo(u + wide * 1.72 / tn * 0.5, y0);
+    }
+    ctx.lineWidth = 0.03; ctx.strokeStyle = '#120a22'; ctx.stroke();
+    ctx.restore();
+    // 6. front spikes, front halves of the halos, little orbiting cores
+    for (const s of spikes) if (s.z >= 0) drawSpike(s);
+    for (const h of haloPts) drawHalo(h, true);
+    ctx.save();
     for (let i = 0; i < 3; i++) {
       const a = spin * 1.5 + i / 3 * Math.PI * 2;
+      const v = rot3([Math.cos(a) * 1.55, 0, Math.sin(a) * 1.55], 0, halos[0][3], halos[0][4]);
+      const R = rot3(v, P.yaw, P.pitch, P.roll), p = proj3(R, P.S);
+      if (R[2] < 0 && Math.hypot(p[0] - C[0], p[1] - C[1]) < Rs) continue;   // hidden behind the sun
       ctx.fillStyle = cols[1]; ctx.shadowColor = cols[1]; ctx.shadowBlur = 12;
-      ctx.beginPath(); ctx.arc(Math.cos(a) * r * 1.7, Math.sin(a) * r * 0.55, 4, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(p[0], p[1], 3.5 + (R[2] > 0 ? 1.5 : 0), 0, Math.PI * 2); ctx.fill();
     }
-    // crown silhouette (upper spikes)
-    ctx.save();
-    armorStyle(cols[0], 12 + flash * 16, 3);
-    if (flash > 0.4) ctx.strokeStyle = '#fff';
-    ctx.beginPath();
-    const spikes = 7;
-    for (let i = 0; i <= spikes; i++) {
-      const a = -Math.PI * 0.9 + (i / spikes) * Math.PI * 0.8;
-      const rr = (i % 2 === 0) ? r * 1.25 : r * 0.95;
-      const x = Math.cos(a) * rr, y = Math.sin(a) * rr;
-      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-    ctx.restore();
-    // dark orb body
-    ctx.save();
-    ctx.fillStyle = 'rgba(4,2,10,0.95)'; ctx.strokeStyle = cols[0];
-    ctx.shadowColor = cols[0]; ctx.shadowBlur = 18; ctx.lineWidth = 4;
-    ctx.beginPath(); ctx.arc(0, 0, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-    // final-phase gold-purple corona
-    if (bossPhase >= 3) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = cols[1];
-      for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; const fl = r * (1.15 + 0.2 * Math.sin(t * 5 + i)); ctx.beginPath(); ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r); ctx.lineTo(Math.cos(a) * fl, Math.sin(a) * fl); ctx.stroke(); }
-      ctx.globalCompositeOperation = 'source-over';
-    }
-    // eclipse eye core (opens = brighter with flash / phase)
-    const coreR = r * (0.3 + bossPhase * 0.03) + flash * 5;
-    ctx.strokeStyle = cols[1]; ctx.shadowColor = cols[1]; ctx.shadowBlur = 26; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.arc(0, 0, coreR, 0, Math.PI * 2); ctx.stroke();
-    ctx.fillStyle = cols[0]; ctx.shadowColor = cols[0]; ctx.shadowBlur = 30;
-    ctx.beginPath(); ctx.arc(0, 0, coreR * 0.6, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   }
 
