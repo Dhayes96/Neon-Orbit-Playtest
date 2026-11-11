@@ -1152,7 +1152,7 @@
         <div class="howto-item"><span class="glyph">➤</span><span>From <b>Stage 2</b> the <b>target moves</b> — kept in a thumb-friendly zone on phones. A ghost circle shows where it's headed; follow it with your eyes, not your thumb.</span></div>
         <div class="howto-item"><span class="glyph">♫</span><span>The soundtrack <b>evolves every five stages</b> and the background shifts with it. Pick a <b>Music Vibe</b> in Settings — six distinct songs (Cyber Bounce, Blue Pulse, Toxic Breaks, and more). Visual theme and vibe can be set separately.</span></div>
         <div class="howto-item"><span class="glyph">✦</span><span><b>Perfect</b> = 300 pts &amp; refills energy. <b>Good</b> = 150. <b>OK</b> = 75. Late or early taps drain energy.</span></div>
-        <div class="howto-item"><span class="glyph">⚡</span><span>Build combo to chase milestones: <b>25× Combo Fever</b> gives ×1.5 score, <b>100× Supernova</b> ×2 (and blasts every ring on screen) and <b>250× Singularity</b> ×3, which launches <b>Hyperdrive</b>: 30 seconds behind the saucer, tap left or right to dodge rocks and grab rings (PERFECT hits only: a GOOD or OK drops you back to ×2 until 25 PERFECTs in a row), with <b>Overdrive</b> and <b>Perfect Orbit</b> bonuses along the way. One miss resets the climb. <b>Long rhythm runs</b> show up more from Stage 5.</span></div>
+        <div class="howto-item"><span class="glyph">⚡</span><span>Build combo to chase milestones: <b>25× Combo Fever</b> gives ×1.5 score, <b>100× Supernova</b> ×2 (a star explodes in the sky and its light clears the rings), <b>150× Hyperdrive</b> (Goods count too): 60 seconds behind the saucer through a spacetime tunnel, tap left or right to dodge, FIRE to shoot rocks, CORE for your Boss Core's hyperdrive power, and <b>250× Singularity</b> ×3 (PERFECT hits only: a GOOD or OK drops you back to ×2 until 25 PERFECTs in a row), with <b>Overdrive</b> and <b>Perfect Orbit</b> bonuses along the way. One miss resets the climb. <b>Long rhythm runs</b> show up more from Stage 5.</span></div>
         <div class="howto-item"><span class="glyph">▲</span><span>Each new level gives a brief <b>breather</b>: gameplay pauses, the level and track are announced, then a fresh pattern begins.</span></div>
         <div class="howto-item"><span class="glyph">♥</span><span>Your <b>energy bar</b> drains over time and on misses. When it empties, the run ends.</span></div>
         <div class="howto-item"><span class="glyph">☣</span><span><b>Boss Battles</b> at Stages 10, 20, 30, 40 & 50, and maybe beyond… Damage the boss by hitting rings — <b>Perfect</b> hits hurt most, <b>Good</b> chips in, <b>OK</b> doesn't. Survive its phases to win energy. Progression pauses until the boss falls.</span></div>
@@ -6083,7 +6083,7 @@
     quantize:     { dur: 10, uses: 999, stages: 4, bossCap: 0 },
     // Big Bang: the end-game core. bossCap feeds the solar flares; the finale
     // blast is separate (see bigBangFinale).
-    bigBang:      { dur: 14, uses: 999, stages: 6, bossCap: 200 }
+    bigBang:      { dur: 14, uses: 999, stages: 6, bossCap: 120 }
   };
   // OVERCLOCK: the same table, upgraded. Cached per core.
   const _ocTuning = {};
@@ -7213,6 +7213,7 @@
   let bossPerfectStreak = 0;
 
   function onBossPhaseChange() {
+    bossBreakOff(bossPhase);
     firePulse(); bgPulse = 1; shake = Math.max(shake, 5);
     createBurst(bossX(), bossY(), activeBoss.colors[1], 26, 1.2);
     if (save.settings.sfx) { tone(320, 0.14, 'sawtooth', 0.04); tone(480, 0.12, 'square', 0.03, 0.06); }
@@ -7226,6 +7227,7 @@
     const nowT = clockNow() - startTime;
     if (DEBUG) { const elapsedSeconds = (nowT - bossFightStart).toFixed(1); console.log('[boss duration]', def.name, elapsedSeconds); }
     bossDefeatUntil = nowT + (def.defeatHold || 1.7);
+    bossShatter();
     notes = []; lastScheduledHitT = -Infinity;
 
     // energy reward (Eclipse Sovereign restores to full)
@@ -7532,7 +7534,7 @@
     if (!noBossDmg && bossActive && abBossDmgLeft > 0) {
       const dmg = Math.min(BOSS_DMG.perfect, abBossDmgLeft);
       abBossDmgLeft -= dmg;
-      damageBoss(dmg, true, true);
+      fireBossShot(ABILITY_SHOT[abilityId] || 'pulse', dmg, true, true);
     }
 
     const willMilestone = comboTier < COMBO_MILESTONES.length && combo >= COMBO_MILESTONES[comboTier].combo;
@@ -7583,6 +7585,7 @@
     if (save.overclock) { energy = Math.min(100, energy + 25); energyBar.style.width = energy + '%'; ocFlash = 1; }
     if (abilityId === 'eventHorizon') horizonCollapse(nowT);
     if (abilityId === 'bigBang') bigBangIgnite(nowT);
+    startAssault();
     updateAbilityHud();
     trackEvent('ability_used', { ability: abilityId, stage });
   }
@@ -7627,7 +7630,7 @@
     if (bossActive && abBossDmgLeft > 0) {
       const dmg = Math.min(12, abBossDmgLeft);
       abBossDmgLeft -= dmg;
-      damageBoss(dmg, true, true);
+      fireBossShot('prism', dmg, true, true);
     }
   }
   let prismShards = [];
@@ -7660,7 +7663,7 @@
     if (bossActive && abBossDmgLeft > 0) {
       const dmg = Math.min(15, abBossDmgLeft);
       abBossDmgLeft -= dmg;
-      damageBoss(dmg, true, true);
+      fireBossShot('orb', dmg, true, true);
     }
     if (realmPlanet) { realmPlanet = null; showToast('THE VISITOR WITHDRAWS', '#5ef2ff'); }
   }
@@ -8627,18 +8630,20 @@
     note.hit = true;
     awardAbilityPerfect(note.tx, note.ty, '#ffe9a8', 'BIG BANG', true);
     if (bossActive && state === 'bossBattle' && abBossDmgLeft > 0) {
-      const dmg = Math.min(BOSS_DMG.perfect * 2, abBossDmgLeft);   // a flare hits twice as hard as a tap
+      const dmg = Math.min(BOSS_DMG.perfect * 2, abBossDmgLeft);   // a star bolt hits twice as hard as a tap
       abBossDmgLeft -= dmg;
-      bangBolts.push({ t0: t, dmg, x: tgt.x, y: tgt.y, bend: ((bangBolts.length * 37) % 11) / 5.5 - 1, done: false });
+      const [ox, oy] = bangOrbXY();
+      fireBossShot('star', dmg, true, true, null, ox, oy);
     }
     bangPulse = 1;
   }
   // Ignition: everything already in flight detonates at once.
   function bigBangIgnite(t) {
     for (const note of notes) if (!note.hit && !note.missed) bangDetonate(note, t);
-    createBurst(tgt.x, tgt.y, '#ffffff', 60, 1.7);
-    createBurst(tgt.x, tgt.y, '#ffd23d', 40, 1.4);
-    shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR, alpha: 1, speed: 1300, width: 10, color: '#fff1c2' });
+    const [ox, oy] = bangOrbXY();
+    createBurst(ox, oy, '#ffffff', 50, 1.5);
+    createBurst(ox, oy, '#ff5ac8', 30, 1.2);
+    shockwaves.push({ x: ox, y: oy, r: targetR * 0.4, alpha: 1, speed: 1000, width: 8, color: '#fff1c2' });
     shake = Math.max(shake, 10);
   }
   // Finale: the star goes off. Clears the field, +50 energy, a heavy boss hit
@@ -8652,18 +8657,18 @@
     }
     energy = Math.min(100, energy + 50);
     energyBar.style.width = energy + '%';
-    bangBlast = { t0: t };
-    const cols = ['#ffffff', '#ffd23d', '#ff2bd6', '#00f5ff', '#b026ff'];
-    cols.forEach((c, i) => shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR * (0.6 + i * 0.25), alpha: 1, speed: 900 + i * 260, width: 12 - i * 1.6, color: c }));
-    createBurst(tgt.x, tgt.y, '#ffffff', 80, 2.0);
-    createBurst(tgt.x, tgt.y, '#ffd23d', 50, 1.6);
+    const [ox, oy] = bangOrbXY();
+    bangBlast = { t0: t, x: ox, y: oy };
+    createBurst(ox, oy, '#ffffff', 70, 2.0);
+    createBurst(ox, oy, '#ff5ac8', 40, 1.6);
+    createBurst(ox, oy, '#5ae6ff', 40, 1.6);
     shake = Math.max(shake, 14);
     buzz([40, 30, 80, 30, 140]);
     showToast('BIG BANG', '#ffe9a8', '+50 ENERGY');
     if (bossActive && state === 'bossBattle') {
-      const dmg = Math.round((40 + bossMaxHealth * 0.06) * (save.overclock ? 1.5 : 1));
-      damageBoss(dmg, true, true);
-      bangBolts.push({ t0: t, dmg: 0, x: tgt.x, y: tgt.y, bend: 0, done: true, big: true });
+      // the beam of creation: the heaviest single hit in the game
+      const dmg = Math.round((60 + bossMaxHealth * 0.07) * (save.overclock ? 1.5 : 1));
+      fireBossShot('bang', dmg, true, true, null, ox, oy);
     }
   }
 
@@ -8841,6 +8846,7 @@
     coreCapture = null;
     bangBolts = []; bangBlast = null; bangPulse = 0; quantSnap = 0; ocFlash = 0;
     novaWave = null; novaShards = []; skyNova = null;
+    clearBossCombat();
     Hyper.cancel();
     if (typeof abilityBtn !== 'undefined' && abilityBtn) abilityBtn.classList.remove('show', 'ready');
     if (typeof abilityStatus !== 'undefined' && abilityStatus) abilityStatus.classList.remove('show', 'on-air');
@@ -9320,7 +9326,7 @@
       buzz(fever ? [15, 20, 15] : 12);
       createBurst(bestNote.tx, bestNote.ty, color, fever ? 55 : 40, fever ? 1.5 : 1.25);
       shockwaves.push({ x: bestNote.tx, y: bestNote.ty, r: targetR, alpha: 0.9, speed: 760, width: 6, color });
-      if (bossActive) damageBoss(BOSS_DMG.perfect, true);
+      if (bossActive) fireBossShot(snapped ? 'cube' : 'pulse', BOSS_DMG.perfect, true, false, snapped ? null : theme.c1);
     } else if (bestDiff <= win.good) {
       points = 150; text = 'GOOD';
       if (runStats) runStats.goods++;
@@ -9329,7 +9335,7 @@
       sfxGood();
       buzz(8);
       createBurst(bestNote.tx, bestNote.ty, color, 20, 0.9);
-      if (bossActive) { damageBoss(BOSS_DMG.good); bossPerfectStreak = 0; }
+      if (bossActive) { fireBossShot('pulse', BOSS_DMG.good, false, false, theme.c2); bossPerfectStreak = 0; }
     } else {
       points = 75; text = 'OK';
       if (runStats) runStats.oks++;
@@ -9337,7 +9343,7 @@
       energy = Math.max(0, energy - 1.5);
       sfxOkHit();
       createBurst(bestNote.tx, bestNote.ty, color, 12, 0.7);
-      if (bossActive) { damageBoss(BOSS_DMG.ok); bossPerfectStreak = 0; }      // OK: 0.5
+      if (bossActive) { fireBossShot('pulse', BOSS_DMG.ok, false, false, theme.c3); bossPerfectStreak = 0; }      // OK: 0.5
     }
     CraftFX.hit(color, text === 'PERFECT' ? 1 : 0.6);   // cosmetic: the ring is absorbed by the craft
 
@@ -9755,6 +9761,7 @@
   function update(dt, t) {
     bossAnim += dt;
     updateNova(t);
+    if (state !== 'paused') updateBossCombat(t, dt);
     if (state !== 'paused') {
       // forward-flight stars: light in Fever, full at Supernova/Singularity, flat out in Hyperdrive
       const inRunNow = state === 'playing' || state === 'bossBattle' || state === 'levelup' || state === 'bossIntro' || state === 'bossDefeat';
@@ -12034,58 +12041,79 @@
     ctx.restore();
   }
 
-  // BIG BANG: a newborn star on the target. White-gold core, a crown of rays
-  // that flare on every detonation, a ring for each beat, a rainbow fuse.
+  // BIG BANG (v4.2): a newborn universe hangs above the craft, between it and
+  // the boss. A spiral galaxy turns round a white-hot singularity, flaring on
+  // every detonation and throwing star bolts at the boss. In the last half
+  // second it collapses to a point, then goes off: a cosmic shell in nebula
+  // colours and a beam of creation straight through the boss. The craft itself
+  // stays exactly as it is.
+  function bangOrbXY() {
+    const up = targetR * 2.6;
+    if (bossActive) { const dx = bossX() - tgt.x, dy = bossY() - tgt.y, d = Math.hypot(dx, dy) || 1; return [tgt.x + dx / d * up, tgt.y + dy / d * up]; }
+    return [tgt.x, tgt.y - up];
+  }
   function drawBigBangFX(t, x, y) {
     const tune = abTuning();
-    const e = easeOut3(powerAge(t) / 0.35);
-    const left = tune ? Math.max(0, Math.min(1, (abUntil - t) / tune.dur)) : 0;
+    const e = easeOut3(powerAge(t) / 0.5);
+    const left = tune ? Math.max(0, abUntil - t) : 0;
+    const frac = tune ? Math.min(1, left / tune.dur) : 0;
+    const collapse = left < 0.6 ? 1 - left / 0.6 : 0;
+    const [ox, oy] = bangOrbXY();
+    const R = targetR * 2.0 * e * (1 - 0.88 * collapse) * (1 + 0.12 * bangPulse);
+    const low = SpaceFX.low;
     ctx.save();
-    ctx.translate(x, y);
     ctx.globalCompositeOperation = 'lighter';
-    // core
-    const cr = targetR * (1.15 + 0.3 * bangPulse) * e;
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, cr * 1.8);
-    g.addColorStop(0, 'rgba(255,255,255,0.95)');
-    g.addColorStop(0.35, 'rgba(255,233,168,0.7)');
-    g.addColorStop(0.7, 'rgba(255,140,40,0.25)');
-    g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g;
-    ctx.beginPath(); ctx.arc(0, 0, cr * 1.8, 0, Math.PI * 2); ctx.fill();
-    // rays
-    const rays = 16;
-    for (let i = 0; i < rays; i++) {
-      const a = i / rays * Math.PI * 2 + t * 0.35;
-      const n = 0.5 + 0.5 * Math.sin(i * 12.9898 + t * 4.2);
-      const len = targetR * (1.7 + n * 1.1 + bangPulse * 1.2) * e;
-      const w = 0.05 + (i % 2) * 0.03;
-      ctx.globalAlpha = 0.35 + 0.25 * n;
-      ctx.fillStyle = i % 2 ? '#ffd23d' : '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(Math.cos(a - w) * targetR * 0.7, Math.sin(a - w) * targetR * 0.7);
-      ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
-      ctx.lineTo(Math.cos(a + w) * targetR * 0.7, Math.sin(a + w) * targetR * 0.7);
-      ctx.closePath(); ctx.fill();
+    // the tether: energy running up from the craft into the universe it made
+    const tg = ctx.createLinearGradient(x, y, ox, oy);
+    tg.addColorStop(0, 'rgba(255,255,255,0)'); tg.addColorStop(1, `rgba(255,220,150,${0.45 * e})`);
+    ctx.strokeStyle = tg; ctx.lineWidth = 3 + bangPulse * 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, y - targetR * 0.5); ctx.lineTo(ox, oy); ctx.stroke();
+    // dust disc
+    const dg = ctx.createRadialGradient(ox, oy, 0, ox, oy, R * 1.25);
+    dg.addColorStop(0, `rgba(255,230,180,${0.5 * e})`); dg.addColorStop(0.35, `rgba(255,90,190,${0.18 * e})`);
+    dg.addColorStop(0.7, `rgba(90,200,255,${0.12 * e})`); dg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.save(); ctx.translate(ox, oy); ctx.scale(1, 0.5);
+    ctx.fillStyle = dg; ctx.beginPath(); ctx.arc(0, 0, R * 1.25, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // the spiral galaxy: three arms of stars
+    const arms = 3, per = low ? 22 : 44, spin = t * 1.3 + collapse * 7;
+    const COL = ['#ffe9a8', '#ff5ac8', '#5ae6ff'];
+    for (let a = 0; a < arms; a++) {
+      for (let i = 0; i < per; i++) {
+        const u = i / per;
+        const ang = spin + a * Math.PI * 2 / arms + u * 4.4 * (1 + collapse);
+        const rr = R * (0.1 + u * 0.9);
+        const sx = ox + Math.cos(ang) * rr, sy = oy + Math.sin(ang) * rr * 0.48;
+        const tw = 0.7 + 0.3 * Math.sin(i * 7.7 + a * 3.1 + t * 9);
+        ctx.globalAlpha = (0.3 + 0.7 * (1 - u)) * e * tw;
+        ctx.fillStyle = u < 0.28 ? COL[0] : COL[1 + (a + (i % 2)) % 2];
+        const sz = (1 - u) * 4.2 + 1.6;
+        ctx.fillRect(sx - sz / 2, sy - sz / 2, sz, sz);
+        if (i % 4 === 0) { ctx.globalAlpha *= 0.35; ctx.beginPath(); ctx.arc(sx, sy, sz * 2.2, 0, Math.PI * 2); ctx.fill(); }
+      }
     }
-    // lens-flare cross
-    ctx.globalAlpha = 0.55 * e;
-    ctx.fillStyle = '#ffffff';
-    const fl = targetR * (3.2 + bangPulse * 1.5);
-    ctx.beginPath(); ctx.ellipse(0, 0, fl, 1.6, 0, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(0, 0, 1.6, fl * 0.6, 0, 0, Math.PI * 2); ctx.fill();
-    // detonation ring
-    if (bangPulse > 0) {
-      ctx.globalAlpha = bangPulse * 0.8;
-      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2 + bangPulse * 3;
-      ctx.beginPath(); ctx.arc(0, 0, targetR * (1.1 + (1 - bangPulse) * 1.8), 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    // the singularity: a white-hot point with a four-point flare
+    const cr = targetR * (0.16 + 0.12 * bangPulse + 0.3 * collapse);
+    const cg = ctx.createRadialGradient(ox, oy, 0, ox, oy, cr * 3);
+    cg.addColorStop(0, `rgba(255,255,255,${e})`); cg.addColorStop(0.35, `rgba(255,226,160,${0.7 * e})`); cg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(ox, oy, cr * 3, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = `rgba(255,255,255,${0.75 * e})`;
+    const fl = targetR * (1.4 + bangPulse * 1.2 + collapse * 2);
+    for (const ang of [0, Math.PI / 2]) {
+      ctx.save(); ctx.translate(ox, oy); ctx.rotate(ang + t * 0.2);
+      ctx.beginPath(); ctx.moveTo(-fl, 0); ctx.lineTo(0, -1.8); ctx.lineTo(fl, 0); ctx.lineTo(0, 1.8); ctx.closePath(); ctx.fill();
+      ctx.restore();
     }
-    // rainbow fuse
-    const fuseCols = ['#ff2e4d', '#ffb21e', '#ffe14d', '#a6ff3d', '#00f5ff', '#b06bff'];
-    ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.globalAlpha = 0.9 * e;
-    const seg = (Math.PI * 2 * left) / fuseCols.length;
-    for (let i = 0; i < fuseCols.length; i++) {
-      ctx.strokeStyle = fuseCols[i];
-      ctx.beginPath(); ctx.arc(0, 0, targetR * 1.24, -Math.PI / 2 + i * seg, -Math.PI / 2 + (i + 1) * seg); ctx.stroke();
+    // a lens of bent space round it, and the fuse
+    ctx.strokeStyle = `rgba(255,255,255,${0.25 * e})`; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.ellipse(ox, oy, R * 1.18, R * 0.6, 0, 0, Math.PI * 2); ctx.stroke();
+    const fuse = ['#ff2e4d', '#ffb21e', '#ffe14d', '#a6ff3d', '#00f5ff', '#b06bff'];
+    ctx.lineWidth = 2.5;
+    const seg = (Math.PI * 2 * frac) / fuse.length;
+    for (let i = 0; i < fuse.length; i++) {
+      ctx.strokeStyle = fuse[i];
+      ctx.beginPath(); ctx.ellipse(ox, oy, R * 1.32, R * 0.68, 0, -Math.PI / 2 + i * seg, -Math.PI / 2 + (i + 1) * seg); ctx.stroke();
     }
     ctx.restore();
   }
@@ -12139,21 +12167,29 @@
   const BANG_FLASH_MAX = (() => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0.12 : 0.42; } catch (e) { return 0.42; } })();
   function drawBangBlast(t) {
     if (!bangBlast) return;
-    const k = (t - bangBlast.t0) / 0.9;
+    const k = (t - bangBlast.t0) / 1.1;
     if (k >= 1 || k < 0) { if (k >= 1) bangBlast = null; return; }
+    const x = bangBlast.x == null ? tgt.x : bangBlast.x, y = bangBlast.y == null ? tgt.y : bangBlast.y;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.pow(1 - k, 2) * BANG_FLASH_MAX;
-    ctx.fillStyle = '#fff6dc';
-    ctx.fillRect(0, 0, W, H);
-    const R = Math.max(W, H) * (0.15 + k * 1.1);
-    const rc = ['#ff2e4d', '#ffe14d', '#a6ff3d', '#00f5ff', '#b06bff'];
-    ctx.lineWidth = 5 * (1 - k) + 1;
-    rc.forEach((c, i) => {
-      ctx.globalAlpha = (1 - k) * 0.6;
-      ctx.strokeStyle = c;
-      ctx.beginPath(); ctx.arc(tgt.x, tgt.y, R * (1 - i * 0.04), 0, Math.PI * 2); ctx.stroke();
-    });
+    ctx.globalAlpha = Math.pow(1 - k, 3) * BANG_FLASH_MAX * 0.55;
+    ctx.fillStyle = '#fff2dc'; ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = 1;
+    // the cosmic shell: nebula colours racing outward
+    const R = Math.max(W, H) * (0.05 + k * 1.15), fade = 1 - k;
+    const sg = ctx.createRadialGradient(x, y, R * 0.55, x, y, R);
+    sg.addColorStop(0, 'rgba(0,0,0,0)');
+    sg.addColorStop(0.6, `rgba(90,200,255,${0.32 * fade})`);
+    sg.addColorStop(0.8, `rgba(255,90,200,${0.45 * fade})`);
+    sg.addColorStop(0.95, `rgba(255,226,160,${0.75 * fade})`);
+    sg.addColorStop(1, `rgba(255,255,255,${0.8 * fade})`);
+    ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+    // streaks of matter thrown out
+    ctx.strokeStyle = `rgba(255,236,200,${0.7 * fade})`; ctx.lineWidth = 3;
+    for (let i = 0; i < 24; i++) {
+      const a = i / 24 * Math.PI * 2 + 0.3, r0 = R * (0.55 + 0.2 * ((i * 7) % 3) / 2);
+      ctx.beginPath(); ctx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); ctx.lineTo(x + Math.cos(a) * R * 1.02, y + Math.sin(a) * R * 1.02); ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -13136,8 +13172,10 @@
       const k = Math.max(0, Math.min(1, 1 - (bossIntroUntil - t) / (activeBoss.intro || 1.5)));
       scale = 0.5 + 0.5 * k; alpha = k;
     } else if (state === 'bossDefeat') {
-      const k = Math.max(0, Math.min(1, (bossDefeatUntil - t) / (activeBoss.defeatHold || 1.7)));
-      scale = 0.7 + 0.5 * (1 - k); alpha = k; extraSpin = (1 - k) * 5;
+      // it comes apart: a white flash for an instant, then only the pieces remain
+      const since = (activeBoss.defeatHold || 1.7) - (bossDefeatUntil - t);
+      if (since > 0.14) return;
+      scale = 1 + since * 0.6; alpha = 1; bossHitFlash = 1;
     }
     r *= scale;
     const rec = bossRecoil * 9;
@@ -13171,6 +13209,7 @@
     else if (kind === 'clock') drawMetronox(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
     else if (kind === 'nullstar') drawNullstar(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
     else drawEclipseSovereign(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
+    drawBossCracks(t, r, cols);
 
     ctx.restore();
   }
@@ -13280,6 +13319,7 @@
       const f = CUBE_F[fi];
       const n = rot3(f.n, yaw, pitch, roll);
       if (n[2] <= 0.02) continue;
+      if ((fi === 4 && bossPhase >= 2) || (fi === 2 && bossPhase >= 3)) continue;   // plates knocked off
       const q = f.v.map(i => proj3([RV[i][0] + n[0] * unfold, RV[i][1] + n[1] * unfold, RV[i][2] + n[2] * unfold], size));
       vis.push({ fi, q, z: (q[0][2] + q[1][2] + q[2][2] + q[3][2]) / 4, lit: n[2] });
     }
@@ -13379,6 +13419,7 @@
     // side gears (behind), meshing with the big wheel
     ctx.save();
     for (const dir of [-1, 1]) {
+      if ((dir < 0 && bossPhase >= 1) || (dir > 0 && bossPhase >= 3)) continue;   // gears knocked off
       slab(r * 0.09, (back, k) => {
       ctx.translate(dir * r * 0.98, -r * 0.6);
       if (back) { ctx.fillStyle = edgeFill(k); gearPath(r * 0.36, r * 0.29, 12, -gearRot * 2 * dir + Math.PI / 12); ctx.fill(); return; }
@@ -13785,6 +13826,273 @@
     return [Math.max(-1, Math.min(1, (tgt.x - bossX()) / (W * 0.4))) * maxU, Math.max(-1, Math.min(1, (tgt.y - bossY()) / (H * 0.4))) * maxU];
   }
 
+  // ================= v4.2: BOSS HITS YOU CAN SEE =================
+  // Every hit in a boss fight fires a shot from the craft to the boss; the damage
+  // lands when the shot does, with a spark and a number. A running power keeps
+  // attacking the boss on every beat with its own weapon (saws, lasers, prism
+  // beams, gravity orbs, cubes, star bolts). Phase breaks knock pieces off the
+  // boss, it cracks, and on defeat it comes apart completely.
+  let bossShots = [], dmgPops = [], bossChunks = [], bossShotSeq = 0;
+  let assaultLeft = 0, assaultBeat = -1;
+  const SHOT_TIME = { pulse: 0.16, saw: 0.3, laser: 0.07, prism: 0.14, orb: 0.32, cube: 0.18, star: 0.22, bang: 0.3 };
+  const ABILITY_SHOT = { hexSaw: 'saw', triLaser: 'laser', prismGuard: 'prism', eventHorizon: 'orb', quantize: 'cube', bigBang: 'star' };
+  const SHOT_COL = { saw: '#00f5ff', laser: '#ff2e4d', prism: '#b06bff', orb: '#ffd23d', cube: '#a6ff3d', star: '#ffe9a8', bang: '#ffffff' };
+  const ASSAULT_BUDGET = { bigBang: 30, quantize: 18 };   // others: 24 per activation
+  function fireBossShot(kind, dmg, isPerfect, fromAbility, color, fromX, fromY) {
+    if (!bossActive || !(dmg > 0)) return;
+    const t = clockNow() - startTime, seq = bossShotSeq++;
+    bossShots.push({
+      kind, dmg, isPerfect: !!isPerfect, fromAbility: !!fromAbility,
+      color: color || SHOT_COL[kind] || theme.c1, t0: t,
+      x: fromX == null ? tgt.x : fromX, y: fromY == null ? tgt.y - targetR * 0.4 : fromY,
+      bend: ((seq * 37) % 11) / 5.5 - 1, ox: ((seq * 53) % 17) / 8.5 - 1, oy: ((seq * 29) % 13) / 6.5 - 1, done: false
+    });
+    if (bossShots.length > 64) {
+      // never drop damage: land the oldest pending shots right away
+      for (const s of bossShots.splice(0, bossShots.length - 64)) if (!s.done) damageBoss(s.dmg, s.isPerfect, s.fromAbility);
+    }
+  }
+  function shotTarget(s) {
+    const r = bossR();
+    return [bossX() + s.ox * r * 0.42, bossY() + s.oy * r * 0.32];
+  }
+  function startAssault() {
+    assaultLeft = (ASSAULT_BUDGET[abilityId] || 24) * (save.overclock ? 1.5 : 1);
+    assaultBeat = Math.floor(musicBeatFloat());
+  }
+  function updateBossCombat(t, dt) {
+    // shots landing
+    for (const s of bossShots) {
+      if (s.done || t - s.t0 < SHOT_TIME[s.kind]) continue;
+      s.done = true; s.tHit = t;
+      if (bossActive && state === 'bossBattle') {
+        const [hx, hy] = shotTarget(s);
+        damageBoss(s.dmg, s.isPerfect, s.fromAbility);
+        createBurst(hx, hy, s.color, s.kind === 'bang' ? 50 : s.kind === 'pulse' ? 6 : 12, s.kind === 'bang' ? 1.8 : 0.9);
+        if (s.dmg >= 1) dmgPops.push({ x: hx + s.bend * 14, y: hy - 10, t0: t, txt: String(Math.round(s.dmg)), col: s.kind === 'pulse' ? '#ffffff' : s.color, big: s.kind === 'bang' || s.dmg >= 10 });
+      }
+    }
+    bossShots = bossShots.filter(s => !s.done || t - s.tHit < 0.45);
+    dmgPops = dmgPops.filter(p => t - p.t0 < 0.85);
+    if (dmgPops.length > 30) dmgPops.splice(0, dmgPops.length - 30);
+    // a running power keeps hitting the boss, one attack per beat
+    if (abActive && bossActive && state === 'bossBattle' && assaultLeft > 0) {
+      const bi = Math.floor(musicBeatFloat());
+      if (bi !== assaultBeat) {
+        assaultBeat = bi;
+        const kind = ABILITY_SHOT[abilityId];
+        if (kind) {
+          const dmg = Math.min(abilityId === 'bigBang' ? 5 : 3, assaultLeft);
+          assaultLeft -= dmg;
+          const o = abilityId === 'bigBang' ? bangOrbXY() : null;
+          fireBossShot(kind, dmg, true, true, null, o ? o[0] : null, o ? o[1] : null);
+        }
+      }
+    }
+    // debris physics
+    if (bossChunks.length) {
+      for (const c of bossChunks) {
+        c.vy += 900 * dt; c.vx *= 1 - dt * 0.4;
+        c.x += c.vx * dt; c.y += c.vy * dt; c.rot += c.vr * dt;
+      }
+      bossChunks = bossChunks.filter(c => t - c.t0 < c.life && c.y < H + 120);
+    }
+  }
+  function clearBossCombat() { bossShots = []; dmgPops = []; bossChunks = []; assaultLeft = 0; }
+
+  // ---- pieces coming off ----
+  // Where each boss loses something at each phase break (in boss radii).
+  const BREAK_POINTS = {
+    cube: { 1: [[0, -0.55], [0.3, -0.5]], 2: [[0, -0.62], [-0.4, -0.45]], 3: [[0.62, 0], [0.55, 0.3]] },
+    hex: { 1: [[-1.15, 0], [-1.0, 0.25]], 2: [[0.9, -0.9], [-0.9, 0.9], [0.3, -1.3]], 3: [[1.15, 0], [1.0, -0.25]] },
+    tri: { 1: [[0, -1.2], [0.1, -1.05]], 2: [[1.05, 0.6], [0.9, 0.5]], 3: [[-1.05, 0.6], [0, -1.15], [0.1, -1.25]] },
+    prism: { 1: [[1.4, 0], [1.2, 0.2]], 2: [[-1.4, 0], [-1.2, -0.2]], 3: [[0, -1.2], [0.4, 0.3], [-0.3, 0.6]] },
+    eclipse: { 1: [[-0.4, -1.15], [0.4, -1.15]], 2: [[-1.6, -0.4], [1.6, -0.4], [-1.3, -0.1]], 3: [[0, -2.0], [2.1, 0], [-2.1, 0.2]] },
+    clock: { 1: [[-0.98, -0.6], [-1.15, -0.45]], 2: [[0.5, 0.5], [-0.5, 0.5]], 3: [[0.98, -0.6], [1.15, -0.45], [0, 0.95]] },
+    nullstar: { 1: [[-1.5, 0], [1.5, 0]], 2: [[0, -1.4], [1.2, 0.4]], 3: [[-1.2, 0.4], [0, 1.2]] },
+    dragon: { 1: [[-1.0, -1.2], [-0.8, -1.0]], 2: [[1.0, -1.2], [0.8, -1.0]], 3: [[-1.4, -0.4], [-1.6, 0.1], [-1.2, 0.3]] },
+    ufo: { 1: [[-1.4, 0.1], [1.4, 0.1]], 2: [[0, -0.5], [0.25, -0.6]], 3: [[1.6, 0.05], [-1.1, 0.3], [0.6, 0.3]] },
+    mech: { 1: [[-0.8, -0.34], [-0.95, -0.2]], 2: [[0.8, -0.34], [0.95, -0.2]], 3: [[1.6, -1.4], [1.9, -1.8], [1.4, -1.1]] }
+  };
+  function chunkMesh(v) {
+    return meshOnce('bchunk' + v, () => {
+      const n = 3 + (v % 3), V = [], h = (k) => (Math.sin(v * 91.7 + k * 13.3) * 43758.5453) % 1;
+      const hh = (k) => Math.abs(h(k));
+      V.push([0, -(0.8 + hh(1) * 0.5), 0], [0, 0.7 + hh(2) * 0.4, 0]);
+      for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2 + hh(i + 3); const rr = 0.6 + hh(i + 9) * 0.5; V.push([Math.cos(a) * rr, (hh(i + 5) - 0.5) * 0.3, Math.sin(a) * rr]); }
+      const F = [];
+      for (let i = 0; i < n; i++) { const j = (i + 1) % n; F.push({ v: [0, 2 + i, 2 + j] }); F.push({ v: [1, 2 + j, 2 + i] }); }
+      for (const f of F) f.n = faceNormal(V, f.v);
+      return { V, F };
+    });
+  }
+  function spawnBossChunks(points, n, power) {
+    if (!activeBoss) return;
+    const r = bossR(), bx = bossX(), by = bossY(), cols = activeBoss.colors, t = clockNow() - startTime;
+    for (let i = 0; i < n; i++) {
+      const p = points[i % points.length];
+      const jx = Math.sin(i * 12.9898 + bossShotSeq) * 0.18, jy = Math.cos(i * 78.233 + bossShotSeq) * 0.18;
+      const px = (p[0] + jx), py = (p[1] + jy);
+      const out = Math.hypot(px, py) || 1;
+      const sp = (220 + (i % 5) * 90) * power;
+      bossChunks.push({
+        x: bx + px * r, y: by + py * r,
+        vx: px / out * sp + Math.sin(i * 3.7) * 80, vy: py / out * sp - 180 * power + Math.cos(i * 5.1) * 60,
+        rot: i * 1.3, vr: (i % 2 ? 1 : -1) * (3 + (i % 4) * 1.5),
+        s: r * (0.07 + 0.06 * ((i * 7) % 5) / 4) * (power > 1 ? 1.25 : 1),
+        v: i % 6, col: cols[i % 2], edge: cols[(i + 1) % 3] || cols[0], t0: t, life: 1.5 + (i % 4) * 0.2
+      });
+    }
+    if (bossChunks.length > 90) bossChunks.splice(0, bossChunks.length - 90);
+  }
+  function bossBreakOff(phase) {
+    const kind = activeBoss && activeBoss.kind;
+    const pts = (BREAK_POINTS[kind] && BREAK_POINTS[kind][phase]) || [[0.8, -0.5], [-0.8, -0.5]];
+    spawnBossChunks(pts, 10 + phase * 2, 1);
+  }
+  function bossShatter() {
+    // the whole boss comes apart
+    const pts = [];
+    for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; pts.push([Math.cos(a) * (0.35 + (i % 3) * 0.3), Math.sin(a) * (0.3 + (i % 2) * 0.35)]); }
+    spawnBossChunks(pts, SpaceFX.low ? 26 : 42, 1.35);
+    createBurst(bossX(), bossY(), '#ffffff', 60, 2.0);
+    createBurst(bossX(), bossY(), activeBoss.colors[0], 50, 1.7);
+    shockwaves.push({ x: bossX(), y: bossY(), r: bossR() * 0.5, alpha: 1, speed: 900, width: 10, color: activeBoss.colors[1] });
+  }
+
+  // ---- drawing ----
+  function drawBossCombat(t) {
+    if (!bossShots.length && !dmgPops.length && !bossChunks.length) return;
+    // debris (behind the shots)
+    if (bossChunks.length) {
+      for (const c of bossChunks) {
+        const age = t - c.t0, a = Math.max(0, Math.min(1, (c.life - age) / 0.5));
+        if (a <= 0) continue;
+        ctx.save(); ctx.translate(c.x, c.y); ctx.globalAlpha = a;
+        drawMesh(chunkMesh(c.v), { yaw: c.rot, pitch: c.rot * 0.7, roll: c.rot * 0.3, S: c.s }, { tint: c.col, edge: c.edge, lw: 1.6, glow: 0, alpha: 1 });
+        ctx.restore();
+      }
+    }
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (const s of bossShots) {
+      const [hx, hy] = shotTarget(s);
+      const dur = SHOT_TIME[s.kind];
+      const age = t - s.t0;
+      const dx = hx - s.x, dy = hy - s.y, d = Math.hypot(dx, dy) || 1;
+      const cx = s.x + dx * 0.5 - (dy / d) * d * 0.25 * s.bend, cy = s.y + dy * 0.5 + (dx / d) * d * 0.25 * s.bend;
+      const at = (u) => { const v = 1 - u; return [v * v * s.x + 2 * v * u * cx + u * u * hx, v * v * s.y + 2 * v * u * cy + u * u * hy]; };
+      if (s.done) {
+        // impact: a ring opening on the boss
+        const k = Math.min(1, (t - s.tHit) / 0.4);
+        ctx.globalAlpha = (1 - k) * (s.kind === 'pulse' ? 0.6 : 0.9);
+        ctx.strokeStyle = s.color; ctx.lineWidth = s.kind === 'bang' ? 10 * (1 - k) + 2 : 3 * (1 - k) + 1;
+        ctx.beginPath(); ctx.arc(hx, hy, (s.kind === 'bang' ? 40 : 8) + k * (s.kind === 'bang' ? 160 : 30), 0, Math.PI * 2); ctx.stroke();
+        if (s.kind === 'laser' || s.kind === 'bang') {
+          // the beam lingers a moment after it lands
+          const kk = Math.min(1, (t - s.tHit) / (s.kind === 'bang' ? 0.55 : 0.12));
+          if (kk < 1) {
+            ctx.globalAlpha = 1 - kk;
+            const wide = s.kind === 'bang' ? 34 : 7;
+            ctx.strokeStyle = s.kind === 'bang' ? 'rgba(255,214,120,0.6)' : hexToRgba(s.color, 0.6); ctx.lineWidth = wide * (1 - kk) + 2;
+            ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(hx, hy); ctx.stroke();
+            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = wide * 0.3 * (1 - kk) + 1;
+            ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(hx, hy); ctx.stroke();
+          }
+        }
+        continue;
+      }
+      const p = Math.min(1, age / dur);
+      const [px, py] = at(p);
+      ctx.globalAlpha = 1;
+      if (s.kind === 'laser' || s.kind === 'bang') {
+        const wide = s.kind === 'bang' ? 30 : 6;
+        const [ex, ey] = s.kind === 'bang' ? [s.x + dx * p, s.y + dy * p] : [hx, hy];
+        if (s.kind === 'bang') {
+          for (const [c, w] of [['rgba(255,80,180,0.5)', wide * 1.5], ['rgba(80,220,255,0.5)', wide * 1.2], ['rgba(255,214,120,0.7)', wide], ['#ffffff', wide * 0.35]]) {
+            ctx.strokeStyle = c; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(ex, ey); ctx.stroke();
+          }
+        } else {
+          ctx.strokeStyle = hexToRgba(s.color, 0.55); ctx.lineWidth = wide;
+          ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(ex, ey); ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(ex, ey); ctx.stroke();
+        }
+        continue;
+      }
+      // a trail behind the head
+      const tail = Math.max(0, p - (s.kind === 'pulse' ? 0.35 : 0.25));
+      ctx.strokeStyle = hexToRgba(s.color, s.kind === 'pulse' ? 0.55 : 0.4); ctx.lineWidth = s.kind === 'pulse' ? 4 : 6;
+      ctx.beginPath();
+      for (let i = 0; i <= 6; i++) { const q = at(tail + (p - tail) * i / 6); if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); }
+      ctx.stroke();
+      if (s.kind === 'pulse' || s.kind === 'star') {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(px, py, s.kind === 'star' ? 5 : 3.5, 0, Math.PI * 2); ctx.fill();
+        if (s.kind === 'star') { ctx.fillStyle = hexToRgba(s.color, 0.5); ctx.beginPath(); ctx.arc(px, py, 11, 0, Math.PI * 2); ctx.fill(); }
+      } else if (s.kind === 'saw') {
+        ctx.save(); ctx.translate(px, py); ctx.rotate(age * 30);
+        ctx.strokeStyle = s.color; ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; ctx.moveTo(Math.cos(a) * 6, Math.sin(a) * 6); ctx.lineTo(Math.cos(a + 0.35) * 13, Math.sin(a + 0.35) * 13); }
+        ctx.stroke(); ctx.beginPath(); ctx.arc(0, 0, 6, 0, Math.PI * 2); ctx.stroke();
+        ctx.restore();
+      } else if (s.kind === 'prism') {
+        const rb = ['#ff3b3b', '#ffe14d', '#62ff6b', '#38c8ff', '#b06bff'];
+        rb.forEach((c, i) => { ctx.strokeStyle = c; ctx.lineWidth = 2; const o = (i - 2) * 2.2; const a = at(Math.max(0, p - 0.3)); ctx.beginPath(); ctx.moveTo(a[0] + o, a[1]); ctx.lineTo(px + o, py); ctx.stroke(); });
+      } else if (s.kind === 'orb') {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(0,0,0,0.85)'; ctx.beginPath(); ctx.arc(px, py, 8, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = s.color; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.ellipse(px, py, 15, 5, age * 3, 0, Math.PI * 2); ctx.stroke();
+      } else if (s.kind === 'cube') {
+        const P = CUBE_V.map(v => proj3(rot3(v, age * 8, age * 5, 0), 7));
+        ctx.strokeStyle = s.color; ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        for (const [a, b] of CUBE_E) { ctx.moveTo(px + P[a][0], py + P[a][1]); ctx.lineTo(px + P[b][0], py + P[b][1]); }
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+    // damage numbers
+    if (dmgPops.length) {
+      ctx.save();
+      ctx.textAlign = 'center';
+      for (const p of dmgPops) {
+        const k = (t - p.t0) / 0.85;
+        ctx.globalAlpha = 1 - k * k;
+        ctx.font = '900 ' + (p.big ? 24 : 15) + 'px Inter, system-ui, sans-serif';
+        ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+        ctx.strokeText(p.txt, p.x, p.y - k * 34);
+        ctx.fillStyle = p.col; ctx.fillText(p.txt, p.x, p.y - k * 34);
+      }
+      ctx.restore();
+    }
+  }
+  // Glowing fractures over a badly hurt boss (drawn in the boss's own frame).
+  function drawBossCracks(t, r, cols) {
+    if (bossPhase < 2) return;
+    const n = bossPhase >= 3 ? 7 : 4;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    const fl = 0.55 + 0.45 * Math.sin(t * 11) * Math.sin(t * 7.3);
+    for (let i = 0; i < n; i++) {
+      const a = i / n * Math.PI * 2 + 0.6, len = r * (0.45 + 0.18 * ((i * 7) % 3));
+      ctx.strokeStyle = hexToRgba(i % 2 ? cols[2] || '#ffffff' : '#ffffff', 0.55 * fl);
+      ctx.lineWidth = 1.8;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * 0.12, Math.sin(a) * r * 0.12);
+      for (let j = 1; j <= 4; j++) {
+        const rr = r * 0.12 + (len - r * 0.12) * j / 4, kink = ((i * 13 + j * 7) % 5 - 2) * 0.09;
+        ctx.lineTo(Math.cos(a + kink) * rr, Math.sin(a + kink) * rr);
+      }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   // HEXATRON — the Signal Warden, in 3D: an armoured hex block with one huge
   // green eye and furious brows. A hex-saw ring spins behind it, its blade fins
   // flare with the music, and its front plating splits open phase by phase to
@@ -13803,6 +14111,7 @@
     ctx.fillStyle = 'rgba(6,18,30,0.85)'; ctx.strokeStyle = cols[0]; ctx.lineWidth = 2; ctx.shadowColor = cols[0]; ctx.shadowBlur = 10;
     ctx.beginPath();
     for (let i = 0; i < teeth; i++) {
+      if (bossPhase >= 2 && i % 4 === 1) continue;            // teeth snapped off
       const a = sp + i / teeth * Math.PI * 2, a2 = a + Math.PI * 2 / teeth * 0.55, am = a + Math.PI * 2 / teeth * 0.15;
       const p0 = toS(Math.cos(a) * R0, Math.sin(a) * R0, -0.12), p1 = toS(Math.cos(am) * R1, Math.sin(am) * R1, -0.12), p2 = toS(Math.cos(a2) * R0, Math.sin(a2) * R0, -0.12);
       ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.closePath();
@@ -13816,6 +14125,7 @@
     // 2. blade fins, left and right
     const fin = meshOnce('hexFin', () => extrude([[0, -0.46], [0.66, -0.1], [0.58, 0.28], [0, 0.46]], 0.08));
     for (const dir of [-1, 1]) {
+      if ((dir < 0 && bossPhase >= 1) || (dir > 0 && bossPhase >= 3)) continue;   // fins torn away
       const q = { tx: dir * (0.98 + openK * 0.1 + thump * 0.04), roll: dir * (0.22 + openK * 0.12), s: 1 };
       const finM = dir < 0 ? meshOnce('hexFinL', () => ({ V: fin.V.map(v => [-v[0], v[1], v[2]]), F: fin.F.map(f => ({ v: f.v, n: [-f.n[0], f.n[1], f.n[2]], cap: f.cap })) })) : fin;
       drawMesh(finM, P, { tint: cols[0], edge: cols[0], lw: 2.2, glow: 8 }, q);
@@ -13879,6 +14189,7 @@
     // 1. razor blades out of each corner (behind the body)
     const blade = meshOnce('triBlade', () => extrude([[0, -0.62], [0.13, 0.02], [0, 0.1], [-0.13, 0.02]], 0.05));
     for (let i = 0; i < 3; i++) {
+      if (i < bossPhase) continue;                             // a blade breaks off at each phase
       const a = -Math.PI / 2 + i / 3 * Math.PI * 2;          // locked to the corners
       const lit = 0.5 + 0.5 * Math.sin(t * 2.4 + i * 2.1);
       const reach = 1.06 + lit * 0.1 + thump * 0.04 + bossPhase * 0.03;
@@ -13921,7 +14232,7 @@
     // 4. the crown: small, gold, spinning on its own above the top corner
     const crown = meshOnce('triCrown', () => extrude([[-0.3, 0.12], [-0.3, -0.12], [-0.18, 0.0], [-0.08, -0.2], [0, -0.04], [0.08, -0.2], [0.18, 0.0], [0.3, -0.12], [0.3, 0.12]], 0.07));
     const bob = Math.sin(t * 2.2) * 0.04 + thump * 0.03;
-    drawMesh(crown, P, { tint: '#ffd23d', edge: '#ffe98a', lw: 1.8, glow: 10, alpha: 0.98 }, { yaw: t * 1.3, ty: -1.02 + bob, tz: 0.05, s: 0.62, roll: -0.18 });
+    if (bossPhase < 3) drawMesh(crown, P, { tint: '#ffd23d', edge: '#ffe98a', lw: 1.8, glow: 10, alpha: 0.98 }, { yaw: t * 1.3, ty: -1.02 + bob, tz: 0.05, s: 0.62, roll: -0.18 });
   }
 
   // VANTA PRISM — the Null Shard, in 3D: a tall black crystal turning slowly,
@@ -13948,7 +14259,7 @@
     // 2. orbiting shards: the ones behind first
     const shard = meshOnce('vpShard', () => bipyramid(4, 0.11, 0.22, 0.22));
     const shards = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 5 - Math.min(3, bossPhase); i++) {      // a shard shatters at each phase
       const a = i / 5 * Math.PI * 2 + t * 0.7 * (1 - align * 0.7);
       const rad = 1.45 - align * 0.12;
       shards.push({ x: Math.cos(a) * rad, y: (1 - align) * Math.sin(a * 2 + t) * 0.12 - align * 0.0, z: Math.sin(a) * rad * 0.8, a, i });
@@ -14008,12 +14319,13 @@
     // 1. blade wings, behind
     const wing = meshOnce('ecWing', () => extrude([[0.5, -0.25], [1.1, -0.62], [1.62, -0.5], [1.82, -0.08], [1.5, 0.02], [1.2, 0.12], [0.6, 0.32]], 0.06));
     for (const dir of [-1, 1]) {
+      if (dir < 0 && bossPhase >= 2) continue;                 // a wing torn off
       const flap = Math.sin(t * 1.6 + (dir < 0 ? 0 : 0.4)) * 0.08 + thump * 0.04;
       const wM = dir < 0 ? meshOnce('ecWingL', () => ({ V: wing.V.map(v => [-v[0], v[1], v[2]]), F: wing.F.map(f => ({ v: f.v, n: [-f.n[0], f.n[1], f.n[2]], cap: f.cap })) })) : wing;
       drawMesh(wM, P, { tint: cols[0], edge: cols[0], lw: 2.2, glow: 8 }, { tz: -0.45, roll: dir * flap, yaw: dir * 0.25 });
     }
     // 2. halo rings: three tilted circles; back halves now, front halves after the sphere
-    const halos = [[1.55, 0.6, cols[1], 1.15, 0.2], [1.9, -0.35, cols[0], 1.3, -0.35], [2.25, 0.22, cols[1], 1.05, 0.5]];
+    const halos = [[1.55, 0.6, cols[1], 1.15, 0.2], [1.9, -0.35, cols[0], 1.3, -0.35], [2.25, 0.22, cols[1], 1.05, 0.5]].slice(0, bossPhase >= 3 ? 2 : 3);
     const haloPts = halos.map(([rr, sp, col, tiltX, tiltZ]) => {
       const pts = [];
       for (let i = 0; i <= 64; i++) {
@@ -14034,6 +14346,7 @@
     // 3. crown of spikes on top: back spikes now
     const spikes = [];
     for (let i = 0; i < 7; i++) {
+      if ((bossPhase >= 1 && (i === 2 || i === 4)) || (bossPhase >= 2 && (i === 0 || i === 6))) continue;   // spikes snapped
       const lon = -Math.PI * 0.62 + i / 6 * Math.PI * 1.24, lat = -0.82 - (i % 2 ? 0 : 0.12);
       const base = [Math.sin(lon) * Math.cos(lat) * 0.98, Math.sin(lat) * 0.98, Math.cos(lon) * Math.cos(lat) * 0.98];
       const len = (i % 2 ? 0.34 : 0.55) + thump * 0.05 + rage * 0.1;
@@ -14143,6 +14456,7 @@
     // wings (behind): swept back, flapping
     const wing = meshOnce('vxWing', () => extrude([[0.3, -0.15], [1.5, -0.95], [1.35, -0.25], [1.75, 0.1], [1.2, 0.15], [1.4, 0.55], [0.5, 0.3]], 0.05));
     for (const dir of [-1, 1]) {
+      if (dir < 0 && bossPhase >= 3) continue;                 // a wing torn away
       const M = dir < 0 ? mirrorMesh('vxWingL', wing) : wing;
       drawMesh(M, P, { tint: cols[0], edge: cols[0], lw: 2.4, glow: 10 }, { tz: -0.5, yaw: dir * 0.4, roll: dir * (-0.12 + flap * 0.12) });
       // membrane glow lines along the wing, in 3D
@@ -14168,6 +14482,7 @@
     // horns: swept back
     const horn = meshOnce('vxHorn', () => extrude([...curvePts(0.32, -0.5, 1.0, -1.25, 1.28, -1.5, 6), ...curvePts(1.28, -1.5, 0.85, -1.05, 0.5, -0.42, 6).slice(1)], 0.07));
     for (const dir of [-1, 1]) {
+      if ((dir < 0 && bossPhase >= 1) || (dir > 0 && bossPhase >= 2)) continue;   // horns broken off
       const M = dir < 0 ? mirrorMesh('vxHornL', horn) : horn;
       drawMesh(M, P, { tint: cols[1], edge: cols[1], lw: 2.4, glow: 10 }, { tz: -0.05, yaw: dir * 0.35 });
     }
@@ -14281,6 +14596,7 @@
     const lamp = (i, front) => {
       const a = hullYaw + i / lamps * Math.PI * 2, s = Math.sin(a);
       if ((s >= 0) !== front) return;
+      if ((bossPhase >= 1 && i % 3 === 1) || (bossPhase >= 3 && i % 3 === 2)) return;   // lamps knocked out
       const x = Math.cos(a) * RW * 0.99, y = s * RY * 0.99 + band * 0.5;
       const on = ((i + step) % 3 === 0);
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -14325,6 +14641,15 @@
     ctx.globalCompositeOperation = 'lighter'; ctx.shadowBlur = 0;
     ctx.fillStyle = 'rgba(255,255,255,0.22)';
     ctx.beginPath(); ctx.ellipse(-domeR * 0.38, dy - domeH * 0.62, domeR * 0.22, domeR * 0.1, -0.5, 0, Math.PI * 2); ctx.fill();
+    if (bossPhase >= 2) {
+      // the glass is cracked
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.moveTo(domeR * 0.1, dy - domeH * 0.9); ctx.lineTo(domeR * 0.25, dy - domeH * 0.55); ctx.lineTo(domeR * 0.12, dy - domeH * 0.3); ctx.lineTo(domeR * 0.38, dy - domeH * 0.1);
+      ctx.moveTo(domeR * 0.25, dy - domeH * 0.55); ctx.lineTo(domeR * 0.55, dy - domeH * 0.6);
+      ctx.moveTo(-domeR * 0.2, dy - domeH * 0.8); ctx.lineTo(-domeR * 0.42, dy - domeH * 0.48);
+      ctx.stroke();
+    }
     ctx.restore();
     for (let i = 0; i < lamps; i++) lamp(i, true);
     // final-phase energy corona
@@ -14366,6 +14691,7 @@
     // shoulders on pistons
     const sh = meshOnce('arShoulder', () => extrude([[-0.18, -0.3], [0.42, -0.36], [0.52, 0.12], [-0.14, 0.24]], 0.22));
     for (const dir of [-1, 1]) {
+      if ((dir < 0 && bossPhase >= 1) || (dir > 0 && bossPhase >= 2)) continue;   // shoulder armour blown off
       const M = dir < 0 ? mirrorMesh('arShoulderL', sh) : sh;
       const q = { tx: dir * 0.78, ty: -0.34 + (dir > 0 ? piston : -piston), tz: 0.02, yaw: dir * 0.25 };
       drawMesh(M, P, { tint: cols[0], edge: cols[0], lw: 2.6, glow: 6 }, q);
@@ -14411,11 +14737,13 @@
     // THE ELECTRIC SWORD: a real blade with thickness, held across the arena
     const ang = -0.62 + Math.sin(t * 0.7) * 0.06 + (bossPhase >= 2 ? -0.12 : 0);
     const sq = { tx: 1.02, ty: -0.3, tz: 0.3, roll: ang };
-    const bL = 2.25, bW = 0.17;
+    const bL = bossPhase >= 3 ? 1.25 : 2.25, bW = 0.17;          // the sword snaps in the last phase
     const hilt = meshOnce('arHilt', () => extrude([[-bW * 0.55, 0], [bW * 0.55, 0], [bW * 0.55, 0.42], [-bW * 0.55, 0.42]], 0.07));
     const guard = meshOnce('arGuard', () => extrude([[-bW * 1.5, -0.06], [bW * 1.5, -0.06], [bW * 1.5, 0.04], [-bW * 1.5, 0.04]], 0.09));
     drawMesh(hilt, P, { tint: cols[0], edge: cols[0], lw: 2, glow: 6 }, sq);
-    const blade = meshOnce('arBlade', () => extrude([[-bW, -0.02], [-bW * 0.72, -bL * 0.86], [0, -bL], [bW * 0.72, -bL * 0.86], [bW, -0.02]], 0.035));
+    const blade = bossPhase >= 3
+      ? meshOnce('arBladeBroken', () => extrude([[-bW, -0.02], [-bW * 0.85, -bL * 0.9], [-bW * 0.2, -bL * 0.78], [bW * 0.3, -bL], [bW * 0.8, -bL * 0.84], [bW, -0.02]], 0.035))
+      : meshOnce('arBlade', () => extrude([[-bW, -0.02], [-bW * 0.72, -bL * 0.86], [0, -bL], [bW * 0.72, -bL * 0.86], [bW, -0.02]], 0.035));
     ctx.save(); ctx.shadowColor = cols[0];
     drawMesh(blade, P, { tint: '#b8d4ee', edge: hexToRgba(cols[0], 0.95), lw: 2.2, glow: 8 + charge * 10, alpha: 0.96 }, sq);
     ctx.restore();
@@ -14687,6 +15015,7 @@
     drawTarget(t);
     drawParticles();
     drawCoreCapture(t);
+    fxSafe(() => drawBossCombat(t));
     fxSafe(() => drawNovaFX(t));
     fxSafe(() => Hyper.drawOverlay(t));
     ctx.restore();
