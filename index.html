@@ -195,7 +195,10 @@
     @keyframes bossDanger { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.6); } }
     .boss-phase-mark { position: absolute; top: 0; bottom: 0; width: 2px; background: rgba(0,0,0,0.6); z-index: 2; }
     #bossDefeatBanner {
-      position: fixed; top: 40%; left: 50%; translate: -50% -50%;
+      /* centred by transform alone (the old extra translate doubled it and, with
+         shrink-to-fit width, squeezed the banner into the left half on phones) */
+      position: fixed; top: 40%; left: 50%;
+      width: max-content; max-width: min(92vw, 560px);
       z-index: 20; pointer-events: none; text-align: center;
       opacity: 0; transition: opacity 250ms ease; transform: translate(-50%,-50%) scale(0.9);
     }
@@ -849,6 +852,9 @@
     .board-you .bname.plate-engineer {
       color: #fff6c9; text-shadow: 0 0 12px rgba(255,210,61,0.85);
     }
+    .board-you .bname.plate-voidbreaker {
+      color: #ffffff; text-shadow: 0 0 10px rgba(255,233,168,0.9), 0 0 22px rgba(176,38,255,0.7);
+    }
     .board-you .bname { font-weight: 900; font-size: 15px; color: var(--c1); text-shadow: 0 0 10px var(--glow1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .btn.tiny { padding: 6px 12px; font-size: 11px; border-radius: 999px; width: auto; }
     .board-soon {
@@ -1121,8 +1127,8 @@
         <div class="howto-item"><span class="glyph">⚡</span><span>Build combo to chase milestones: <b>25× Combo Fever</b> gives ×1.5 score, <b>100× Supernova</b> ×2 and <b>250× Singularity</b> ×3 (PERFECT hits only: a GOOD or OK drops you back to ×2 until 25 PERFECTs in a row), with <b>Overdrive</b> and <b>Perfect Orbit</b> bonuses along the way. One miss resets the climb. <b>Long rhythm runs</b> show up more from Stage 5.</span></div>
         <div class="howto-item"><span class="glyph">▲</span><span>Each new level gives a brief <b>breather</b>: gameplay pauses, the level and track are announced, then a fresh pattern begins.</span></div>
         <div class="howto-item"><span class="glyph">♥</span><span>Your <b>energy bar</b> drains over time and on misses. When it empties, the run ends.</span></div>
-        <div class="howto-item"><span class="glyph">☣</span><span><b>Boss Battles</b> at Stages 20, 30, 40 & 50. Damage the boss by hitting rings — <b>Perfect</b> hits hurt most, <b>Good</b> chips in, <b>OK</b> doesn't. Survive its phases to win energy. Progression pauses until the boss falls.</span></div>
-        <div class="howto-item"><span class="glyph">✦</span><span>Defeat a boss to <b>capture its core</b> — Hex Saw, Tri-Laser, Prism Guard, or Event Horizon. Equip one in Settings, then <b>hold the target</b> (or hold Space) for half a second to unleash it. Rings your core destroys count as <b>PERFECT</b>, and energy drain pauses while it's running.</span></div>
+        <div class="howto-item"><span class="glyph">☣</span><span><b>Boss Battles</b> at Stages 10, 20, 30, 40 & 50, and maybe beyond… Damage the boss by hitting rings — <b>Perfect</b> hits hurt most, <b>Good</b> chips in, <b>OK</b> doesn't. Survive its phases to win energy. Progression pauses until the boss falls.</span></div>
+        <div class="howto-item"><span class="glyph">✦</span><span>Defeat a boss to <b>capture its core</b> — Quantize, Hex Saw, Tri-Laser, Prism Guard, or Event Horizon. Equip one in Settings, then <b>hold the target</b> (or hold Space) for half a second to unleash it. Rings your core destroys count as <b>PERFECT</b>, and energy drain pauses while it's running.</span></div>
         <div class="howto-item"><span class="glyph">★</span><span>Runs earn <b>XP</b>. Level up to unlock neon <b>themes</b> and <b>Music Vibes</b> in Settings.</span></div>
         <div class="howto-item"><span class="glyph">🏆</span><span>Your <b>Highest Score</b> across all runs is shown on the home screen. Chase your personal best — a leaderboard is coming later.</span></div>
       </div>
@@ -1171,7 +1177,7 @@
   <div class="overlay hidden" id="loreScreen">
     <div class="card">
       <h2 class="sr-only">The Signal</h2>
-      <!-- shared art: the hero saucer, the four wardens, a sleepy planet -->
+      <!-- shared art: the hero saucer, the five wardens, a sleepy planet -->
       <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
         <defs>
           <linearGradient id="cxGlass" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e9ddff" stop-opacity="0.32"/><stop offset="1" stop-color="#7a4bd6" stop-opacity="0.18"/></linearGradient>
@@ -1198,6 +1204,17 @@
             <path d="M-2.6 -8.6 Q0 -6.4 2.6 -8.6" fill="none" stroke="#111" stroke-width="1.2" stroke-linecap="round"/>
             <path d="M-21 -3 A21 19 0 0 1 21 -3 Z" fill="url(#cxGlass)" stroke="#efe6ff" stroke-width="1.6"/>
             <path d="M-13 -13 Q-9 -19 -3 -20" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity="0.8"/>
+          </symbol>
+          <symbol id="cxCube" viewBox="-52 -50 104 100">
+            <polygon points="-30,-14 -16,-30 34,-30 20,-14" fill="#1a2c0c" stroke="#a6ff3d" stroke-width="3" stroke-linejoin="round"/>
+            <polygon points="20,-14 34,-30 34,22 20,38" fill="#10200a" stroke="#a6ff3d" stroke-width="3" stroke-linejoin="round"/>
+            <rect x="-30" y="-14" width="50" height="52" fill="#0d1a08" stroke="#a6ff3d" stroke-width="3.4" stroke-linejoin="round"/>
+            <rect x="-23" y="-5" width="36" height="38" fill="none" stroke="#a6ff3d" stroke-width="1.2" stroke-opacity="0.4"/>
+            <rect x="-21" y="2" width="11" height="11" fill="#ffb21e"/><rect x="0" y="2" width="11" height="11" fill="#ffb21e"/>
+            <rect x="-17" y="7" width="4" height="4" fill="#fff"/><rect x="4" y="7" width="4" height="4" fill="#fff"/>
+            <path d="M-23 -4 L-11 1 M14 -4 L2 1" stroke="#eafff0" stroke-width="3" stroke-linecap="round"/>
+            <path d="M-15 25 L6 25" stroke="#ffb21e" stroke-width="3" stroke-linecap="round"/>
+            <rect x="26" y="0" width="4" height="4" fill="#ffb21e"/>
           </symbol>
           <symbol id="cxHex" viewBox="-52 -50 104 100">
             <polygon points="-48,-8 -32,-22 -32,14" fill="#062430" stroke="#00f5ff" stroke-width="3" stroke-linejoin="round"/>
@@ -1248,7 +1265,7 @@
         <div class="cp cover">
           <div class="cover-issue">RHYTHM VOID COMICS · No. 1</div>
           <div class="cover-title">THE SIGNAL</div>
-          <div class="cover-sub">A tiny saucer. A giant song. Four very grumpy robots.</div>
+          <div class="cover-sub">A tiny saucer. A giant song. Five very grumpy robots.</div>
         </div>
 
         <div class="cp">
@@ -1308,6 +1325,11 @@
         </div>
 
         <p class="files-h">THE WARDEN FILES</p>
+        <div class="cp wanted">
+          <div class="art"><svg viewBox="0 0 320 112" role="img" aria-label="Cubex, a grumpy green cube with square eyes and a flat little mouth"><rect width="320" height="112" fill="url(#cxDots)"/><use href="#cxCube" x="106" y="6" width="108" height="100"/></svg><span class="bub bub-s" style="left:4%;top:6%">NO. DANCING.</span></div>
+          <p class="wn">CUBEX</p><p class="ws">The Gatekeeper · Stage 10</p>
+          <p class="wd">Square as they come. Wants every beat in a neat little box, and guards the first door out of the dark.</p>
+        </div>
         <div class="cp half wanted">
           <div class="art"><svg viewBox="0 0 160 112" role="img" aria-label="Hexatron, an angry hexagon with one green eye"><rect width="160" height="112" fill="url(#cxDots)"/><use href="#cxHex" x="26" y="6" width="108" height="100"/></svg><span class="bub bub-s" style="left:4%;top:4%">OFF-BEAT! OFF-BEAT!</span></div>
           <p class="wn">HEXATRON</p><p class="ws">The Signal Warden · Stage 20</p>
@@ -1330,13 +1352,14 @@
         </div>
 
         <div class="cp">
-          <p class="cap">Beat a warden and keep its power: <b>Hex Saw</b>, <b>Tri-Laser</b>, <b>Prism Guard</b> and the <b>Event Horizon</b>.</p>
-          <div class="art"><svg viewBox="0 0 320 96" role="img" aria-label="Four power badges: a saw, three lasers, a shield and a black hole">
-            <rect width="320" height="96" fill="url(#cxDots)"/>
-            <g transform="translate(46 48)"><circle r="30" fill="#062430" stroke="#00f5ff" stroke-width="3"/><polygon points="0,-18 15.6,-9 15.6,9 0,18 -15.6,9 -15.6,-9" fill="none" stroke="#fff" stroke-width="2.4"/><g fill="#00f5ff"><polygon points="0,-24 4,-17 -4,-17"/><polygon points="0,24 4,17 -4,17"/><polygon points="20.8,-12 13,-12.4 17,-5.6"/><polygon points="-20.8,12 -13,12.4 -17,5.6"/><polygon points="20.8,12 17,5.6 13,12.4"/><polygon points="-20.8,-12 -17,-5.6 -13,-12.4"/></g></g>
-            <g transform="translate(122 48)"><circle r="30" fill="#2a0710" stroke="#ff2e4d" stroke-width="3"/><g stroke="#ffd23d" stroke-width="3" stroke-linecap="round"><path d="M0 0 L0 -22"/><path d="M0 0 L19 11"/><path d="M0 0 L-19 11"/></g><circle r="4" fill="#fff"/></g>
-            <g transform="translate(198 48)"><circle r="30" fill="#1c0b33" stroke="#b06bff" stroke-width="3"/><path d="M0 -20 L16 -13 L14 8 Q8 18 0 22 Q-8 18 -14 8 L-16 -13 Z" fill="#3a1866" stroke="#7dff68" stroke-width="2.2" stroke-linejoin="round"/></g>
-            <g transform="translate(274 48)"><circle r="30" fill="#0b0012" stroke="#ffd23d" stroke-width="3"/><ellipse rx="22" ry="7" fill="none" stroke="#ff9e3d" stroke-width="2.4"/><circle r="10" fill="#000" stroke="#fff" stroke-width="1.4"/></g>
+          <p class="cap">Beat a warden and keep its power: <b>Quantize</b>, <b>Hex Saw</b>, <b>Tri-Laser</b>, <b>Prism Guard</b> and the <b>Event Horizon</b>.</p>
+          <div class="art"><svg viewBox="0 0 396 96" role="img" aria-label="Five power badges: a cube, a saw, three lasers, a shield and a black hole">
+            <rect width="396" height="96" fill="url(#cxDots)"/>
+            <g transform="translate(46 48)"><circle r="30" fill="#13240a" stroke="#a6ff3d" stroke-width="3"/><g fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"><rect x="-14" y="-6" width="18" height="18"/><rect x="-6" y="-14" width="18" height="18"/><path d="M-14 -6 L-6 -14 M4 -6 L12 -14 M4 12 L12 4 M-14 12 L-6 4"/></g></g>
+            <g transform="translate(122 48)"><circle r="30" fill="#062430" stroke="#00f5ff" stroke-width="3"/><polygon points="0,-18 15.6,-9 15.6,9 0,18 -15.6,9 -15.6,-9" fill="none" stroke="#fff" stroke-width="2.4"/><g fill="#00f5ff"><polygon points="0,-24 4,-17 -4,-17"/><polygon points="0,24 4,17 -4,17"/><polygon points="20.8,-12 13,-12.4 17,-5.6"/><polygon points="-20.8,12 -13,12.4 -17,5.6"/><polygon points="20.8,12 17,5.6 13,12.4"/><polygon points="-20.8,-12 -17,-5.6 -13,-12.4"/></g></g>
+            <g transform="translate(198 48)"><circle r="30" fill="#2a0710" stroke="#ff2e4d" stroke-width="3"/><g stroke="#ffd23d" stroke-width="3" stroke-linecap="round"><path d="M0 0 L0 -22"/><path d="M0 0 L19 11"/><path d="M0 0 L-19 11"/></g><circle r="4" fill="#fff"/></g>
+            <g transform="translate(274 48)"><circle r="30" fill="#1c0b33" stroke="#b06bff" stroke-width="3"/><path d="M0 -20 L16 -13 L14 8 Q8 18 0 22 Q-8 18 -14 8 L-16 -13 Z" fill="#3a1866" stroke="#7dff68" stroke-width="2.2" stroke-linejoin="round"/></g>
+            <g transform="translate(350 48)"><circle r="30" fill="#0b0012" stroke="#ffd23d" stroke-width="3"/><ellipse rx="22" ry="7" fill="none" stroke="#ff9e3d" stroke-width="2.4"/><circle r="10" fill="#000" stroke="#fff" stroke-width="1.4"/></g>
           </svg></div>
         </div>
 
@@ -1364,6 +1387,8 @@
             <li>Something old and hungry is said to sleep between the stars, dreaming of a broken <span class="lore-secret" id="loreSecret" role="button" tabindex="0">rhythm</span>.</li>
             <li>A strange craft hides where not even light can escape.</li>
             <li>And whoever wrote the Signal still keeps score.</li>
+            <li>Long after the last Warden, something is still keeping time.</li>
+            <li>And the song has an end. Something is waiting there.</li>
           </ul>
         </div>
 
@@ -2004,12 +2029,42 @@
   ];
 
   // ================= BOSS EXPANSION (v2.0) =================
-  const BOSS_STAGES = [20, 30, 40, 50];
+  // v4: Cubex opens the gauntlet at 10. 70 and 100 are SECRET: no hint in the
+  // menus, they simply arrive if a run lasts that long.
+  const BOSS_STAGES = [10, 20, 30, 40, 50, 70, 100];
 
   // Boss-specific rhythm pools (v2.3). Each has a recovery rest baked into span.
   // Keyed by boss id; each entry is chosen with telegraph + readable spacing.
   // Phase escalation happens by allowing denser entries as bossPhase rises.
   const BOSS_PATTERNS = {
+    // CUBEX: the first boss. Plain four-square phrases with long rests; the
+    // denser ones only open once it is already hurt.
+    cubex: [
+      { name: 'Box Four',  offsets: [0, 1, 2, 3], span: 5, weight: 3, minPhase: 0 },
+      { name: 'Box Pair',  offsets: [0, 0.5, 2, 2.5], span: 4, weight: 2, minPhase: 0 },
+      { name: 'Box Step',  offsets: [0, 1, 1.5, 2, 3], span: 5, weight: 2, minPhase: 1 },
+      { name: 'Box Stack', offsets: [0, 0.5, 1, 1.5, 2, 3], span: 5, weight: 2, minPhase: 2 }
+    ],
+    // SECRET (70) METRONOX: clockwork. Strictly regular, getting finer and
+    // finer the way a clock divides a second, never sloppy.
+    metronox: [
+      { name: 'Tick Tock',  offsets: [0, 1, 2, 3, 4, 5, 6, 7], span: 9, weight: 3, minPhase: 0 },
+      { name: 'Escapement', offsets: [0, 0.5, 1, 2, 2.5, 3, 4, 4.5, 5], span: 7, weight: 2, minPhase: 0 },
+      { name: 'Pendulum',   offsets: [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5], span: 6, weight: 2, minPhase: 1 },
+      { name: 'Gear Train', offsets: [0, 0.33, 0.66, 1, 2, 2.33, 2.66, 3, 4, 4.5, 5, 5.5], span: 8, weight: 2, minPhase: 2 },
+      { name: 'Midnight',   offsets: [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.5, 3, 3.25, 3.5, 3.75, 4, 5, 5.5, 6], span: 10, weight: 1, minPhase: 3 }
+    ],
+    // SECRET (100) NULLSTAR: it has swallowed every Warden, so it fights with
+    // all of their rhythms, opening up phase by phase.
+    nullstar: [
+      { name: 'Void Box',   offsets: [0, 1, 1.5, 2, 3, 3.5], span: 4.5, weight: 2, minPhase: 0 },
+      { name: 'Void Hex',   offsets: [0, 0.5, 1, 1.5, 2, 2.5], span: 4, weight: 2, minPhase: 0 },
+      { name: 'Void Razor', offsets: [0, 0.33, 0.66, 1, 2, 2.33, 2.66, 3], span: 6, weight: 2, minPhase: 1 },
+      { name: 'Void Prism', offsets: [0, 0.5, 1.75, 2.25, 3.5, 4, 4.5], span: 6, weight: 2, minPhase: 1 },
+      { name: 'Void Crown', offsets: [0, 0.5, 1, 1.5, 2, 2.33, 2.66, 3, 3.5, 4, 4.5, 5], span: 8, weight: 2, minPhase: 2 },
+      { name: 'Big Crunch', offsets: [0, 0.25, 0.5, 0.75, 1, 1.5, 2, 2.25, 2.5, 2.75, 3, 3.5, 4, 4.5, 5, 5.5, 6], span: 11, weight: 2, minPhase: 3 },
+      { name: 'Last Light', offsets: [0, 1, 2, 3, 3.5, 4, 4.5, 5, 5.25, 5.5, 5.75, 6], span: 9, weight: 1, minPhase: 3 }
+    ],
     hexatron: [
       { name: 'Hex Six',   offsets: [0, 1, 2, 3, 4, 5], span: 7, weight: 3, minPhase: 0 },
       { name: 'Hex Half',  offsets: [0, 0.5, 1, 1.5, 2, 2.5], span: 5, weight: 2, minPhase: 0 },
@@ -2066,6 +2121,13 @@
   // personality (folded over the current vibe — never a separate song). Attack
   // pattern pools are keyed by phase; patterns reuse the normal ring system.
   const BOSSES = {
+    10: {
+      id: 'cubex', name: 'CUBEX', subtitle: 'THE GATEKEEPER',
+      kind: 'cube', hp: 180, energyReward: 20, ability: 'quantize', auraCol: '#8a2410',
+      colors: ['#a6ff3d', '#ffb21e', '#eafff0'], barColor: '#a6ff3d',
+      scale: 0.92,
+      music: { kick: 1.2, tense: 0.35, metal: 0.35, sub: 0.85, stab: true }
+    },
     20: {
       id: 'hexatron', name: 'HEXATRON', subtitle: 'THE SIGNAL WARDEN',
       kind: 'hex', hp: 340, energyReward: 20, ability: 'hexSaw',
@@ -2093,6 +2155,28 @@
       colors: ['#b026ff', '#ffd23d', '#ff2e4d'], barColor: '#ffd23d',
       scale: 1.15,
       music: { kick: 1.45, tense: 0.85, metal: 0.7, sub: 1.15, heavy: true, stab: true }
+    },
+    // ---- SECRET (Stage 70): the clock that keeps the Wardens' time. Its
+    // reward is not a core but OVERCLOCK, an upgrade to every core.
+    70: {
+      id: 'metronox', name: 'METRONOX', subtitle: 'THE CLOCKWORK HEART',
+      kind: 'clock', hp: 700, auraCol: '#7a3c00', energyReward: 40, reward: 'overclock', secretBoss: true,
+      intro: 2.4, defeatHold: 2.4, introLine: 'THE CLOCK STRIKES SEVENTY',
+      repeatBonus: { score: 4000, xp: 120 },
+      colors: ['#ffb627', '#3df2ff', '#fff4d6'], barColor: '#ffb627',
+      scale: 1.12,
+      music: { kick: 1.4, tense: 0.8, metal: 0.75, sub: 1.1, heavy: true, stab: true }
+    },
+    // ---- SECRET (Stage 100): the true end of the song. Every Warden was a
+    // piece of it. Its core is the Big Bang.
+    100: {
+      id: 'nullstar', name: 'NULLSTAR', subtitle: 'THE HEART OF THE VOID',
+      kind: 'nullstar', hp: 900, auraCol: '#4a1078', energyReward: 999, ability: 'bigBang', secretBoss: true,
+      intro: 3.4, defeatHold: 3.2, introLine: 'THE SONG HAS AN END',
+      repeatBonus: { score: 10000, xp: 250 },
+      colors: ['#ffffff', '#ffd23d', '#b026ff'], barColor: '#ffe9a8',
+      scale: 1.22,
+      music: { kick: 1.5, tense: 1.0, metal: 1.0, sub: 1.25, heavy: true, stab: true, guitar: true }
     }
   };
   // ---- SECRET: the Cyber Dragon that ends the hidden DOOM gauntlet. Keyed by
@@ -2141,6 +2225,12 @@
   // Ability metadata for the loadout UI + unlock gating (v2.7 "Boss Core" lineup).
   // Every ability is a captured boss core: hold the target (or Space) to wield it.
   const ABILITIES = {
+    quantize: {
+      name: 'Quantize', short: 'QUANT', type: 'hold', bossName: 'Cubex',
+      unlockText: 'Defeat Cubex at Stage 10',
+      flavor: "Pried out of Cubex's very tidy little brain.",
+      desc: 'Hold the target to snap the beat into a box for 10 seconds: every ring you hit lands as a PERFECT, and drain pauses. Misses still count, so keep tapping. Recharges every 4 stages.'
+    },
     hexSaw: {
       name: 'Hex Saw', short: 'SAW', type: 'hold', bossName: 'Hexatron',
       unlockText: 'Defeat Hexatron at Stage 20',
@@ -2164,9 +2254,18 @@
       unlockText: 'Defeat Eclipse Sovereign at Stage 50',
       flavor: "Eclipse Sovereign's core, collapsed past the point of no return.",
       desc: 'Hold the target to collapse it into a supermassive black hole for 12 seconds. Every ring in flight falls in at once, and every ring after that is devoured as it closes in: all PERFECT, at double score on top of your combo tier. Drain stops. When it ends, a Hawking flare refills 30 energy. Recharges every 7 stages.'
+    },
+    // SECRET: the reward for Stage 100. Its name stays hidden until earned.
+    bigBang: {
+      name: 'Big Bang', short: 'BIG BANG', type: 'hold', bossName: 'Nullstar', secret: true,
+      unlockText: 'Reach the end of the song',
+      flavor: 'The first light in the universe, taken back from the heart of the Void.',
+      desc: 'Hold the target to ignite a newborn star for 14 seconds. Everything in flight detonates at once, then every ring detonates on its beat: all PERFECT, at double score, and drain stops. In a boss fight every detonation hurls a solar flare at the boss. When it ends, the Big Bang clears the field, refills 50 energy and slams the boss for massive damage. Recharges every 6 stages.'
     }
   };
-  const ABILITY_ORDER = ['hexSaw', 'triLaser', 'prismGuard', 'eventHorizon'];
+  const ABILITY_ORDER = ['quantize', 'hexSaw', 'triLaser', 'prismGuard', 'eventHorizon', 'bigBang'];
+  // OVERCLOCK (Stage 70 reward): an upgrade to every core, not a core itself.
+  const OVERCLOCK_TEXT = 'Overclocked: every core lasts 50% longer, recharges 2 stages sooner, hits bosses 50% harder and refills 25 energy when you fire it.';
 
   // ================= 2. SAVE =================
 
@@ -2185,8 +2284,9 @@
     tutorialDone: false,
     bests: { chill: 0, arcade: 0, chaos: 0 },
     daily: { date: '', score: 0 },
-    bossUnlocks: { hexatron: false, triarch: false, vantaPrism: false, eclipseSovereign: false },
+    bossUnlocks: { cubex: false, hexatron: false, triarch: false, vantaPrism: false, eclipseSovereign: false, metronox: false, nullstar: false },
     equippedAbility: 'none',
+    overclock: false,          // Stage 70 reward: every core upgraded
     bossRecords: { defeated: 0, farthest: '' },
     // Anonymous, local-first identity. `id` is stable and never shown; `name`
     // is the editable display name. No accounts, no sign-in, no personal data.
@@ -2208,9 +2308,9 @@
     settings: { music: true, musicVolume: 68, sfx: true, haptics: true, tapMode: 'target', musicVibe: 'voidMetal', autoMatchVibe: true, environmentDetail: 'full', audioOffsetMs: 0, tapVoice: 'classic', tapVolume: 100 }
   });
 
-  const ABILITY_IDS = ['none', 'hexSaw', 'triLaser', 'prismGuard', 'eventHorizon'];
+  const ABILITY_IDS = ['none', 'quantize', 'hexSaw', 'triLaser', 'prismGuard', 'eventHorizon', 'bigBang'];
   // ability id → the boss whose defeat unlocks it
-  const ABILITY_UNLOCK_BOSS = { hexSaw: 'hexatron', triLaser: 'triarch', prismGuard: 'vantaPrism', eventHorizon: 'eclipseSovereign' };
+  const ABILITY_UNLOCK_BOSS = { quantize: 'cubex', hexSaw: 'hexatron', triLaser: 'triarch', prismGuard: 'vantaPrism', eventHorizon: 'eclipseSovereign', bigBang: 'nullstar' };
   // Ability id migration across every historical lineup → v2.7 Boss Core ids.
   const ABILITY_MIGRATE = {
     // v2.0–v2.2 originals
@@ -2221,7 +2321,8 @@
     hexSaw: 'hexSaw', laser: 'triLaser', triLaser: 'triLaser',
     shield: 'prismGuard', prismGuard: 'prismGuard',
     // v0.3.0: Eclipse Realm (time freeze) became Event Horizon; saves carry over.
-    timeRealm: 'eventHorizon', eclipseRealm: 'eventHorizon', eventHorizon: 'eventHorizon'
+    timeRealm: 'eventHorizon', eclipseRealm: 'eventHorizon', eventHorizon: 'eventHorizon',
+    quantize: 'quantize', bigBang: 'bigBang'
   };
 
   function loadSave() {
@@ -2258,7 +2359,8 @@
         s.settings.musicVolume = Math.max(0, Math.min(100, Math.round(s.settings.musicVolume)));
       }
       // v2.0: boss expansion — merge missing fields into existing saves.
-      s.bossUnlocks = Object.assign({ hexatron: false, triarch: false, vantaPrism: false, eclipseSovereign: false }, parsed.bossUnlocks || {});
+      s.bossUnlocks = Object.assign({ cubex: false, hexatron: false, triarch: false, vantaPrism: false, eclipseSovereign: false, metronox: false, nullstar: false }, parsed.bossUnlocks || {});
+      s.overclock = !!parsed.overclock;
       s.bossRecords = Object.assign({ defeated: 0, farthest: '' }, parsed.bossRecords || {});
       // v2.6: secret vibe unlocks (Void Metal from the Cyber Dragon).
       // v3.5: local leaderboard + anonymous player identity.
@@ -4789,7 +4891,9 @@
   // actually built this game gets to be one of them.
   const NAMEPLATES = {
     none:     { id: 'none',     label: '',               cls: '' },
-    engineer: { id: 'engineer', label: 'SIGNAL ENGINEER',  cls: 'plate-engineer' }
+    engineer: { id: 'engineer', label: 'SIGNAL ENGINEER',  cls: 'plate-engineer' },
+    // earned, not typed: the first time Nullstar falls (if no plate is set)
+    voidbreaker: { id: 'voidbreaker', label: 'VOIDBREAKER', cls: 'plate-voidbreaker' }
   };
   // Entering one of these as a display name unlocks the plate instead of
   // renaming. Case- and space-insensitive.
@@ -5068,7 +5172,9 @@
         const isEq = equipped === id;
         const btn = document.createElement('button');
         btn.className = 'ability-swatch' + (unlocked ? '' : ' locked') + (isEq ? ' equipped' : '');
-        btn.innerHTML = `<span class="ab-name">${meta.name}</span><span class="ab-type">Boss Core: ${meta.bossName}</span>` +
+        // the end-game core keeps its name and boss secret until it is earned
+        const hide = meta.secret && !unlocked;
+        btn.innerHTML = `<span class="ab-name">${hide ? '???' : meta.name}</span><span class="ab-type">Boss Core: ${hide ? '???' : meta.bossName}</span>` +
           (unlocked ? (isEq ? `<span class="ab-lock">Equipped</span>` : `<span class="ab-lock">Hold to use</span>`)
                     : `<span class="ab-lock">🔒 ${meta.unlockText}</span>`);
         btn.addEventListener('click', () => {
@@ -5079,8 +5185,9 @@
         abGrid.appendChild(btn);
       }
       const eqMeta = equipped !== 'none' ? ABILITIES[equipped] : null;
-      $('abilityDesc').textContent = eqMeta ? (eqMeta.flavor + ' ' + eqMeta.desc)
-        : 'Capture a boss core to wield its power. Hold the target (or hold Space) to activate. One equipped at a time.';
+      $('abilityDesc').textContent = (eqMeta ? (eqMeta.flavor + ' ' + eqMeta.desc)
+        : 'Capture a boss core to wield its power. Hold the target (or hold Space) to activate. One equipped at a time.')
+        + (save.overclock ? ' ⚡ ' + OVERCLOCK_TEXT : '');
       const anyUnlocked = ABILITY_ORDER.some(id => save.bossUnlocks[ABILITY_UNLOCK_BOSS[id]]);
       $('abilityHint').textContent = anyUnlocked ? '' : '— defeat bosses to unlock';
     }
@@ -5918,9 +6025,28 @@
     prismGuard:   { dur: 15, uses: 999, stages: 6, bossCap: 45, invincible: true },
     // Event Horizon: 12s supermassive collapse. Devours every ring within `reach`
     // target radii as a PERFECT at double score. Rarest recharge, biggest boss cap.
-    eventHorizon: { dur: 12, uses: 999, stages: 7, bossCap: 90, reach: 3.2 }
+    eventHorizon: { dur: 12, uses: 999, stages: 7, bossCap: 90, reach: 3.2 },
+    // Quantize: the starter core. Upgrades your own hits; it never plays for you.
+    quantize:     { dur: 10, uses: 999, stages: 4, bossCap: 0 },
+    // Big Bang: the end-game core. bossCap feeds the solar flares; the finale
+    // blast is separate (see bigBangFinale).
+    bigBang:      { dur: 14, uses: 999, stages: 6, bossCap: 200 }
   };
-  function abTuning() { return ABILITY_TUNING[abilityId] || null; }
+  // OVERCLOCK: the same table, upgraded. Cached per core.
+  const _ocTuning = {};
+  function tuningFor(id) {
+    const base = ABILITY_TUNING[id];
+    if (!base || !save.overclock) return base || null;
+    return _ocTuning[id] || (_ocTuning[id] = Object.assign({}, base, {
+      dur: base.dur * 1.5,
+      uses: base.uses >= 999 ? base.uses : Math.round(base.uses * 1.5),
+      stages: Math.max(2, base.stages - 2),
+      bossCap: Math.round(base.bossCap * 1.5)
+    }));
+  }
+  function abTuning() { return tuningFor(abilityId); }
+  function quantizeActive() { return abActive && abilityId === 'quantize'; }
+  function bigBangActive() { return abActive && abilityId === 'bigBang'; }
   // Drain pauses while any ability is channeling (spec §8).
   function abilityPausesDrain() { return abActive; }
   // Event Horizon is open: rings are devoured, stray taps are free.
@@ -6268,8 +6394,9 @@
     // resolve the equipped ability for this run and prime its counters
     abilityId = save.equippedAbility || 'none';
     {
-      const tune = ABILITY_TUNING[abilityId];
+      const tune = tuningFor(abilityId);
       abActive = false; abUsesLeft = 0; abBossDmgLeft = 0; abUntil = 0;
+      bangBolts = []; bangBlast = null; bangPulse = 0;
       abHoldStart = 0; abHoldProgress = 0; abFlash = 0; abUsedThisRun = false;
       horizonDevouredRun = 0; devours = [];
       abStagesLeft = tune ? tune.stages : 0;
@@ -6899,7 +7026,7 @@
 
     const nowT = clockNow() - startTime;
     state = 'bossIntro';
-    bossIntroUntil = nowT + 1.5;   // ~1.5s intro
+    bossIntroUntil = nowT + (def.intro || 1.5);   // ~1.5s intro; secret bosses take longer
     notes = []; lastScheduledHitT = -Infinity;                    // clear field for a clean entrance
     moveArmed = false;
 
@@ -6916,7 +7043,16 @@
     firePulse(); bgPulse = 1; shake = Math.max(shake, 6);
     buzz([40, 30, 40, 30, 80]);
     // dramatic entrance sound
-    if (save.settings.sfx) {
+    if (def.secretBoss) {
+      // nothing in the game warns you these exist
+      shake = Math.max(shake, 12);
+      buzz([80, 40, 80, 40, 160]);
+      showToast('SECRET BOSS', def.colors[1], def.introLine || '');
+      if (save.settings.sfx) {
+        [41, 55, 82, 110].forEach((f, i) => tone(f, 0.9, 'sawtooth', 0.06, i * 0.18));
+        [1319, 1760, 2093].forEach((f, i) => tone(f, 0.18, 'triangle', 0.025, 0.7 + i * 0.12));
+      }
+    } else if (save.settings.sfx) {
       [110, 146, 220].forEach((f, i) => tone(f, 0.5, 'sawtooth', 0.05, i * 0.12));
       tone(880, 0.1, 'square', 0.03, 0.2);
     }
@@ -7036,7 +7172,7 @@
     state = 'bossDefeat';
     const nowT = clockNow() - startTime;
     if (DEBUG) { const elapsedSeconds = (nowT - bossFightStart).toFixed(1); console.log('[boss duration]', def.name, elapsedSeconds); }
-    bossDefeatUntil = nowT + 1.7;
+    bossDefeatUntil = nowT + (def.defeatHold || 1.7);
     notes = []; lastScheduledHitT = -Infinity;
 
     // energy reward (Eclipse Sovereign restores to full)
@@ -7075,6 +7211,7 @@
       }
       if (doomCfg.rewardWorld) { save.themeUnlocks = save.themeUnlocks || {}; save.themeUnlocks[doomCfg.rewardWorld] = true; }
       save[doomCfg.clearedFlag] = true;
+      if (DevMode && DevMode.on && !DevMode.runFlagged) DevMode.noteEarned({ theme: doomCfg.rewardTheme || doomCfg.rewardWorld, vibe: doomCfg.rewardVibe, flag: doomCfg.clearedFlag });
       persist();
       bossDefeatNameEl.textContent = def.name + ' FALLS';
       bossRewardLabelEl.textContent = !firstClear ? 'ALREADY UNLOCKED'
@@ -7095,13 +7232,18 @@
     const firstTime = !save.bossUnlocks[def.id];
     if (firstTime) {
       save.bossUnlocks[def.id] = true;
+      if (def.reward === 'overclock') { save.overclock = true; for (const k in _ocTuning) delete _ocTuning[k]; }
+      if (def.id === 'nullstar' && ensurePlayer().plate === 'none') save.player.plate = 'voidbreaker';
       bossRewardKind = 'unlock';
     } else {
-      // repeat defeat: bonus score + XP
-      score += 1500; scoreEl.textContent = score;
-      addXp(60);
+      // repeat defeat: bonus score + XP (secret bosses pay more)
+      const rb = def.repeatBonus || { score: 1500, xp: 60 };
+      score += rb.score; scoreEl.textContent = score;
+      addXp(rb.xp);
       bossRewardKind = 'bonus';
     }
+    // dev mode: a real win in a normal (unflagged) run survives turning dev mode off
+    if (DevMode && DevMode.on && !DevMode.runFlagged) DevMode.noteEarned({ boss: def.id, overclock: def.reward === 'overclock' });
     persist();
     trackEvent('boss_defeated', { boss: def.id, firstTime });
 
@@ -7112,7 +7254,17 @@
   }
 
   function showBossReward(def, firstTime) {
-    if (firstTime) {
+    if (firstTime && def.reward === 'overclock') {
+      bossDefeatNameEl.textContent = 'CLOCKWORK HEART CAPTURED';
+      bossRewardLabelEl.textContent = '⚡ OVERCLOCK UNLOCKED';
+      bossRewardValueEl.textContent = 'Every Boss Core upgraded';
+      coreCapture = { t0: clockNow() - startTime, dur: 1.9, color: def.colors[0] };
+    } else if (firstTime && def.id === 'nullstar') {
+      bossDefeatNameEl.textContent = 'THE VOID FALLS';
+      bossRewardLabelEl.textContent = 'BIG BANG UNLOCKED';
+      bossRewardValueEl.textContent = 'Boss Core: Nullstar';
+      coreCapture = { t0: clockNow() - startTime, dur: 2.4, color: '#ffe9a8' };
+    } else if (firstTime) {
       const ab = ABILITIES[def.ability];
       bossDefeatNameEl.textContent = 'BOSS CORE CAPTURED';
       bossRewardLabelEl.textContent = (ab ? ab.name.toUpperCase() : '') + ' UNLOCKED';
@@ -7120,9 +7272,10 @@
       // core-capture FX: energy streams from the boss into the player's target
       coreCapture = { t0: clockNow() - startTime, dur: 1.4, color: def.colors[0] };
     } else {
-      bossDefeatNameEl.textContent = 'BOSS DEFEATED';
+      const rb = def.repeatBonus || { score: 1500, xp: 60 };
+      bossDefeatNameEl.textContent = def.id === 'nullstar' ? 'THE VOID FALLS AGAIN' : 'BOSS DEFEATED';
       bossRewardLabelEl.textContent = 'BONUS';
-      bossRewardValueEl.textContent = '+1500 · +60 XP';
+      bossRewardValueEl.textContent = '+' + rb.score.toLocaleString() + ' · +' + rb.xp + ' XP';
     }
     bossDefeatBanner.classList.add('show');
   }
@@ -7179,6 +7332,12 @@
       return;
     }
 
+    // TRUE ENDING: the song is free. The run carries on, endless, from 101.
+    if (bossReturnStage === 101) {
+      showToast('THE SIGNAL IS FREE', '#ffe9a8', 'TRUE ENDING · KEEP PLAYING');
+      firePulse(); bgPulse = 1;
+      if (save.settings.sfx) [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => tone(f, 0.3, 'triangle', 0.035, i * 0.09));
+    }
     // recharge ability progress counters credited for clearing the boss "stage"
     tickAbilityStages(true);
 
@@ -7260,7 +7419,7 @@
     const tune = abTuning();
     abilityBtn.classList.remove('show', 'ready');
     abilityStatus.classList.add('show');
-    const label = meta.short;
+    const label = (save.overclock ? '⚡' : '') + meta.short;
     if (abActive) {
       abilityStatus.classList.add('on-air');
       if (tune && tune.pause) {
@@ -7296,7 +7455,7 @@
   // Mirrors the normal PERFECT branch: combo, score, energy, boss damage,
   // stats, milestones and stage progression all behave as if the player nailed
   // it. Boss damage draws from this activation's cap.
-  function awardAbilityPerfect(x, y, color, sub) {
+  function awardAbilityPerfect(x, y, color, sub, noBossDmg) {
     combo += 1;
     maxCombo = Math.max(maxCombo, combo);
     if (runStats) { runStats.hits++; runStats.perfects++; runStats.maxCombo = maxCombo; }
@@ -7307,7 +7466,7 @@
 
     const baseMult = 1 + Math.floor(combo / 12) * 0.25;
     // Event Horizon doubles what it devours, on top of the combo tier.
-    const mult = baseMult * FEVER_MULTS[fever ? Math.max(1, feverLevel) : 0] * (horizonActive() ? 2 : 1);
+    const mult = baseMult * FEVER_MULTS[fever ? Math.max(1, feverLevel) : 0] * (horizonActive() || bigBangActive() ? 2 : 1);
     score += Math.round(300 * mult);
     scoreEl.textContent = score;
     comboEl.textContent = combo + 'x';
@@ -7316,8 +7475,8 @@
     createBurst(x, y, color, 26, 1.1);
     shockwaves.push({ x, y, r: targetR * 0.8, alpha: 0.7, speed: 700, width: 5, color });
 
-    // boss damage, limited by this activation's cap
-    if (bossActive && abBossDmgLeft > 0) {
+    // boss damage, limited by this activation's cap (Big Bang sends it as a flare instead)
+    if (!noBossDmg && bossActive && abBossDmgLeft > 0) {
       const dmg = Math.min(BOSS_DMG.perfect, abBossDmgLeft);
       abBossDmgLeft -= dmg;
       damageBoss(dmg, true, true);
@@ -7363,11 +7522,13 @@
     abHoldStart = 0; abHoldProgress = 0;
     abFlash = 1;
 
-    showToast(meta.name.toUpperCase(), theme.c1, 'CORE ACTIVE');
+    showToast(meta.name.toUpperCase(), theme.c1, save.overclock ? '⚡ OVERCLOCKED' : 'CORE ACTIVE');
     firePulse(); bgPulse = 1; shake = Math.max(shake, 5);
     buzz([20, 15, 20, 15, 30]);
     abilitySound(abilityId, 'start');
+    if (save.overclock) { energy = Math.min(100, energy + 25); energyBar.style.width = energy + '%'; ocFlash = 1; }
     if (abilityId === 'eventHorizon') horizonCollapse(nowT);
+    if (abilityId === 'bigBang') bigBangIgnite(nowT);
     updateAbilityHud();
     trackEvent('ability_used', { ability: abilityId, stage });
   }
@@ -7380,6 +7541,7 @@
     abHoldStart = 0; abHoldProgress = 0;
     if (wasId === 'prismGuard') prismBlast();
     if (wasId === 'eventHorizon' && reason !== 'travel') hawkingFlare();
+    if (wasId === 'bigBang' && reason !== 'travel') bigBangFinale();
     abilitySound(wasId, 'end');
     updateAbilityHud();
   }
@@ -7450,6 +7612,57 @@
   }
   let realmMusicOn = false, realmSnap = 0;
 
+  // ---- Big Bang: ignite, detonate on the beat, solar flares, finale ----
+  let bangBolts = [];               // solar flares flying from the star to the boss
+  let bangBlast = null;             // {t0} of the finale, for the flash
+  let bangPulse = 0;                // 1 on each detonation, decays (star flare)
+  let quantSnap = 0;                // 1 when Quantize snaps a hit, decays
+  let ocFlash = 0;                  // overclock surge flash on activation
+  const BANG_BOLT_TIME = 0.24;      // a flare's flight to the boss, seconds
+  function bangDetonate(note, t) {
+    note.hit = true;
+    awardAbilityPerfect(note.tx, note.ty, '#ffe9a8', 'BIG BANG', true);
+    if (bossActive && state === 'bossBattle' && abBossDmgLeft > 0) {
+      const dmg = Math.min(BOSS_DMG.perfect * 2, abBossDmgLeft);   // a flare hits twice as hard as a tap
+      abBossDmgLeft -= dmg;
+      bangBolts.push({ t0: t, dmg, x: tgt.x, y: tgt.y, bend: ((bangBolts.length * 37) % 11) / 5.5 - 1, done: false });
+    }
+    bangPulse = 1;
+  }
+  // Ignition: everything already in flight detonates at once.
+  function bigBangIgnite(t) {
+    for (const note of notes) if (!note.hit && !note.missed) bangDetonate(note, t);
+    createBurst(tgt.x, tgt.y, '#ffffff', 60, 1.7);
+    createBurst(tgt.x, tgt.y, '#ffd23d', 40, 1.4);
+    shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR, alpha: 1, speed: 1300, width: 10, color: '#fff1c2' });
+    shake = Math.max(shake, 10);
+  }
+  // Finale: the star goes off. Clears the field, +50 energy, a heavy boss hit
+  // that sits outside the flare cap.
+  function bigBangFinale() {
+    const t = clockNow() - startTime;
+    for (const note of notes) {
+      if (note.hit || note.missed) continue;
+      note.hit = true;
+      awardAbilityPerfect(note.tx, note.ty, '#ffe9a8', 'BIG BANG', true);
+    }
+    energy = Math.min(100, energy + 50);
+    energyBar.style.width = energy + '%';
+    bangBlast = { t0: t };
+    const cols = ['#ffffff', '#ffd23d', '#ff2bd6', '#00f5ff', '#b026ff'];
+    cols.forEach((c, i) => shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR * (0.6 + i * 0.25), alpha: 1, speed: 900 + i * 260, width: 12 - i * 1.6, color: c }));
+    createBurst(tgt.x, tgt.y, '#ffffff', 80, 2.0);
+    createBurst(tgt.x, tgt.y, '#ffd23d', 50, 1.6);
+    shake = Math.max(shake, 14);
+    buzz([40, 30, 80, 30, 140]);
+    showToast('BIG BANG', '#ffe9a8', '+50 ENERGY');
+    if (bossActive && state === 'bossBattle') {
+      const dmg = Math.round((40 + bossMaxHealth * 0.06) * (save.overclock ? 1.5 : 1));
+      damageBoss(dmg, true, true);
+      bangBolts.push({ t0: t, dmg: 0, x: tgt.x, y: tgt.y, bend: 0, done: true, big: true });
+    }
+  }
+
   // ---- Ability audio (respects the SFX toggle via tone()) ----
   function abilitySound(id, phase) {
     if (!save.settings.sfx) return;
@@ -7462,6 +7675,18 @@
     } else if (id === 'prismGuard') {
       if (phase === 'start') { [440, 660].forEach((f, i) => tone(f, 0.14, 'triangle', 0.035, i * 0.05)); }
       else { [880, 660, 440].forEach((f, i) => tone(f, 0.16, 'triangle', 0.035, i * 0.04)); }
+    } else if (id === 'quantize') {
+      if (phase === 'start') { [392, 523, 659, 784].forEach((f, i) => tone(f, 0.08, 'square', 0.028, i * 0.05)); }
+      else { [784, 523].forEach((f, i) => tone(f, 0.09, 'square', 0.024, i * 0.05)); }
+    } else if (id === 'bigBang') {
+      if (phase === 'start') {
+        tone(41, 1.2, 'sine', 0.12);
+        [110, 220, 330, 440, 660, 880, 1320, 1760].forEach((f, i) => tone(f, 0.16, 'sawtooth', 0.028, 0.05 + i * 0.035));
+        tone(2093, 0.5, 'triangle', 0.03, 0.35);
+      } else {
+        tone(36, 1.4, 'sine', 0.14);
+        [1760, 1320, 880, 660, 440, 330, 220].forEach((f, i) => tone(f, 0.2, 'triangle', 0.04, i * 0.04));
+      }
     } else if (id === 'eventHorizon') {
       if (phase === 'start') {
         [880, 660, 440, 330, 220, 110].forEach((f, i) => tone(f, 0.1, 'sawtooth', 0.03, i * 0.045));
@@ -7503,6 +7728,17 @@
     }
 
     if (abFlash > 0) abFlash = Math.max(0, abFlash - dt * 2.2);
+    if (bangPulse > 0) bangPulse = Math.max(0, bangPulse - dt * 3.2);
+    if (quantSnap > 0) quantSnap = Math.max(0, quantSnap - dt * 4);
+    if (ocFlash > 0) ocFlash = Math.max(0, ocFlash - dt * 1.6);
+    if (bangBolts.length) {
+      for (const b of bangBolts) {
+        if (b.done || t - b.t0 < BANG_BOLT_TIME) continue;
+        b.done = true;
+        if (bossActive && state === 'bossBattle') { damageBoss(b.dmg, true, true); createBurst(bossX(), bossY(), '#ffe9a8', 10, 0.9); }
+      }
+      bangBolts = bangBolts.filter(b => t - b.t0 < BANG_BOLT_TIME + 0.4);
+    }
     if (realmSnap > 0) realmSnap = Math.max(0, realmSnap - dt * 1.8);
     for (const s of prismShards) { s.r += dt * 420; s.life -= dt * 1.2; }
     if (prismShards.length) prismShards = prismShards.filter(s => s.life > 0);
@@ -7521,6 +7757,12 @@
           note.hit = true;
           awardAbilityPerfect(note.tx, note.ty, '#b06bff', 'PRISM GUARD');
         }
+      }
+    } else if (abilityId === 'bigBang') {
+      // Every ring detonates on its own beat, so the star keeps time with the song.
+      for (const note of notes) {
+        if (note.hit || note.missed) continue;
+        if (t >= note.hitTime - 0.01) bangDetonate(note, t);
       }
     } else if (abilityId === 'eventHorizon') {
       // Gravity well: any ring that closes within reach is pulled in and devoured.
@@ -7593,6 +7835,7 @@
     abLoopTimer = 0;
     guardBreakFlash = 0;
     coreCapture = null;
+    bangBolts = []; bangBlast = null; bangPulse = 0; quantSnap = 0; ocFlash = 0;
     if (typeof abilityBtn !== 'undefined' && abilityBtn) abilityBtn.classList.remove('show', 'ready');
     if (typeof abilityStatus !== 'undefined' && abilityStatus) abilityStatus.classList.remove('show', 'on-air');
   }
@@ -8054,8 +8297,11 @@
     let points = 0, text = '';
     const color = bestNote.color;
 
+    // QUANTIZE: a Good or OK snaps to the grid and lands as a PERFECT.
+    const snapped = quantizeActive() && bestDiff > win.perfect;
+    if (snapped) quantSnap = 1;
 
-    if (bestDiff <= win.perfect) {
+    if (bestDiff <= win.perfect || snapped) {
       points = 300; text = 'PERFECT';
       perfects += 1;
       notePerfect();
@@ -8694,7 +8940,7 @@
     let sl = null;                                     // Supernova tier: the star that blows up right behind the hole
     let snPal = [[1, 1, 1], [1, 1, 1]], slPal = [[1, 1, 1], [1, 1, 1]], lastPal = -1;
     let wasActive = false, wasAbility = 'none';
-    const POWER_COL = { hexSaw: '#00f5ff', triLaser: '#ff2e4d', prismGuard: '#b06bff', eventHorizon: '#ffd76b' };
+    const POWER_COL = { hexSaw: '#00f5ff', triLaser: '#ff2e4d', prismGuard: '#b06bff', eventHorizon: '#ffd76b', quantize: '#a6ff3d', bigBang: '#fff1c2' };
 
     // Own PRNG: gameplay draws from Math.random, so the renderer must not.
     let seed = (Date.now() ^ 0x9e3779b9) >>> 0;
@@ -9558,9 +9804,11 @@
       if (act && !wasActive) {
         addFx('power', hexRgb(POWER_COL[abilityId] || theme.c1));
         if (abilityId === 'eventHorizon') addFx('collapse', [1, 0.85, 0.45]);
+        if (abilityId === 'bigBang') { addFx('nova', [1, 0.95, 0.75]); if (P.cosmos) spawnSupernova(1.6); }
       }
       if (!act && wasActive) {
         if (wasAbility === 'eventHorizon') addFx('hawking', [1, 0.86, 0.5]);
+        if (wasAbility === 'bigBang') { addFx('hawking', [1, 1, 1]); addFx('nova', [1, 0.82, 0.3]); if (P.cosmos) spawnSupernova(2.0); }
         if (wasAbility === 'prismGuard') addFx('burst', hexRgb(POWER_COL.prismGuard));
       }
       wasActive = act; wasAbility = abilityId;
@@ -9625,7 +9873,7 @@
       // Prism Guard's dome unfolds from the photon ring.
       let shieldR = 0;
       if (shieldMix > 0.001) {
-        const tune = ABILITY_TUNING.prismGuard;
+        const tune = tuningFor('prismGuard');
         const age = act && abilityId === 'prismGuard' ? t - (abUntil - tune.dur) : 1;
         shieldR = targetR * (1 + 1.05 * (1 - Math.pow(1 - Math.min(1, age / 0.35), 3)));
       }
@@ -10654,7 +10902,7 @@
   // EVENT HORIZON: the hole goes supermassive (SpaceFX). Here: the gravity well's edge,
   // drawn as dashes falling inward, plus a gold countdown arc hugging the photon ring.
   function drawEventHorizonFX(t, x, y) {
-    const tune = ABILITY_TUNING.eventHorizon;
+    const tune = tuningFor('eventHorizon');
     const e = easeOut3(powerAge(t) / 0.4);
     const reach = targetR * tune.reach;
     const left = Math.max(0, Math.min(1, (abUntil - t) / tune.dur));
@@ -10704,14 +10952,214 @@
     devours = devours.filter((d) => t - d.t0 < 0.42 && t >= d.t0);
   }
 
+  // QUANTIZE: a lime wireframe cube cage locks around the target. Each snapped
+  // hit flashes it white and kicks it bigger; a square fuse counts down.
+  function drawQuantizeFX(t, x, y) {
+    const tune = abTuning();
+    const e = easeOut3(powerAge(t) / 0.3);
+    const left = tune ? Math.max(0, Math.min(1, (abUntil - t) / tune.dur)) : 0;
+    const s = targetR * (1.05 + 0.2 * e + quantSnap * 0.12);
+    const yaw = t * 1.3, pitch = -0.5 + Math.sin(t * 0.9) * 0.15;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    const P = CUBE_V.map(v => proj3(rot3(v, yaw, pitch, 0), s * 0.78));
+    ctx.strokeStyle = quantSnap > 0.3 ? '#ffffff' : '#a6ff3d';
+    ctx.lineWidth = 1.8 + quantSnap * 1.6;
+    ctx.globalAlpha = 0.75 * e;
+    ctx.beginPath();
+    for (const [a, b] of CUBE_E) { ctx.moveTo(P[a][0], P[a][1]); ctx.lineTo(P[b][0], P[b][1]); }
+    ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    for (const p of P) { ctx.beginPath(); ctx.arc(p[0], p[1], 1.8 + (p[2] + 1), 0, Math.PI * 2); ctx.fill(); }
+    // grid ticks: the beat being snapped into place
+    ctx.globalAlpha = 0.35 * e; ctx.strokeStyle = '#a6ff3d'; ctx.lineWidth = 1;
+    const g = targetR * 1.7;
+    ctx.beginPath();
+    for (const k of [-1, 1]) { ctx.moveTo(k * g, -g * 0.35); ctx.lineTo(k * g, g * 0.35); ctx.moveTo(-g * 0.35, k * g); ctx.lineTo(g * 0.35, k * g); }
+    ctx.stroke();
+    // square fuse
+    const h = targetR * 1.42, per = h * 8, len = per * left;
+    ctx.globalAlpha = 0.9 * e; ctx.strokeStyle = '#ffb21e'; ctx.lineWidth = 2.6;
+    ctx.beginPath(); ctx.moveTo(0, -h);
+    const corners = [[h, -h], [h, h], [-h, h], [-h, -h], [0, -h]];
+    let px = 0, py = -h, rem = len;
+    for (const [cx, cy] of corners) {
+      const d = Math.hypot(cx - px, cy - py);
+      if (rem <= 0) break;
+      const k = Math.min(1, rem / d);
+      ctx.lineTo(px + (cx - px) * k, py + (cy - py) * k);
+      rem -= d; px = cx; py = cy;
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // BIG BANG: a newborn star on the target. White-gold core, a crown of rays
+  // that flare on every detonation, a ring for each beat, a rainbow fuse.
+  function drawBigBangFX(t, x, y) {
+    const tune = abTuning();
+    const e = easeOut3(powerAge(t) / 0.35);
+    const left = tune ? Math.max(0, Math.min(1, (abUntil - t) / tune.dur)) : 0;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalCompositeOperation = 'lighter';
+    // core
+    const cr = targetR * (1.15 + 0.3 * bangPulse) * e;
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, cr * 1.8);
+    g.addColorStop(0, 'rgba(255,255,255,0.95)');
+    g.addColorStop(0.35, 'rgba(255,233,168,0.7)');
+    g.addColorStop(0.7, 'rgba(255,140,40,0.25)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, cr * 1.8, 0, Math.PI * 2); ctx.fill();
+    // rays
+    const rays = 16;
+    for (let i = 0; i < rays; i++) {
+      const a = i / rays * Math.PI * 2 + t * 0.35;
+      const n = 0.5 + 0.5 * Math.sin(i * 12.9898 + t * 4.2);
+      const len = targetR * (1.7 + n * 1.1 + bangPulse * 1.2) * e;
+      const w = 0.05 + (i % 2) * 0.03;
+      ctx.globalAlpha = 0.35 + 0.25 * n;
+      ctx.fillStyle = i % 2 ? '#ffd23d' : '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a - w) * targetR * 0.7, Math.sin(a - w) * targetR * 0.7);
+      ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
+      ctx.lineTo(Math.cos(a + w) * targetR * 0.7, Math.sin(a + w) * targetR * 0.7);
+      ctx.closePath(); ctx.fill();
+    }
+    // lens-flare cross
+    ctx.globalAlpha = 0.55 * e;
+    ctx.fillStyle = '#ffffff';
+    const fl = targetR * (3.2 + bangPulse * 1.5);
+    ctx.beginPath(); ctx.ellipse(0, 0, fl, 1.6, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, 0, 1.6, fl * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+    // detonation ring
+    if (bangPulse > 0) {
+      ctx.globalAlpha = bangPulse * 0.8;
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2 + bangPulse * 3;
+      ctx.beginPath(); ctx.arc(0, 0, targetR * (1.1 + (1 - bangPulse) * 1.8), 0, Math.PI * 2); ctx.stroke();
+    }
+    // rainbow fuse
+    const fuseCols = ['#ff2e4d', '#ffb21e', '#ffe14d', '#a6ff3d', '#00f5ff', '#b06bff'];
+    ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.globalAlpha = 0.9 * e;
+    const seg = (Math.PI * 2 * left) / fuseCols.length;
+    for (let i = 0; i < fuseCols.length; i++) {
+      ctx.strokeStyle = fuseCols[i];
+      ctx.beginPath(); ctx.arc(0, 0, targetR * 1.24, -Math.PI / 2 + i * seg, -Math.PI / 2 + (i + 1) * seg); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Solar flares: curved bolts from the star to the boss, with a hit flash.
+  function drawBangBolts(t) {
+    if (!bangBolts.length || !activeBoss) return;
+    const bx = bossX(), by = bossY();
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.lineCap = 'round';
+    for (const b of bangBolts) {
+      const age = t - b.t0;
+      if (b.big) {
+        // the finale: one fat beam, fading
+        const k = clamp01(age / 0.5);
+        if (k >= 1) continue;
+        ctx.globalAlpha = (1 - k) * 0.9;
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 22 * (1 - k) + 4;
+        ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(bx, by); ctx.stroke();
+        ctx.strokeStyle = '#ffd23d'; ctx.lineWidth = 40 * (1 - k);
+        ctx.globalAlpha = (1 - k) * 0.35;
+        ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.lineTo(bx, by); ctx.stroke();
+        continue;
+      }
+      const p = age / BANG_BOLT_TIME;
+      const dx = bx - b.x, dy = by - b.y, d = Math.hypot(dx, dy) || 1;
+      const cx = b.x + dx * 0.5 - (dy / d) * d * 0.35 * b.bend, cy = b.y + dy * 0.5 + (dx / d) * d * 0.35 * b.bend;
+      const at = (u) => { const v = 1 - u; return [v * v * b.x + 2 * v * u * cx + u * u * bx, v * v * b.y + 2 * v * u * cy + u * u * by]; };
+      if (p < 1) {
+        const head = p, tail = Math.max(0, p - 0.4);
+        ctx.globalAlpha = 0.9;
+        for (const [col, w] of [['#ffd23d', 7], ['#ffffff', 2.6]]) {
+          ctx.strokeStyle = col; ctx.lineWidth = w;
+          ctx.beginPath();
+          for (let i = 0; i <= 8; i++) { const q = at(tail + (head - tail) * i / 8); if (i === 0) ctx.moveTo(q[0], q[1]); else ctx.lineTo(q[0], q[1]); }
+          ctx.stroke();
+        }
+      } else {
+        const k = clamp01((age - BANG_BOLT_TIME) / 0.4);
+        ctx.globalAlpha = (1 - k) * 0.8;
+        ctx.strokeStyle = '#ffe9a8'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(bx, by, 14 + k * 50, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+
+  // The finale flash: a soft white wash and a rainbow ring racing outward.
+  // Capped low and kept short for anyone with reduced motion turned on.
+  const BANG_FLASH_MAX = (() => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0.12 : 0.42; } catch (e) { return 0.42; } })();
+  function drawBangBlast(t) {
+    if (!bangBlast) return;
+    const k = (t - bangBlast.t0) / 0.9;
+    if (k >= 1 || k < 0) { if (k >= 1) bangBlast = null; return; }
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.pow(1 - k, 2) * BANG_FLASH_MAX;
+    ctx.fillStyle = '#fff6dc';
+    ctx.fillRect(0, 0, W, H);
+    const R = Math.max(W, H) * (0.15 + k * 1.1);
+    const rc = ['#ff2e4d', '#ffe14d', '#a6ff3d', '#00f5ff', '#b06bff'];
+    ctx.lineWidth = 5 * (1 - k) + 1;
+    rc.forEach((c, i) => {
+      ctx.globalAlpha = (1 - k) * 0.6;
+      ctx.strokeStyle = c;
+      ctx.beginPath(); ctx.arc(tgt.x, tgt.y, R * (1 - i * 0.04), 0, Math.PI * 2); ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // OVERCLOCK: whatever core is running, a gold dashed ring and sparks show it
+  // is running hot. A ring bursts out when the surge fires.
+  function drawOverclockFX(t, x, y) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = '#ffd23d'; ctx.lineWidth = 1.8; ctx.globalAlpha = 0.55;
+    ctx.setLineDash([4, 9]); ctx.lineDashOffset = -t * 90;
+    ctx.beginPath(); ctx.arc(0, 0, targetR * 1.9, 0, Math.PI * 2); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.lineWidth = 1.6; ctx.globalAlpha = 0.75;
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2 - t * 1.6, R = targetR * 1.9;
+      const zx = Math.cos(a), zy = Math.sin(a), nx = -zy, ny = zx;
+      ctx.beginPath();
+      ctx.moveTo(zx * (R - 6), zy * (R - 6));
+      ctx.lineTo(zx * R + nx * 4, zy * R + ny * 4);
+      ctx.lineTo(zx * R - nx * 3, zy * R - ny * 3);
+      ctx.lineTo(zx * (R + 7), zy * (R + 7));
+      ctx.stroke();
+    }
+    if (ocFlash > 0) {
+      ctx.globalAlpha = ocFlash * 0.8; ctx.lineWidth = 3 + ocFlash * 4;
+      ctx.beginPath(); ctx.arc(0, 0, targetR * (1.9 + (1 - ocFlash) * 2.4), 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   function drawPowerFX(t, x, y) {
     if (abActive) {
       if (abilityId === 'hexSaw') drawHexSawFX(t, x, y);
       else if (abilityId === 'triLaser') drawTriLaserFX(t, x, y);
       else if (abilityId === 'prismGuard') drawPrismGuardFX(t, x, y);
       else if (abilityId === 'eventHorizon') drawEventHorizonFX(t, x, y);
+      else if (abilityId === 'quantize') drawQuantizeFX(t, x, y);
+      else if (abilityId === 'bigBang') drawBigBangFX(t, x, y);
+      if (save.overclock) drawOverclockFX(t, x, y);
     }
     drawDevours(t);
+    drawBangBolts(t);
+    drawBangBlast(t);
   }
 
   // SECRET: the Visitor's craft. It comes looking once Event Horizon has swallowed
@@ -11647,10 +12095,10 @@
     // intro scale-in / defeat scale-out (collapsing-star for eclipse)
     let scale = 1, alpha = 1, extraSpin = 0;
     if (state === 'bossIntro') {
-      const k = Math.max(0, Math.min(1, 1 - (bossIntroUntil - t) / 1.5));
+      const k = Math.max(0, Math.min(1, 1 - (bossIntroUntil - t) / (activeBoss.intro || 1.5)));
       scale = 0.5 + 0.5 * k; alpha = k;
     } else if (state === 'bossDefeat') {
-      const k = Math.max(0, Math.min(1, (bossDefeatUntil - t) / 1.7));
+      const k = Math.max(0, Math.min(1, (bossDefeatUntil - t) / (activeBoss.defeatHold || 1.7)));
       scale = 0.7 + 0.5 * (1 - k); alpha = k; extraSpin = (1 - k) * 5;
     }
     r *= scale;
@@ -11668,7 +12116,8 @@
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = alpha * (0.22 + 0.16 * Math.sin(t * 9));
-      ctx.fillStyle = cols[0]; ctx.shadowColor = cols[0]; ctx.shadowBlur = 46;
+      const ac = activeBoss.auraCol || cols[0];
+      ctx.fillStyle = ac; ctx.shadowColor = ac; ctx.shadowBlur = 46;
       ctx.beginPath(); ctx.arc(0, 0, r * 1.5 * breathe, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
@@ -11680,9 +12129,479 @@
     else if (kind === 'dragon') drawCyberDragon(t, r * breathe, spin + extraSpin, cols, flash, lowFrac);
     else if (kind === 'ufo') drawUfo(t, r * breathe, spin + extraSpin, cols, flash, lowFrac);
     else if (kind === 'mech') drawMech(t, r * breathe, spin + extraSpin, cols, flash, lowFrac);
+    else if (kind === 'cube') drawCubex(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
+    else if (kind === 'clock') drawMetronox(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
+    else if (kind === 'nullstar') drawNullstar(t, r * breathe, spin + extraSpin, cols, flash, lowFrac, extraSpin);
     else drawEclipseSovereign(t, r * breathe, spin + extraSpin, cols, flash);
 
     ctx.restore();
+  }
+
+  // ================= v4 BOSSES: CUBEX (10), METRONOX (70), NULLSTAR (100) =================
+  // All three are cosmetic-only drawing: no Math.random, no gameplay state is
+  // written here. Motion keys off t, the music beat and boss health/phase.
+  const clamp01 = (k) => Math.max(0, Math.min(1, k));
+  // Continuous beat count (fractional), for things that swing on the beat.
+  function musicBeatFloat() {
+    if (music.on && audioCtx && music.active && Conductor.ready()) return Conductor.stepAt() / 4;
+    return (performance.now() / 1000) * (Math.max(60, bpm) / 60);
+  }
+
+  // ---- shared 3D helpers: the Cubex body and the Quantize cage ----
+  const CUBE_V = [[-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1], [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]];
+  const CUBE_F = [
+    { v: [4, 5, 6, 7], n: [0, 0, 1] },    // front: faces the player at rest (carries the face)
+    { v: [1, 0, 3, 2], n: [0, 0, -1] },
+    { v: [5, 1, 2, 6], n: [1, 0, 0] },
+    { v: [0, 4, 7, 3], n: [-1, 0, 0] },
+    { v: [0, 1, 5, 4], n: [0, -1, 0] },   // top (screen y points down)
+    { v: [7, 6, 2, 3], n: [0, 1, 0] }
+  ];
+  const CUBE_E = [[0, 1], [1, 2], [2, 3], [3, 0], [4, 5], [5, 6], [6, 7], [7, 4], [0, 4], [1, 5], [2, 6], [3, 7]];
+  function rot3(p, yaw, pitch, roll) {
+    let x = p[0], y = p[1], z = p[2], c = Math.cos(yaw), s = Math.sin(yaw);
+    const x1 = x * c + z * s, z1 = -x * s + z * c;
+    c = Math.cos(pitch); s = Math.sin(pitch);
+    const y2 = y * c - z1 * s, z2 = y * s + z1 * c;
+    c = Math.cos(roll); s = Math.sin(roll);
+    return [x1 * c - y2 * s, x1 * s + y2 * c, z2];
+  }
+  function proj3(p, size) { const k = 1 / (1 - p[2] * 0.13); return [p[0] * size * k, p[1] * size * k, p[2]]; }
+  // point on a projected quad (q0 top-left, q1 top-right, q2 bottom-right, q3 bottom-left), u,v in -1..1
+  function quadAt(q, u, v) {
+    const a = (u + 1) / 2, b = (v + 1) / 2;
+    const tx = q[0][0] + (q[1][0] - q[0][0]) * a, ty = q[0][1] + (q[1][1] - q[0][1]) * a;
+    const bx = q[3][0] + (q[2][0] - q[3][0]) * a, by = q[3][1] + (q[2][1] - q[3][1]) * a;
+    return [tx + (bx - tx) * b, ty + (by - ty) * b];
+  }
+  function quadRect(q, u0, v0, u1, v1) {
+    const a = quadAt(q, u0, v0), b = quadAt(q, u1, v0), c = quadAt(q, u1, v1), d = quadAt(q, u0, v1);
+    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); ctx.closePath();
+  }
+
+  // CUBEX — the Gatekeeper. A grumpy armoured cube with a pixel face, framed by
+  // gate brackets that thump on the kick. Its plates unfold as it weakens,
+  // showing the hot core inside; little bit-cubes orbit it, one more per phase.
+  function drawCubex(t, r, spin, cols, flash, lowFrac, extraSpin) {
+    const rage = 1 - clamp01(lowFrac);
+    const thump = Math.pow(1 - musicBeatPhase(), 3);
+    const yaw = Math.sin(t * 0.62) * 0.52 + (extraSpin || 0) * 1.3;
+    const pitch = -0.36 + Math.sin(t * 0.91) * 0.09;
+    const roll = Math.sin(t * 0.45) * 0.07;
+    const size = r * 0.6 * (1 + thump * 0.025);
+    const unfold = Math.min(1, bossPhase / 3) * 0.24 + flash * 0.04;
+    const eyeCol = rage > 0.65 ? '#ff4b2b' : cols[1];
+
+    // gate brackets (behind)
+    ctx.save();
+    ctx.lineCap = 'round';
+    const br = r * (1.3 + thump * 0.06);
+    ctx.strokeStyle = cols[1]; ctx.shadowColor = cols[1]; ctx.shadowBlur = 10; ctx.lineWidth = 3;
+    ctx.globalAlpha *= 0.55 + thump * 0.35;
+    for (let i = 0; i < 4; i++) {
+      ctx.save(); ctx.rotate(i * Math.PI / 2);
+      ctx.beginPath(); ctx.moveTo(-br, -br * 0.5); ctx.lineTo(-br, -br); ctx.lineTo(-br * 0.5, -br); ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
+
+    // orbiting bit-cubes: back half first
+    const bits = 2 + bossPhase;
+    const drawBits = (front) => {
+      for (let i = 0; i < bits; i++) {
+        const a = t * (0.9 + bossPhase * 0.15) + i * Math.PI * 2 / bits;
+        const sy = Math.sin(a);
+        if ((sy >= 0) !== front) continue;
+        const bx = Math.cos(a) * r * 1.22, by = sy * r * 0.34 + r * 0.05;
+        const bs = r * (0.075 + 0.02 * (sy + 1) / 2);
+        ctx.save(); ctx.translate(bx, by); ctx.rotate(t * 2 + i);
+        ctx.fillStyle = 'rgba(6,4,14,0.9)'; ctx.strokeStyle = i % 2 ? cols[1] : cols[0];
+        ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = 8; ctx.lineWidth = 2;
+        ctx.globalAlpha *= front ? 1 : 0.6;
+        ctx.beginPath(); ctx.rect(-bs, -bs, bs * 2, bs * 2); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+    };
+    drawBits(false);
+
+    // the hot core (seen through the gaps once the plates unfold)
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, size * 1.05);
+    cg.addColorStop(0, hexToRgba(cols[2], 0.55 + unfold));
+    cg.addColorStop(0.45, hexToRgba(cols[0], 0.32 + unfold * 0.8));
+    cg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = cg;
+    ctx.beginPath(); ctx.arc(0, 0, size * 1.05, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    // faces, painter-sorted, each pushed out along its normal by `unfold`
+    const RV = CUBE_V.map(p => rot3(p, yaw, pitch, roll));
+    const vis = [];
+    for (let fi = 0; fi < CUBE_F.length; fi++) {
+      const f = CUBE_F[fi];
+      const n = rot3(f.n, yaw, pitch, roll);
+      if (n[2] <= 0.02) continue;
+      const q = f.v.map(i => proj3([RV[i][0] + n[0] * unfold, RV[i][1] + n[1] * unfold, RV[i][2] + n[2] * unfold], size));
+      vis.push({ fi, q, z: (q[0][2] + q[1][2] + q[2][2] + q[3][2]) / 4, lit: n[2] });
+    }
+    vis.sort((a, b) => a.z - b.z);
+    for (const f of vis) {
+      const q = f.q;
+      ctx.save();
+      armorStyle(flash > 0.4 ? '#ffffff' : cols[0], 12 + flash * 18, 3 + bossPhase * 0.4);
+      ctx.fillStyle = 'rgba(' + Math.round(6 + 10 * f.lit) + ',' + Math.round(8 + 14 * f.lit) + ',' + Math.round(14 + 10 * f.lit) + ',0.92)';
+      ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); for (let i = 1; i < 4; i++) ctx.lineTo(q[i][0], q[i][1]); ctx.closePath();
+      ctx.fill(); ctx.stroke();
+      // inset circuit panel
+      ctx.shadowBlur = 0; ctx.lineWidth = 1.2; ctx.strokeStyle = hexToRgba(cols[0], 0.35);
+      quadRect(q, -0.72, -0.72, 0.72, 0.72); ctx.stroke();
+      if (f.fi !== 0) {
+        // side faces: a status LED blinking with the beat
+        ctx.fillStyle = hexToRgba(cols[1], 0.4 + thump * 0.6);
+        quadRect(q, -0.12, -0.12, 0.12, 0.12); ctx.fill();
+      } else {
+        // THE FACE: square eyes, angry brows, a flatline mouth that hates music
+        const blink = (t % 3.1) < 0.12 ? 0.18 : 1;
+        const look = Math.max(-0.08, Math.min(0.08, (tgt.x - bossX()) / Math.max(1, W) * 0.4));
+        ctx.shadowColor = eyeCol; ctx.shadowBlur = 14; ctx.fillStyle = eyeCol;
+        for (const s of [-1, 1]) {
+          quadRect(q, s * 0.42 - 0.17, -0.12 - 0.17 * blink, s * 0.42 + 0.17, -0.12 + 0.17 * blink); ctx.fill();
+        }
+        ctx.shadowBlur = 0; ctx.fillStyle = '#ffffff';
+        for (const s of [-1, 1]) {
+          if (blink < 1) continue;
+          quadRect(q, s * 0.42 + look - 0.06, -0.04, s * 0.42 + look + 0.06, 0.06); ctx.fill();
+        }
+        // brows (angrier as it weakens)
+        const tilt = 0.14 + rage * 0.12;
+        ctx.strokeStyle = cols[2]; ctx.lineWidth = 3.2; ctx.lineCap = 'round';
+        ctx.shadowColor = cols[2]; ctx.shadowBlur = 8;
+        for (const s of [-1, 1]) {
+          const a = quadAt(q, s * 0.72, -0.44 - tilt), b = quadAt(q, s * 0.18, -0.38 + tilt * 0.4);
+          ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+        }
+        // mouth: a flat line, with a zig-zag when it gets hit
+        ctx.strokeStyle = eyeCol; ctx.shadowColor = eyeCol; ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        const steps = 8;
+        for (let i = 0; i <= steps; i++) {
+          const u = -0.46 + (i / steps) * 0.92;
+          const jag = (i % 2 ? 1 : -1) * (flash * 0.16 + (i > 2 && i < 6 ? thump * 0.03 : 0));
+          const pt = quadAt(q, u, 0.46 + jag);
+          if (i === 0) ctx.moveTo(pt[0], pt[1]); else ctx.lineTo(pt[0], pt[1]);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+    drawBits(true);
+  }
+
+  // A toothed gear outline as one path.
+  function gearPath(R, Ri, teeth, rot) {
+    const step = Math.PI * 2 / teeth;
+    ctx.beginPath();
+    for (let i = 0; i < teeth; i++) {
+      const a = rot + i * step;
+      ctx.lineTo(Math.cos(a) * Ri, Math.sin(a) * Ri);
+      ctx.lineTo(Math.cos(a + step * 0.18) * R, Math.sin(a + step * 0.18) * R);
+      ctx.lineTo(Math.cos(a + step * 0.5) * R, Math.sin(a + step * 0.5) * R);
+      ctx.lineTo(Math.cos(a + step * 0.68) * Ri, Math.sin(a + step * 0.68) * Ri);
+    }
+    ctx.closePath();
+  }
+
+  // METRONOX — the Clockwork Heart. A brass gear-clock with a cyclops eye at
+  // the hub and a scythe pendulum that swings ON THE BEAT: it reaches the end of
+  // its swing exactly as each beat lands. Hands spin faster as it panics; the
+  // face cracks open with blue light in its last phase.
+  function drawMetronox(t, r, spin, cols, flash, lowFrac, extraSpin) {
+    const rage = 1 - clamp01(lowFrac);
+    const bf = musicBeatFloat();
+    const swing = Math.cos(Math.PI * bf);              // ±1 exactly on each beat
+    const tick = Math.pow(1 - (((bf % 1) + 1) % 1), 5); // spike as each beat lands
+    const gearRot = spin * 0.55;
+
+    // side gears (behind), meshing with the big wheel
+    ctx.save();
+    for (const dir of [-1, 1]) {
+      ctx.save(); ctx.translate(dir * r * 0.98, -r * 0.6);
+      armorStyle(cols[0], 8 + tick * 10, 2.5);
+      gearPath(r * 0.36, r * 0.29, 12, -gearRot * 2 * dir + Math.PI / 12);
+      ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = hexToRgba(cols[2], 0.5); ctx.lineWidth = 1.5; ctx.shadowBlur = 0;
+      ctx.beginPath(); ctx.arc(0, 0, r * 0.1, 0, Math.PI * 2); ctx.stroke();
+      ctx.restore();
+    }
+    if (bossPhase >= 2) {
+      for (const dir of [-1, 1]) {
+        ctx.save(); ctx.translate(dir * r * 1.08, r * 0.3);
+        armorStyle(cols[1], 8, 2);
+        gearPath(r * 0.24, r * 0.19, 9, gearRot * 2.7 * dir);
+        ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+
+    // the big wheel
+    ctx.save();
+    armorStyle(flash > 0.4 ? '#ffffff' : cols[0], 14 + flash * 18 + tick * 8, 3.5 + bossPhase * 0.4);
+    gearPath(r * 1.0, r * 0.88, 28, gearRot);
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+
+    // clock face
+    ctx.save();
+    const fg = ctx.createRadialGradient(0, -r * 0.2, r * 0.05, 0, 0, r * 0.8);
+    fg.addColorStop(0, '#162436'); fg.addColorStop(1, '#05070d');
+    ctx.fillStyle = fg; ctx.strokeStyle = cols[2]; ctx.lineWidth = 2;
+    ctx.shadowColor = cols[0]; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.78, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0;
+    for (let i = 0; i < 60; i++) {
+      const a = i / 60 * Math.PI * 2, big = i % 5 === 0;
+      const r0 = r * (big ? 0.6 : 0.68), r1 = r * 0.74;
+      ctx.strokeStyle = big ? cols[2] : hexToRgba(cols[2], 0.35);
+      ctx.lineWidth = big ? 3 : 1;
+      ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1); ctx.stroke();
+    }
+    // final phase: the face cracks and light leaks out
+    if (bossPhase >= 3 || rage > 0.85) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = hexToRgba(cols[1], 0.55 + 0.35 * Math.sin(t * 7)); ctx.lineWidth = 2;
+      ctx.shadowColor = cols[1]; ctx.shadowBlur = 12;
+      const cracks = [[0.3, 0.75, 0.2], [2.2, 0.7, -0.3], [3.9, 0.72, 0.25], [5.2, 0.66, -0.2]];
+      for (const [a, len, kink] of cracks) {
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * r * 0.22, Math.sin(a) * r * 0.22);
+        ctx.lineTo(Math.cos(a + kink) * r * 0.45, Math.sin(a + kink) * r * 0.45);
+        ctx.lineTo(Math.cos(a) * r * len, Math.sin(a) * r * len); ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.shadowBlur = 0;
+    }
+    ctx.restore();
+
+    // pendulum: pivots at the hub, swings below; ghost trail behind it
+    const L = r * 0.98, maxA = 0.5;
+    const drawPendulum = (ang, alpha, ghost) => {
+      ctx.save(); ctx.rotate(ang); ctx.globalAlpha *= alpha;
+      ctx.strokeStyle = ghost ? cols[1] : cols[0]; ctx.lineWidth = ghost ? 2 : 4; ctx.lineCap = 'round';
+      ctx.shadowColor = ctx.strokeStyle; ctx.shadowBlur = ghost ? 0 : 8;
+      ctx.beginPath(); ctx.moveTo(0, r * 0.18); ctx.lineTo(0, L - r * 0.08); ctx.stroke();
+      // scythe bob: a crescent blade
+      ctx.translate(0, L);
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.24, Math.PI * 0.05, Math.PI * 0.95);
+      ctx.arc(0, -r * 0.1, r * 0.2, Math.PI * 0.86, Math.PI * 0.14, true);
+      ctx.closePath();
+      if (!ghost) { ctx.fillStyle = 'rgba(6,4,14,0.9)'; ctx.fill(); }
+      ctx.strokeStyle = ghost ? hexToRgba(cols[1], 0.8) : (flash > 0.4 ? '#ffffff' : cols[1]);
+      ctx.shadowColor = cols[1]; ctx.shadowBlur = ghost ? 0 : 14 + tick * 16; ctx.lineWidth = ghost ? 1.5 : 3;
+      ctx.stroke();
+      if (!ghost) { ctx.fillStyle = cols[0]; ctx.beginPath(); ctx.arc(0, -r * 0.06, r * 0.05, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+    };
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let k = 3; k >= 1; k--) drawPendulum(maxA * Math.cos(Math.PI * (bf - k * 0.05)), 0.18 * (4 - k) / 3, true);
+    ctx.restore();
+    drawPendulum(maxA * swing, 1, false);
+    // tick sparks at the end of each swing
+    if (tick > 0.05) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const bx = Math.sin(-maxA * swing) * L, by = Math.cos(maxA * swing) * L;
+      ctx.strokeStyle = cols[2]; ctx.lineWidth = 1.6; ctx.globalAlpha *= tick;
+      for (let i = 0; i < 7; i++) {
+        const a = i / 7 * Math.PI * 2 + bf;
+        ctx.beginPath(); ctx.moveTo(bx + Math.cos(a) * r * 0.2, by + Math.sin(a) * r * 0.2);
+        ctx.lineTo(bx + Math.cos(a) * r * (0.32 + tick * 0.1), by + Math.sin(a) * r * (0.32 + tick * 0.1)); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // hands (spin faster as it panics)
+    const hourA = t * (0.3 + rage * 0.6) - Math.PI / 2, minA = t * (1.8 + rage * 3.5) - Math.PI / 2;
+    const hand = (a, len, w, col) => {
+      ctx.save(); ctx.rotate(a);
+      ctx.fillStyle = col; ctx.shadowColor = col; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.moveTo(-r * 0.06, -w); ctx.lineTo(len, 0); ctx.lineTo(-r * 0.06, w); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    };
+    hand(hourA, r * 0.42, r * 0.05, cols[0]);
+    hand(minA, r * 0.64, r * 0.035, cols[2]);
+
+    // cyclops eye at the hub, watching the player's target
+    ctx.save();
+    const lx = Math.max(-1, Math.min(1, (tgt.x - bossX()) / (W * 0.4))) * r * 0.045;
+    const ly = Math.max(-1, Math.min(1, (tgt.y - bossY()) / (H * 0.4))) * r * 0.045;
+    ctx.fillStyle = '#1a1204'; ctx.strokeStyle = cols[0]; ctx.lineWidth = 3;
+    ctx.shadowColor = cols[0]; ctx.shadowBlur = 16 + flash * 14;
+    ctx.beginPath(); ctx.arc(0, 0, r * 0.19, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    const ig = ctx.createRadialGradient(lx, ly, 0, lx, ly, r * 0.13);
+    ig.addColorStop(0, '#ffffff'); ig.addColorStop(0.35, cols[1]); ig.addColorStop(1, hexToRgba(cols[1], 0));
+    ctx.fillStyle = ig; ctx.shadowColor = cols[1]; ctx.shadowBlur = 18;
+    ctx.beginPath(); ctx.arc(lx, ly, r * (0.12 + tick * 0.015), 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#000'; ctx.shadowBlur = 0;
+    ctx.beginPath(); ctx.ellipse(lx, ly, r * 0.022, r * (0.075 - rage * 0.02), 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+  }
+
+  // NULLSTAR — the Heart of the Void, the true end of the song. A black star
+  // with a white-hot photon ring, a gold corona, a tilted accretion disk and a
+  // chromatic rim. The five Wardens orbit it as sigils, and it eats them to stay
+  // alive: two at the first phase break, two at the second, the last at the
+  // third. Its eye opens as it weakens. The intro pulls the sigils in from deep space.
+  const NULL_SIGILS = [
+    { kind: 'cube', col: '#a6ff3d' }, { kind: 'hex', col: '#00f5ff' }, { kind: 'tri', col: '#ff2e4d' },
+    { kind: 'prism', col: '#b06bff' }, { kind: 'eclipse', col: '#ffd23d' }
+  ];
+  function drawSigil(kind, s) {
+    ctx.beginPath();
+    if (kind === 'cube') { ctx.rect(-s * 0.75, -s * 0.75, s * 1.5, s * 1.5); }
+    else if (kind === 'hex') drawPolygon(0, 0, s, 6, 0);
+    else if (kind === 'tri') drawPolygon(0, 0, s * 1.1, 3, -Math.PI / 2);
+    else if (kind === 'prism') { ctx.moveTo(0, -s * 1.2); ctx.lineTo(s * 0.65, 0); ctx.lineTo(0, s * 1.2); ctx.lineTo(-s * 0.65, 0); ctx.closePath(); }
+    else { ctx.arc(0, 0, s, 1.008, Math.PI * 2 - 1.008); ctx.arc(s * 0.45, 0, s * 0.85, -1.473, 1.473, true); ctx.closePath(); }   // crescent
+  }
+  function drawNullstar(t, r, spin, cols, flash, lowFrac, extraSpin) {
+    const rage = 1 - clamp01(lowFrac);
+    const thump = Math.pow(1 - musicBeatPhase(), 2.5);
+    const introK = state === 'bossIntro' ? clamp01(1 - (bossIntroUntil - t) / (activeBoss.intro || 1.5)) : 1;
+    const eat = [5, 3, 1, 0][Math.min(3, bossPhase)];      // sigils still orbiting
+    const coreR = r * 0.74;
+
+    // 1. outer void glow + corona (additive)
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const og = ctx.createRadialGradient(0, 0, coreR * 0.9, 0, 0, r * 2.3);
+    og.addColorStop(0, hexToRgba(cols[1], 0.32 + thump * 0.12 + rage * 0.1));
+    og.addColorStop(0.35, hexToRgba(cols[2], 0.22 + rage * 0.1));
+    og.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = og;
+    ctx.beginPath(); ctx.arc(0, 0, r * 2.3, 0, Math.PI * 2); ctx.fill();
+    const rays = 20;
+    for (let i = 0; i < rays; i++) {
+      const a = i / rays * Math.PI * 2 + spin * 0.18;
+      const n = 0.5 + 0.5 * Math.sin(i * 12.9898 + t * (1.4 + (i % 3) * 0.6));
+      const len = r * (1.25 + n * 0.45 + rage * 0.35 + thump * 0.12) * introK;
+      const w = 0.035 + (i % 2) * 0.02;
+      const low = Math.sin(a) > 0.25 ? 0.45 : 1;     // keep the rays off the play field below
+      ctx.fillStyle = i % 2 ? hexToRgba(cols[1], 0.3 * low) : hexToRgba(cols[0], 0.22 * low);
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a - w) * coreR, Math.sin(a - w) * coreR);
+      ctx.lineTo(Math.cos(a) * len, Math.sin(a) * len);
+      ctx.lineTo(Math.cos(a + w) * coreR, Math.sin(a + w) * coreR);
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+
+    // 2. accretion disk, back half (behind the core)
+    const tilt = -0.18 + Math.sin(t * 0.3) * 0.05;
+    const diskRx = r * 1.62, diskRy = r * 0.36;
+    const drawDisk = (front) => {
+      ctx.save(); ctx.rotate(tilt);
+      ctx.globalCompositeOperation = 'lighter';
+      const a0 = front ? 0 : Math.PI, a1 = front ? Math.PI : Math.PI * 2;
+      for (let k = 0; k < 4; k++) {
+        const f = 0.72 + k * 0.1;
+        ctx.strokeStyle = k % 2 ? hexToRgba(cols[2], 0.55) : hexToRgba(cols[1], 0.5);
+        ctx.lineWidth = 2.4 - k * 0.3;
+        ctx.setLineDash([r * 0.12, r * 0.08 + k * 4]);
+        ctx.lineDashOffset = -t * r * (0.6 + k * 0.25);
+        ctx.beginPath(); ctx.ellipse(0, 0, diskRx * f, diskRy * f, 0, a0, a1); ctx.stroke();
+      }
+      ctx.setLineDash([]);
+      ctx.restore();
+    };
+    drawDisk(false);
+
+    // 3. warden sigils: back half
+    const drawSigils = (front) => {
+      for (let i = 0; i < 5; i++) {
+        if (i < 5 - eat) continue;                       // already eaten
+        const a = t * 0.55 + i * Math.PI * 2 / 5;
+        const sy = Math.sin(a);
+        if ((sy >= 0) !== front) continue;
+        const fly = 1 + (1 - introK) * 2.6;               // intro: in from deep space
+        const ox = Math.cos(a) * r * 1.55 * fly, oy = sy * r * 0.5 * fly - r * 0.08;
+        const s = r * (0.13 + 0.04 * (sy + 1) / 2);
+        const sg = NULL_SIGILS[i];
+        ctx.save(); ctx.translate(ox, oy); ctx.rotate(t * 0.8 + i);
+        ctx.globalAlpha *= (front ? 1 : 0.55) * introK;
+        ctx.fillStyle = 'rgba(4,2,10,0.85)'; ctx.strokeStyle = sg.col; ctx.lineWidth = 2.2;
+        ctx.shadowColor = sg.col; ctx.shadowBlur = 12;
+        drawSigil(sg.kind, s); ctx.fill(); ctx.stroke();
+        ctx.restore();
+        // a thin tether feeding the star
+        ctx.save(); ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha *= 0.2 * introK; ctx.strokeStyle = sg.col; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(ox, oy); ctx.lineTo(0, 0); ctx.stroke();
+        ctx.restore();
+      }
+    };
+    drawSigils(false);
+
+    // 4. the black core + chromatic rim + photon ring
+    ctx.save();
+    ctx.fillStyle = '#000000';
+    ctx.beginPath(); ctx.arc(0, 0, coreR, 0, Math.PI * 2); ctx.fill();
+    ctx.globalCompositeOperation = 'lighter';
+    const rim = [['rgba(255,60,90,0.55)', -2.2], ['rgba(60,255,160,0.45)', 0], ['rgba(70,120,255,0.55)', 2.2]];
+    for (const [c, off] of rim) {
+      ctx.strokeStyle = c; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(Math.cos(t * 0.7) * off, Math.sin(t * 0.7) * off, coreR * 1.02, 0, Math.PI * 2); ctx.stroke();
+    }
+    ctx.strokeStyle = flash > 0.3 ? '#ffffff' : cols[0];
+    ctx.shadowColor = cols[1]; ctx.shadowBlur = 22 + flash * 20 + thump * 10;
+    ctx.lineWidth = 3 + thump * 2 + flash * 2;
+    ctx.beginPath(); ctx.arc(0, 0, coreR * (0.985 + thump * 0.01), 0, Math.PI * 2); ctx.stroke();
+    ctx.restore();
+
+    // 5. the eye: a seam at first, opening phase by phase
+    const open = Math.min(1, bossPhase / 2.5 + flash * 0.15 + thump * 0.04);
+    ctx.save();
+    const eh = coreR * (0.05 + open * 0.52), ew = coreR * 0.36;
+    ctx.globalCompositeOperation = 'lighter';
+    const eg = ctx.createRadialGradient(0, 0, 0, 0, 0, ew * 1.3);
+    eg.addColorStop(0, 'rgba(255,255,255,0.95)');
+    eg.addColorStop(0.3, hexToRgba(cols[1], 0.85));
+    eg.addColorStop(0.7, hexToRgba(cols[2], 0.6));
+    eg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = eg;
+    ctx.beginPath();
+    ctx.moveTo(0, -eh * 1.6); ctx.quadraticCurveTo(ew * 1.25, 0, 0, eh * 1.6);
+    ctx.quadraticCurveTo(-ew * 1.25, 0, 0, -eh * 1.6); ctx.closePath();
+    ctx.fill();
+    if (open > 0.2) {
+      // pupil: a black slit that tracks the player
+      const lx = Math.max(-1, Math.min(1, (tgt.x - bossX()) / (W * 0.4))) * ew * 0.25;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#000';
+      ctx.beginPath(); ctx.ellipse(lx, eh * 0.15, ew * 0.09, eh * 0.95, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.restore();
+
+    // 6. low health: white cracks through the core
+    if (rage > 0.6) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = hexToRgba(cols[0], (rage - 0.6) * 2 * (0.6 + 0.4 * Math.sin(t * 9)));
+      ctx.lineWidth = 1.6; ctx.shadowColor = cols[1]; ctx.shadowBlur = 10;
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6 * Math.PI * 2 + 0.4;
+        ctx.beginPath(); ctx.moveTo(Math.cos(a) * coreR * 0.5, Math.sin(a) * coreR * 0.5);
+        ctx.lineTo(Math.cos(a + 0.15) * coreR * 0.8, Math.sin(a + 0.15) * coreR * 0.8);
+        ctx.lineTo(Math.cos(a) * coreR * 1.25, Math.sin(a) * coreR * 1.25); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // 7. front halves
+    drawDisk(true);
+    drawSigils(true);
   }
 
   // shared: neon stroke + dark fill for an armor shape
@@ -12696,12 +13615,13 @@
     scr.innerHTML = `<div class="card">
       <h2>DEV MODE</h2>
       <p class="dev-note">Everything is unlocked. Shortcut runs don't count toward the leaderboard or your bests. Turn dev mode off to restore your normal progress.</p>
-      <p class="dev-h">MAIN BOSSES</p><div class="dev-grid" id="devBosses"></div>
+      <p class="dev-h">BOSSES</p><div class="dev-grid" id="devBosses"></div>
       <p class="dev-h">SECRET GAUNTLETS</p><div class="dev-grid" id="devSecrets"></div>
       <p class="dev-h">START AT STAGE</p><div class="dev-grid" id="devStages"></div>
       <p class="dev-h">PRACTICE</p>
       <label class="dev-row"><span>No energy loss (can't die)</span><input type="checkbox" id="devNoDrain"></label>
       <label class="dev-row"><span>Show FPS and frame time</span><input type="checkbox" id="devFpsT"></label>
+      <label class="dev-row"><span>Overclock every core (Stage 70 reward)</span><input type="checkbox" id="devOc"></label>
       <div class="btn-stack"><button class="btn ghost" id="devOff">Turn dev mode off</button><button class="btn" id="devBack">Back</button></div>
     </div>`;
     document.body.appendChild(scr);
@@ -12736,7 +13656,7 @@
       }
       const stages = $('devStages'); stages.innerHTML = '';
       for (const n of [5, 9, 19, 29, 39, 49, 60, 69, 90, 99]) stages.appendChild(button('Stage ' + n, '', () => startAt(n)));
-      $('devNoDrain').checked = !!D().noDrain; $('devFpsT').checked = !!D().fps;
+      $('devNoDrain').checked = !!D().noDrain; $('devFpsT').checked = !!D().fps; $('devOc').checked = !!save.overclock;
     }
     function show() { fill(); for (const k in screens) screens[k].classList.add('hidden'); scr.classList.remove('hidden'); }
     function hide() { scr.classList.add('hidden'); showScreen('menu'); }
@@ -12752,28 +13672,36 @@
       if (!d.snap) d.snap = JSON.parse(JSON.stringify({
         bossUnlocks: save.bossUnlocks, vibeUnlocks: save.vibeUnlocks, themeUnlocks: save.themeUnlocks,
         equippedAbility: save.equippedAbility, theme: save.theme, musicVibe: save.settings.musicVibe,
-        coreOverdrive: !!save.coreOverdrive
+        overclock: !!save.overclock
       }));
       save.bossUnlocks = save.bossUnlocks || {};
       for (const k of Object.keys(BOSSES)) if (BOSSES[k] && BOSSES[k].id) save.bossUnlocks[BOSSES[k].id] = true;
       for (const id of Object.values(ABILITY_UNLOCK_BOSS)) save.bossUnlocks[id] = true;
       save.vibeUnlocks = Object.assign(save.vibeUnlocks || {}, { voidMetal: true, cybermetal: true, ascension: true });
       save.themeUnlocks = Object.assign(save.themeUnlocks || {}, { hellgrid: true, voidblack: true, whitegrid: true });
-      save.coreOverdrive = true;
+      setOverclock(true);
     }
+    function setOverclock(on) { save.overclock = !!on; for (const k in _ocTuning) delete _ocTuning[k]; }
     function restore() {
       const d = D(), s = d.snap;
       if (s) {
         save.bossUnlocks = s.bossUnlocks; save.vibeUnlocks = s.vibeUnlocks; save.themeUnlocks = s.themeUnlocks;
-        save.coreOverdrive = !!s.coreOverdrive;
+        setOverclock(s.overclock);
+        // keep anything genuinely earned in a normal run while dev mode was on
+        for (const e of (d.earned || [])) {
+          if (e.boss) save.bossUnlocks[e.boss] = true;
+          if (e.overclock) setOverclock(true);
+          if (e.theme) save.themeUnlocks[e.theme] = true;
+          if (e.vibe) save.vibeUnlocks[e.vibe] = true;
+        }
         const ab = s.equippedAbility, boss = ABILITY_UNLOCK_BOSS[ab];
         save.equippedAbility = (ab === 'none' || (boss && save.bossUnlocks[boss])) ? ab : 'none';
-        const th = THEMES.find(t => t.id === save.theme);
+        const th = SECRET_THEMES[save.theme] || THEMES.find(t => t.id === save.theme);
         if (th && !(save.themeUnlocks[th.id]) && save.level < th.unlock) { save.theme = s.theme; applyTheme(save.theme); }
         const v = MUSIC_VIBES[save.settings.musicVibe];
         if (v && ((v.reward && !save.vibeUnlocks[save.settings.musicVibe]) || (!v.reward && save.level < v.unlock))) save.settings.musicVibe = s.musicVibe;
       }
-      d.on = false; d.snap = null; d.noDrain = false; d.fps = false;
+      d.on = false; d.snap = null; d.noDrain = false; d.fps = false; d.earned = [];
     }
 
     // ---------- shortcuts ----------
@@ -12816,6 +13744,7 @@
     $('devOff').addEventListener('click', () => { sfxBack(); restore(); persist(); sync(); hide(); refreshMenu(); showToast('DEV MODE OFF', theme.c2, 'NORMAL PROGRESS RESTORED'); });
     $('devNoDrain').addEventListener('change', (e) => { D().noDrain = e.target.checked; persist(); });
     $('devFpsT').addEventListener('change', (e) => { D().fps = e.target.checked; persist(); sync(); });
+    $('devOc').addEventListener('change', (e) => { setOverclock(e.target.checked); persist(); });
 
     // FPS / frame time, plus deferred jumps once a run is actually playing
     let fT = performance.now(), frames = [], lastShow = 0;
@@ -12849,6 +13778,7 @@
       get runFlagged() { return flagged; },
       // startGame calls this, so every new run starts clean (shortcuts re-flag it right after)
       newRun() { flagged = false; pendingJump = 0; pendingDefeat = false; },
+      noteEarned(e) { const d = D(); (d.earned || (d.earned = [])).push(e); if (d.earned.length > 40) d.earned.shift(); },
       tryCode(name) {
         if (cyrb53(String(name).trim()) !== KEY_HASH) return false;
         const d = D(), was = d.on;
