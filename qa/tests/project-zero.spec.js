@@ -76,7 +76,7 @@ test('both clearances: the files open, the media loads only now, Skip lands on t
   expect(ev.fit, 'never stretched').toBe('contain');
   expect(ev.inline).toBe(true);
   expect(ev.muted, 'no original recording audio').toBe(true);
-  expect(media.some((u) => /footage\.mp4/.test(u)) && media.some((u) => /score\.m4a/.test(u)), 'footage + score requested on open').toBe(true);
+  expect(media.some((u) => /footage\.mp4/.test(u)) && media.some((u) => /score\.mp4/.test(u)), 'footage + score requested on open').toBe(true);
   // whatever the files did, Skip lands on the reward
   await page.click('#zfSkip');
   await page.waitForTimeout(300);
@@ -119,7 +119,7 @@ test('the footage and the score follow the files\' clock (where this browser dec
 test('a missing or damaged file never costs the reward: FILE DAMAGED, then Zero Form all the same', async ({ page }) => {
   test.setTimeout(60000);
   const { errors } = await bootZ(page, { level: 100, bestStage: 100 });
-  await page.evaluate(() => { ZERO.footage = 'assets/project-zero/missing.mp4'; ZERO.score = 'assets/project-zero/missing.m4a'; });
+  await page.evaluate(() => { ZERO.footage = 'assets/project-zero/missing.mp4'; ZERO.score = 'assets/project-zero/missing-score.mp4'; });
   await page.click('#zeroCase');
   await page.waitForFunction(() => ZeroFiles.phase === 'evidence', null, { timeout: 15000 });
   await page.waitForTimeout(800);

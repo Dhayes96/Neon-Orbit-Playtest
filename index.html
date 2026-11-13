@@ -10310,8 +10310,9 @@
   // dying, clears the screen, refills energy and keeps the combo).
   // The reward is derived from the two clearances and never depends on the media playing. The
   // footage and score are separate files next to index.html, requested only when the case opens.
+  // (The score is AAC in an .mp4 box, not .m4a: some hosts, the preview's included, refuse .m4a.)
   const ZERO = {
-    footage: 'assets/project-zero/footage.mp4', score: 'assets/project-zero/score.m4a', poster: 'assets/project-zero/poster.jpg',
+    footage: 'assets/project-zero/footage.mp4', score: 'assets/project-zero/score.mp4', poster: 'assets/project-zero/poster.jpg',
     caseEnd: 1.6, title: 4, foot: 27, total: 36       // the native timeline (s), as in the approved reel
   };
   function zeroLights() { return { lvl: (save.level || 0) >= 100, stage: (save.bestStage || 0) >= 100 }; }
