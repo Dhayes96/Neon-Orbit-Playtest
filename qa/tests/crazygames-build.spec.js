@@ -54,7 +54,9 @@ test('CrazyGames build: file contents, ZIP and the live index.html are as requir
   const zip = zipEntries(path.join(OUT, 'rhythm-void-crazygames.zip'));
   writeResult('cg-build-static', { build: build.log, bannedFound: banned, zipEntries: zip, liveUnchanged: build.liveBefore === build.liveAfter });
   expect(banned, 'banned strings in the CrazyGames file').toEqual([]);
-  expect(zip, 'ZIP holds index.html only').toEqual(['index.html']);
+  // index.html at the root, plus exactly the Project Zero media files when they exist (Nov 12)
+  const pz = fs.existsSync(path.join(GAME, 'assets', 'project-zero')) ? fs.readdirSync(path.join(GAME, 'assets', 'project-zero')).filter((f) => /\.(mp4|m4a|jpg)$/.test(f)).sort().map((f) => 'assets/project-zero/' + f) : [];
+  expect(zip, 'ZIP holds index.html (and the Project Zero media) only').toEqual(['index.html', ...pz]);
   expect(build.liveAfter, 'live index.html unchanged by the build').toBe(build.liveBefore);
   expect(html).toContain('id="renameBtn" hidden');
   expect(html).not.toContain('id="feedbackLink"');

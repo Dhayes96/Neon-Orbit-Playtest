@@ -1,7 +1,7 @@
 // CrazyGames Basic Launch (a): every call-to-action must be fully in view, unclipped and
 // tappable at all 10 required iframe sizes (docs.crazygames.com/requirements/gameplay, DPR 1).
 // Hard checks: results buttons (typical + tallest card), menu buttons, tutorial buttons,
-// pause button + Resume. Long text screens (settings, how-to, board, lore) scroll by design;
+// pause button, Resume + Main Menu. Long text screens (settings, how-to, board, lore) scroll by design;
 // for those we only report whether Back is reachable.
 // Screenshots per size go to results/cg-layout/.
 const { test, expect } = require('@playwright/test');
@@ -53,16 +53,16 @@ for (const [w, h] of SIZES) {
     // tutorial (first-run flow)
     await page.click('#startBtn');
     await page.waitForSelector('#tutorialScreen:not(.hidden)', { timeout: 5000 });
-    res.tutorial = await page.evaluate(visibilityProbe, ['tutNext', 'tutSkip']);
+    res.tutorial = await page.evaluate(visibilityProbe, ['tutNext']);
     await shot(page, `${w}x${h}-tutorial`);
-    await page.click('#tutSkip');
+    await page.click('#tutNext');   // one-card tutorial: Play
     await page.waitForFunction(() => state === 'playing', null, { timeout: 8000 });
     await page.waitForTimeout(800);
     // pause
     res.pauseBtn = await page.evaluate(visibilityProbe, ['pauseBtn']);
     await page.evaluate(() => pauseGame('button'));
     await page.waitForTimeout(200);
-    res.pause = await page.evaluate(visibilityProbe, ['pauseResumeBtn']);
+    res.pause = await page.evaluate(visibilityProbe, ['pauseResumeBtn', 'pauseMenuBtn']);
     await shot(page, `${w}x${h}-pause`);
     // results: typical
     await page.evaluate(() => {   // leave the pause and end the run to reach the results screen
