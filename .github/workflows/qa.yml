@@ -20,7 +20,7 @@ jobs:
   fast:
     name: static + smoke (PR gate, ~2 min)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25      # the gate has grown with each feature
     defaults: { run: { working-directory: qa } }
     steps:
       - uses: actions/checkout@v4
@@ -67,6 +67,9 @@ jobs:
       - name: Project Zero (LVL 100 + stage 100 briefcase, files, Zero Form, Second Life)
         if: ${{ !cancelled() }}
         run: npx playwright test tests/project-zero.spec.js --project=desktop-chrome
+      - name: Hyperdrive (the flight draws, steers, fires, ends; a broken effect can't blank the field)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/hyperdrive.spec.js --project=desktop-chrome
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: fast-results, path: qa/results, retention-days: 14 }

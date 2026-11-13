@@ -9271,7 +9271,7 @@
       }
       ctx.save();
       ctx.translate(cx, cy); ctx.rotate(bank); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
-      drawCraft(t, cx, cy, pulse + beatBreath());
+      drawPlayerCraft(t, cx, cy, pulse + beatBreath());
       ctx.restore();
       return [cx, cy];
     }
@@ -10351,7 +10351,9 @@
   let zeroSessionForm = false;                        // dev preview only: wear Zero Form this session, nothing saved
   function craftIsZero() { return zeroSessionForm || (save.craft === 'zero' && zeroUnlocked()); }
   // the craft, wherever it's drawn (play field, Hyperdrive chase cam, menu backdrop)
-  function drawCraft(t, x, y, p) {
+  // (named drawPlayerCraft, not drawCraft: Hyperdrive has its own local drawCraft, and a call to
+  // this one from inside it must not resolve to that one, or it calls itself until the stack overflows)
+  function drawPlayerCraft(t, x, y, p) {
     if (craftIsZero()) drawZeroOrb(ctx, t, x, y, targetR * 0.62, p, false);
     else CraftFX.draw(t, x, y, p);
   }
@@ -14190,7 +14192,7 @@
     const p = pulse + beatBreath();
     if (!SpaceFX.active && !WorldFX.kindFor(theme.id)) drawGravityWell2D(tgt.x, tgt.y, t, p);
     const po = phantomOffset(t);                     // Phantom Step: the craft is out to the side
-    drawCraft(t, tgt.x + (po ? po[0] : 0), tgt.y + (po ? po[1] : 0), p);
+    drawPlayerCraft(t, tgt.x + (po ? po[0] : 0), tgt.y + (po ? po[1] : 0), p);
   }
 
   // Low graphics / no WebGL: warped space around the craft, cheaply: a cached glow,
@@ -17595,12 +17597,24 @@
   // Cosmetic layers run through this: if one ever throws, that frame loses the
   // effect instead of the whole game loop stopping.
   let _fxErr = 0;
+  // An effect that throws half-way can leave save()s without their restore()s (and a stray
+  // transform, clip or alpha), and the base transform is only set on resize: one error would
+  // blank the play field for the rest of the run. So a throw marks the canvas, and the next
+  // frame starts from a clean context.
+  let _ctxDirty = false;
   function fxSafe(fn) {
     ctx.save();
-    try { fn(); } catch (e) { if (_fxErr++ < 3) console.error('[fx]', e); }
+    try { fn(); } catch (e) { _ctxDirty = true; if (_fxErr++ < 3) console.error('[fx]', e); }
     ctx.restore();
   }
+  function cleanContext() {
+    _ctxDirty = false;
+    if (typeof ctx.reset === 'function') ctx.reset();
+    else canvas.width = canvas.width;                   // older browsers: resizing resets every state
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
   function draw(t) {
+    if (_ctxDirty) cleanContext();
     Hyper.syncButtons();
     const sx = shake ? (Math.random() - 0.5) * shake : 0;
     const sy = shake ? (Math.random() - 0.5) * shake : 0;
