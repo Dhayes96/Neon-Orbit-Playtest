@@ -43,7 +43,9 @@ for (const [w, h, touch] of SIZES) {
 }
 
 test('Liquid Glass: switches still toggle (click + keyboard), glass surfaces are translucent and blurred', async ({ page }) => {
-  const errors = await boot(page, { save: { tutorialDone: true } });
+  // (on a device that keeps the glass: Low graphics off. With Low graphics, chosen or detected as on
+  // this GPU-less test machine, the blur is off by design: see sweep-fixes.spec.js)
+  const errors = await boot(page, { save: { tutorialDone: true, settings: { lowGraphics: false } } });
   await page.click('#settingsBtn');
   await page.waitForSelector('#settingsScreen:not(.hidden)');
   const before = await page.evaluate(() => save.settings.sfx);

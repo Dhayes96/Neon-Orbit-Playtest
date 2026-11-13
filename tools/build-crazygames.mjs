@@ -20,7 +20,7 @@
 //   - "Online board coming soon" replaced with neutral copy
 //   - version label set to v1.0 (decision 4A: v1.0 in the CrazyGames build only; the live site keeps its own VERSION)
 // No dependencies: the ZIP is written with node:zlib (deflate) and a minimal ZIP writer.
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, copyFileSync } from 'node:fs';
 import { deflateRawSync } from 'node:zlib';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
@@ -94,17 +94,28 @@ if (left.length) throw new Error('[build-crazygames] banned strings still presen
 if (s === src) throw new Error('[build-crazygames] no changes applied');
 if (!s.includes(`const VERSION = '${CG_VERSION}';`)) throw new Error('[build-crazygames] version label not set to ' + CG_VERSION);
 
-// Write the build + ZIP (index.html at the root, nothing else).
+// Write the build + ZIP: index.html at the root, plus the Project Zero media (the only other files
+// the game loads; same-origin, requested only once that secret is opened). Nothing else.
 mkdirSync(OUT_DIR, { recursive: true });
 const html = Buffer.from(s, 'utf8');
 writeFileSync(join(OUT_DIR, 'index.html'), html);
-writeFileSync(join(OUT_DIR, 'rhythm-void-crazygames.zip'), zipOne('index.html', html));
+const entries = [['index.html', html]];
+const PZ = join(ROOT, 'assets', 'project-zero');
+if (existsSync(PZ)) {
+  mkdirSync(join(OUT_DIR, 'assets', 'project-zero'), { recursive: true });
+  for (const f of readdirSync(PZ).filter((f) => /\.(mp4|m4a|jpg)$/.test(f)).sort()) {
+    copyFileSync(join(PZ, f), join(OUT_DIR, 'assets', 'project-zero', f));
+    entries.push(['assets/project-zero/' + f, readFileSync(join(PZ, f))]);
+  }
+}
+writeFileSync(join(OUT_DIR, 'rhythm-void-crazygames.zip'), zipMany(entries));
 
 const sha = (b) => createHash('sha256').update(b).digest('hex');
 console.log(JSON.stringify({
   source: { file: 'index.html', bytes: Buffer.byteLength(src), sha256: sha(Buffer.from(src)) },
   crazygames: { file: 'dist/crazygames/index.html', bytes: html.length, sha256: sha(html) },
   zip: 'dist/crazygames/rhythm-void-crazygames.zip',
+  zipEntries: entries.map(([n, d]) => ({ name: n, bytes: d.length })),
   edits: applied,
 }, null, 2));
 
@@ -117,6 +128,34 @@ function crc32(buf) {
     crc = (crc >>> 8) ^ c;
   }
   return (crc ^ 0xffffffff) >>> 0;
+}
+function zipMany(files) {
+  const dosTime = 0, dosDate = (2026 - 1980) << 9 | 11 << 5 | 1;   // fixed timestamp: reproducible ZIPs
+  const locals = [], centrals = [];
+  let offset = 0;
+  for (const [name, data] of files) {
+    const nameBuf = Buffer.from(name, 'utf8');
+    const stored = /\.(mp4|m4a|jpg)$/.test(name);                 // media is already compressed: store it
+    const comp = stored ? data : deflateRawSync(data, { level: 9 });
+    const method = stored ? 0 : 8, crc = crc32(data);
+    const local = Buffer.alloc(30);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(0, 6); local.writeUInt16LE(method, 8);
+    local.writeUInt16LE(dosTime, 10); local.writeUInt16LE(dosDate, 12); local.writeUInt32LE(crc, 14);
+    local.writeUInt32LE(comp.length, 18); local.writeUInt32LE(data.length, 22); local.writeUInt16LE(nameBuf.length, 26); local.writeUInt16LE(0, 28);
+    const central = Buffer.alloc(46);
+    central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(20, 4); central.writeUInt16LE(20, 6); central.writeUInt16LE(0, 8); central.writeUInt16LE(method, 10);
+    central.writeUInt16LE(dosTime, 12); central.writeUInt16LE(dosDate, 14); central.writeUInt32LE(crc, 16);
+    central.writeUInt32LE(comp.length, 20); central.writeUInt32LE(data.length, 24); central.writeUInt16LE(nameBuf.length, 28);
+    central.writeUInt16LE(0, 30); central.writeUInt16LE(0, 32); central.writeUInt16LE(0, 34); central.writeUInt16LE(0, 36); central.writeUInt32LE(0, 38); central.writeUInt32LE(offset, 42);
+    const lp = Buffer.concat([local, nameBuf, comp]);
+    locals.push(lp); centrals.push(Buffer.concat([central, nameBuf]));
+    offset += lp.length;
+  }
+  const centralPart = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(0, 4); end.writeUInt16LE(0, 6); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(centralPart.length, 12); end.writeUInt32LE(offset, 16); end.writeUInt16LE(0, 20);
+  return Buffer.concat([...locals, centralPart, end]);
 }
 function zipOne(name, data) {
   const nameBuf = Buffer.from(name, 'utf8');
