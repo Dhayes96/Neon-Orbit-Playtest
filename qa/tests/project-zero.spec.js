@@ -208,6 +208,82 @@ for (const [W, H] of [[844, 390], [667, 375], [390, 844], [1024, 768]]) {
   });
 }
 
+// Nov 13, "the video keeps freezing": the player used to seek the footage whenever it drifted
+// 0.25 s from the files' clock. On a connection slower than the footage (or a host without byte
+// ranges, where every seek restarts the file), each stall made it seek again, ~10 times a second,
+// and the footage sat on its first frame. Now the footage leads and the files wait for it.
+const evProbe = (page) => page.evaluate(() => { const v = document.getElementById('zfVideo'), m = document.getElementById('zfEvMsg');
+  return Object.assign({ clock: ZeroFiles._clock(), vt: v.currentTime, seeks: window.__seeks || 0, msg: m.classList.contains('hidden') ? '' : document.getElementById('zfEvMsgText').textContent, phase: ZeroFiles.phase, playing: ZeroFiles.media.playing }, ZeroFiles._av()); });
+async function openToEvidence(page) {
+  await page.evaluate(() => { const v = document.getElementById('zfVideo'); window.__seeks = 0; v.addEventListener('seeking', () => window.__seeks++); });
+  await page.click('#zeroCase');
+  await page.waitForFunction(() => ZeroFiles.phase === 'evidence', null, { timeout: 20000 });
+}
+
+test('a slow connection: the footage never gets seek-chased; it plays, the files wait for it, and the score stays with it', async ({ page }) => {
+  test.setTimeout(90000);
+  const { errors } = await bootZ(page, { level: 100, bestStage: 100, settings: { music: true } });
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Network.enable');
+  await cdp.send('Network.emulateNetworkConditions', { offline: false, latency: 120, downloadThroughput: 1000 * 1000 / 8, uploadThroughput: 500000 });   // 1 Mbps: slower than the footage
+  await openToEvidence(page);
+  const a = await evProbe(page);
+  await page.waitForTimeout(7000);
+  const b = await evProbe(page);
+  if (b.vReady === 0 || /DAMAGED/.test(b.msg)) { test.skip(true, 'this browser does not decode the footage here'); return; }
+  expect(b.seeks, 'never chased').toBeLessThanOrEqual(1);
+  expect(b.vt - a.vt, 'the footage moves on').toBeGreaterThan(1.5);
+  expect(Math.abs(b.clock - 4 - b.vt), 'the files follow the footage').toBeLessThan(0.3);
+  if (b.aReady >= 2 && !b.vPaused) expect(Math.abs(b.a - b.clock), 'the score stays with them').toBeLessThan(0.45);
+  expect(errors.filter((e) => !/project-zero|Failed to load resource/.test(e))).toEqual([]);
+});
+
+test('a host without byte ranges (every seek would restart the file): the score never restarts and the footage plays', async ({ page }) => {
+  test.setTimeout(90000);
+  // serve the media whole, with no Accept-Ranges: the browser then can't seek in them
+  await page.route(/assets\/project-zero\/(footage|score)\.mp4$/, async (route) => {
+    const r = await route.fetch({ headers: Object.assign({}, route.request().headers(), { range: '' }) });
+    const body = await r.body();
+    await route.fulfill({ status: 200, body, headers: { 'content-type': 'video/mp4', 'content-length': String(body.length) } });
+  });
+  const { errors } = await bootZ(page, { level: 100, bestStage: 100, settings: { music: true } });
+  await openToEvidence(page);
+  const seen = [];
+  for (let i = 0; i < 12; i++) { await page.waitForTimeout(400); seen.push(await evProbe(page)); }
+  const last = seen[seen.length - 1];
+  if (last.vReady === 0 || /DAMAGED/.test(last.msg)) { test.skip(true, 'this browser does not decode the footage here'); return; }
+  for (let i = 1; i < seen.length; i++) if (seen[i].a !== null && seen[i - 1].a !== null) expect(seen[i].a, 'the score never jumps back').toBeGreaterThanOrEqual(seen[i - 1].a - 0.05);
+  expect(last.vt - seen[0].vt).toBeGreaterThan(3);
+  expect(Math.abs(last.clock - 4 - last.vt)).toBeLessThan(0.3);
+  expect(errors.filter((e) => !/project-zero|Failed to load resource/.test(e))).toEqual([]);
+});
+
+test('the footage runs out of data: LOADING FILE, the files and the score wait, then carry on together', async ({ page }) => {
+  test.setTimeout(60000);
+  const { errors } = await bootZ(page, { level: 100, bestStage: 100, settings: { music: true } });
+  await openToEvidence(page);
+  await page.waitForTimeout(1200);
+  const v0 = await evProbe(page);
+  if (v0.vReady === 0 || /DAMAGED/.test(v0.msg)) { test.skip(true, 'this browser does not decode the footage here'); return; }
+  await page.evaluate(() => { const v = document.getElementById('zfVideo'); v.pause(); v.dispatchEvent(new Event('waiting')); });
+  await page.waitForTimeout(900);
+  const a = await evProbe(page);
+  expect(a.msg).toBe('LOADING FILE…');
+  expect(a.playing, 'the score waits too').toBe(false);
+  await page.waitForTimeout(500);
+  expect((await evProbe(page)).clock, 'the clock waits').toBeCloseTo(a.clock, 3);
+  await page.evaluate(() => document.getElementById('zfVideo').play());
+  await page.waitForTimeout(900);
+  const b = await evProbe(page);
+  expect(b.msg).toBe('');
+  expect(b.playing).toBe(true);
+  expect(b.clock).toBeGreaterThan(a.clock + 0.5);
+  expect(Math.abs(b.clock - 4 - b.vt)).toBeLessThan(0.3);
+  expect(b.seeks, 'no seek to resume').toBe(0);
+  await page.click('#zfClose');
+  expect(errors.filter((e) => !/project-zero/.test(e))).toEqual([]);
+});
+
 test('while the files are open, the menu behind them ignores keys; Escape closes; nothing lingers', async ({ page }) => {
   const { errors } = await bootZ(page, { level: 100, bestStage: 100 });
   await page.click('#zeroCase');
