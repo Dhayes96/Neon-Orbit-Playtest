@@ -1,11 +1,12 @@
 // HUD docks + pause Main Menu (Dennel, Nov 12):
-//  1. The Combo Fever banner and the power chip must never sit where the saucer flies, on any
-//     screen: phones (portrait + landscape, touch), tablets, desktop and the 10 CrazyGames sizes.
-//     The chip sits in the upper-left: wide screens dock it under Score and Fever under Best beside
-//     Pause; narrow portrait phones put the chip at the left of the first row under the HUD and
-//     Fever in the second, both below the boss bar in a boss fight.
-//  2. Neither may cover another HUD element (panels, stage chip, boss name/bar, Pause + its halo,
-//     energy bar) or leave the screen, with the longest texts (Supernova, "HOLD TO EXIT", timer).
+//  1. The power chip must never sit where the saucer flies, on any screen: phones (portrait +
+//     landscape, touch), tablets, desktop and the 10 CrazyGames sizes. It sits in the upper-left:
+//     wide screens dock it under Score; narrow portrait phones put it at the left of the row under
+//     the HUD, below the boss bar in a boss fight.
+//     (Later, Nov 12: the floating Fever banner is gone. The combo panel shows the score mode; its
+//     label must stay readable with the longest mode name, see combo-mode.spec.js for the rest.)
+//  2. The chip may not cover another HUD element (panels, stage chip, boss name/bar, Pause + its
+//     halo, energy bar) or leave the screen, with the longest texts ("HOLD TO EXIT", timer).
 //  3. The chip hides during Hyperdrive (its own FIRE / CORE buttons sit at the bottom).
 //  4. Pause has a Main Menu button: first tap arms it ("Tap again to quit", 3 s), the second ends
 //     the run (scored like any ending), lands on the title screen with its music, and a new run
@@ -34,24 +35,25 @@ const SAVE = { level: 60, equippedAbility: 'eventHorizon', overclock: true,
 
 // In-page: dock rects vs the saucer and the rest of the HUD, for the state the page is in now.
 function probe(label) {
+  const bad0 = [];
   const box = (el) => { if (!el) return null; const cs = getComputedStyle(el); if (cs.display === 'none') return null;
     const r = el.getBoundingClientRect(); return r.width ? { l: r.left, t: r.top, r: r.right, b: r.bottom } : null; };
   const hitCircle = (b, x, y, rad) => { const nx = Math.min(Math.max(x, b.l), b.r), ny = Math.min(Math.max(y, b.t), b.b); return (nx - x) ** 2 + (ny - y) ** 2 < rad * rad; };
   const overlap = (a, b, pad = 0) => a && b && a.l < b.r + pad && b.l < a.r + pad && a.t < b.b + pad && b.t < a.b + pad;
-  const docks = { fever: feverBanner.classList.contains('on') ? box(feverBanner) : null, chip: box(abilityStatus) };
+  const docks = { chip: box(abilityStatus) };
+  if (document.getElementById('feverBanner')) bad0.push(`${label}: the floating Fever banner is back`);
   const panels = [...document.querySelectorAll('.hud .panel')].map(box);
   const others = { score: panels[0], combo: panels[1], best: panels[2], energy: box(document.querySelector('.energy-wrap')),
     pause: box(document.getElementById('pauseBtn')) };
   if (stageChip.classList.contains('show') && !stageChip.classList.contains('boss-hidden')) others.stage = box(stageChip);
   if (bossHud.classList.contains('show')) { others.bossName = box(bossNameEl); others.bossBar = box(document.getElementById('bossBar')); }
-  const bad = [];
+  const bad = bad0;
   for (const [k, d] of Object.entries(docks)) {
     if (!d) continue;
     if (d.l < -0.5 || d.t < -0.5 || d.r > innerWidth + 0.5 || d.b > innerHeight + 0.5) bad.push(`${label}: ${k} off screen`);
     for (const a of anchors) if (hitCircle(d, a.x, a.y, targetR * 1.3)) bad.push(`${label}: ${k} over the saucer at ${a.id}`);
     for (const [ok, ob] of Object.entries(others)) if (overlap(d, ob, ok === 'pause' ? 10 : 0)) bad.push(`${label}: ${k} overlaps ${ok}`);
   }
-  if (overlap(docks.fever, docks.chip)) bad.push(`${label}: fever overlaps chip`);
   // Dennel (Nov 12): the power chip lives in the upper-left corner
   if (docks.chip && !((docks.chip.l + docks.chip.r) / 2 < innerWidth * 0.42 && docks.chip.b < Math.max(250, innerHeight * 0.3)))
     bad.push(`${label}: chip not in the upper-left`);
@@ -61,7 +63,10 @@ function probe(label) {
   if (docks.chip && cut(abilityStatus, abilityStatusText)) bad.push(`${label}: chip text cut off`);
   const timer = abilityStatus.querySelector('.on');   // compact mode may drop the count, never the timer / HOLD
   if (docks.chip && timer && (getComputedStyle(timer).display === 'none' || !timer.getClientRects().length)) bad.push(`${label}: chip lost its timer`);
-  if (docks.fever && cut(feverBanner, feverBanner)) bad.push(`${label}: Fever text cut off`);
+  // the score mode lives in the combo panel: its label (the longest is "SINGULARITY ×3") must fit,
+  // and the three panels must not run into each other
+  if (fever && cut(comboPanel, comboLabel)) bad.push(`${label}: combo panel mode label cut off`);
+  if (overlap(others.combo, others.score) || overlap(others.combo, others.best)) bad.push(`${label}: combo panel overlaps a panel`);
   return { bad, wide: document.body.classList.contains('hud-wide'), docks, R: targetR, anchors: anchors.map((a) => a.id).join(' ') };
 }
 
@@ -90,11 +95,11 @@ for (const [name, w, h, dpr, touch] of SIZES) {
       abilityStatusText.innerHTML = '⚡' + ABILITIES.triLaser.short + ' <span class="on">12s</span><span class="uses">· 5 SLICES</span>';
       fitAbilityChip(); });   // as tickAbilityHud() does after every text change
     await settle(); res.states.supernova = await page.evaluate(probe, 'supernova');
-    // C: the same in a boss fight with the longest boss name
-    await page.evaluate(() => { stageChip.classList.add('boss-hidden'); bossNameEl.textContent = 'ECLIPSE SOVEREIGN'; bossHud.classList.add('show'); });
+    // C: a boss fight with the longest boss name, at Singularity (the longest mode label)
+    await page.evaluate(() => { perfectRun = 260; setFeverLevel(3); stageChip.classList.add('boss-hidden'); bossNameEl.textContent = 'ECLIPSE SOVEREIGN'; bossHud.classList.add('show'); });
     await settle(); res.states.boss = await page.evaluate(probe, 'boss'); await shot(page, `${name}-boss`);
     // D: Hyperdrive hides the chip
-    expect(await page.evaluate(() => fever && feverLevel === 2), 'Fever stayed on through the checks').toBe(true);
+    expect(await page.evaluate(() => fever && feverLevel === 3), 'Fever stayed on through the checks').toBe(true);
     res.hyperChipHidden = await page.evaluate(() => { bossHud.classList.remove('show'); stageChip.classList.remove('boss-hidden');
       Hyper.start(clockNow() - startTime); const hidden = getComputedStyle(abilityStatus).display === 'none'; Hyper.cancel();
       return hidden && getComputedStyle(abilityStatus).display !== 'none'; });
@@ -235,7 +240,7 @@ test('Pause: Main Menu mid boss fight, with Supernova and a power running, clear
   await page.click('#pauseMenuBtn');
   await page.waitForFunction(() => state === 'menu', null, { timeout: 3000 });
   const s = await page.evaluate(() => ({ boss: bossActive, bossHud: bossHud.classList.contains('show'), fever, feverLevel,
-    ab: abActive, nova: !!skyNova, hyper: Hyper.active, banner: feverBanner.classList.contains('on') }));
-  expect(s).toEqual({ boss: false, bossHud: false, fever: false, feverLevel: 0, ab: false, nova: false, hyper: false, banner: false });
+    ab: abActive, nova: !!skyNova, hyper: Hyper.active, mode: comboPanel.className, label: comboLabel.textContent }));
+  expect(s).toEqual({ boss: false, bossHud: false, fever: false, feverLevel: 0, ab: false, nova: false, hyper: false, mode: 'panel center', label: 'Combo' });
   expect(errors).toEqual([]);
 });
