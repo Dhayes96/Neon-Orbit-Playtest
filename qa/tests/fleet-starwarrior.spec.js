@@ -63,7 +63,7 @@ test('Big Bang warps to the Alien Fleet until it is beaten; surviving unlocks ST
   const won = await page.evaluate(() => ({
     phase: Fleet.phase, unlocked: save.bossUnlocks.fleet,
     saved: JSON.parse(localStorage.getItem('rhythmVoidSave.v1')).bossUnlocks.fleet,
-    banner: bossRewardValueEl.textContent, downed: Fleet.downed, ability: abilityId
+    banner: bossRewardValueEl.textContent, downed: Fleet.downed, ability: abilityId, stats: Fleet.stats
   }));
   await page.waitForFunction(() => Fleet.phase === 'off', null, { timeout: 8000 });
   await page.waitForTimeout(300);
@@ -81,8 +81,9 @@ test('Big Bang warps to the Alien Fleet until it is beaten; surviving unlocks ST
   expect([...new Set(samples.map((s) => s.wave))].sort(), 'three waves').toEqual([1, 2, 3]);
   expect(samples.some((s) => s.sub === 'WAVE 3 OF 3')).toBe(true);
   expect(Math.max(...samples.map((s) => s.ships)), 'attackers fly in').toBeGreaterThan(0);
-  expect(samples.some((s) => s.bolts > 0), 'they fire').toBe(true);
-  expect(won.downed, 'hits on the beat shoot ships down').toBeGreaterThan(8);
+  expect(won.stats.fired, 'they attack (armoured: a ship survives a couple of your shots)').toBeGreaterThan(4);
+  expect(won.stats.reflected, 'fire that lands while you are on the beat is reflected').toBeGreaterThan(2);
+  expect(won.downed, 'hits on the beat shoot ships down').toBeGreaterThan(5);
   // (the autoplayer is near-perfect; a rare real miss under load is allowed, but fire only ever
   // gets through right after one)
   expect(hits.length, 'staying on the beat reflects the fleet\'s fire').toBeLessThanOrEqual(qa.faults.length);
@@ -153,9 +154,14 @@ test('STAR-WARRIOR: a living orb; the portal swallows every ring; the release cl
 
   await page.waitForTimeout(300);
   const score0 = await page.evaluate(() => score);
-  await page.evaluate(() => { abHoldStart = performance.now() - ABILITY_HOLD_MS - 10; });   // a full hold
+  await page.evaluate(() => {
+    const orig = window.starRelease;          // remember exactly what was in flight when it went off
+    window.starRelease = function () { window.__inFlight = notes.filter((n) => !n.hit && !n.missed); return orig.apply(this, arguments); };
+    abHoldStart = performance.now() - ABILITY_HOLD_MS - 10;   // a full hold
+  });
   await page.waitForFunction(() => !starCharged, null, { timeout: 3000 });
-  const blast = await page.evaluate(() => ({ blast: !!starBlast, live: notes.filter((n) => !n.hit && !n.missed).length, score, ready: abReady, chip: abilityStatusText.textContent }));
+  // (rings spawned after the release are new: only what was in flight when it went off must be gone)
+  const blast = await page.evaluate(() => ({ blast: !!starBlast, live: (window.__inFlight || [null]).filter((n) => !n || (!n.hit && !n.missed)).length, score, ready: abReady, chip: abilityStatusText.textContent }));
   expect(blast.blast, 'the blast wave goes off').toBe(true);
   expect(blast.live, 'and clears the field').toBe(0);
   expect(blast.score - score0, 'it pays for what it ate').toBeGreaterThanOrEqual(150 * charged.held);

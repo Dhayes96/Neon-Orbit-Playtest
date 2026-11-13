@@ -9335,6 +9335,9 @@
     let gx = 0, gy = 0, gal = null, stars = null;
     let ships = [], bolts = [], shots = [], decoys = [], flybys = [], booms = [];
     let nextSpawn = 0, nextFly = 0, wave = 0, downed = 0, faultAt = -9, hitFlash = 0, shieldFlash = 0;
+    let nFired = 0, nReflected = 0, nThrough = 0;
+    // armour: a dart takes 3 of your shots, a disc 4, so they get to attack before they go down
+    const HP = { dart: 3, disc: 4 };
     let mother = null, prevAb = null, lastT = 0, forced = false, prevCol = null, prevMarks = null;
 
     const active = () => phase !== 'off';
@@ -9507,7 +9510,7 @@
       const ctrl = [(from[0] + hover[0]) / 2 + (fxRand() - 0.5) * W * 0.4, Math.min(from[1], hover[1]) - H * 0.15];
       const b = beatLen();
       const arrive = t + b * 1.5, fireAt = nextBeat(arrive + b * 1.6) - b * 0.85;   // bolt lands on a beat
-      ships.push({ kind, from, ctrl, hover, t0: t, arrive, fireAt, land: fireAt + b * 0.85, dead: false, fired: false, targeted: false, out: 0 });
+      ships.push({ kind, from, ctrl, hover, t0: t, arrive, fireAt, land: fireAt + b * 0.85, dead: false, fired: false, hp: HP[kind], pending: 0, hurt: -9, out: 0 });
       if (kind === 'disc') for (let i = 0; i < 2; i++) decoys.push({ t0: nextBeat(arrive) + b * (i + 0.5) - b * 1.4, land: nextBeat(arrive) + b * (i + 0.5), x: tgt.x, y: tgt.y });
       if (save.settings.sfx) tone(kind === 'disc' ? 300 : 520, 0.18, 'sawtooth', 0.012);
     }
@@ -9517,6 +9520,17 @@
       const e = 1 - Math.pow(1 - k, 3);
       const p = bez(s.from, s.ctrl, s.hover, e);
       return [p[0] + Math.sin(t * 2.3 + s.t0) * 6, p[1] + Math.cos(t * 1.9 + s.t0) * 5];
+    }
+    // one of your shots lands: it chips the armour, the last one brings the ship down
+    function wound(s, t) {
+      s.pending = Math.max(0, s.pending - 1);
+      if (s.dead) return;
+      if (--s.hp <= 0) { kill(s, t, 'shot'); return; }
+      s.hurt = t;
+      const [x, y] = shipPos(s, t);
+      createBurst(x, y, '#9ff7ff', 8, 0.7);
+      score += 40; scoreEl.textContent = score;
+      if (save.settings.sfx) tone(320, 0.05, 'square', 0.014);
     }
     function kill(s, t, how) {
       if (s.dead) return;
@@ -9536,7 +9550,7 @@
     function begin(t) {
       ensureArt(); forced = false;
       phase = 'warpOut'; t0 = t; lastT = t;
-      ships = []; bolts = []; shots = []; decoys = []; flybys = []; booms = []; downed = 0; wave = 0; mother = null; faultAt = -9;
+      ships = []; bolts = []; shots = []; decoys = []; flybys = []; booms = []; downed = 0; wave = 0; mother = null; faultAt = -9; nFired = nReflected = nThrough = 0;
       // the galaxy it picks out of the sky: high up, off to one side
       gx = W * (fxRand() < 0.5 ? 0.25 : 0.75) + (fxRand() - 0.5) * W * 0.1; gy = H * (0.2 + fxRand() * 0.08);
       // Big Bang is spent: it recharges as usual; the warp replaces its blast
@@ -9625,9 +9639,9 @@
     function onHit() {
       if (phase !== 'fight') return;
       const t = clockNow() - startTime;
-      const live = ships.filter(s => !s.dead && !s.out && !s.targeted && t >= s.arrive - beatLen() * 0.5).sort((a, b) => a.fireAt - b.fireAt);
+      const live = ships.filter(s => !s.dead && !s.out && s.pending < s.hp && t >= s.arrive - beatLen() * 0.5).sort((a, b) => a.fireAt - b.fireAt);
       const s = live[0];
-      if (s) { s.targeted = true; shots.push({ t0: t, s, x: tgt.x, y: tgt.y }); if (save.settings.sfx) tone(1760, 0.05, 'square', 0.012); }
+      if (s) { s.pending++; shots.push({ t0: t, s, x: tgt.x, y: tgt.y }); if (save.settings.sfx) tone(1760, 0.05, 'square', 0.012); }
       else if (flybys.length && fxRand() < 0.35) { const f = flybys[(fxRand() * flybys.length) | 0]; if (!f.dead) shots.push({ t0: t, fly: f, x: tgt.x, y: tgt.y }); }
     }
     function update(dt, t) {
@@ -9663,7 +9677,7 @@
       // ships fire
       for (const s of ships) {
         if (s.dead || s.out || s.fired || t < s.fireAt) continue;
-        s.fired = true;
+        s.fired = true; nFired++;
         const [x, y] = shipPos(s, t);
         bolts.push({ x0: x, y0: y, t0: t, land: s.land, s, state: 'fly' });
         if (save.settings.sfx) tone(660, 0.1, 'square', 0.016);
@@ -9685,7 +9699,7 @@
       }
       bolts = bolts.filter(b => b.state !== 'done' && t - b.t0 < 4);
       // your shots
-      for (const sh of shots) if (!sh.done && t - sh.t0 >= 0.12) { sh.done = true; if (sh.s) kill(sh.s, t, 'shot'); else if (sh.fly && !sh.fly.dead) { sh.fly.dead = true; sh.fly.deadAt = t; downed++; booms.push({ x: sh.tx || tgt.x, y: sh.ty || tgt.y, t0: t, small: true }); } }
+      for (const sh of shots) if (!sh.done && t - sh.t0 >= 0.12) { sh.done = true; if (sh.s) wound(sh.s, t); else if (sh.fly && !sh.fly.dead) { sh.fly.dead = true; sh.fly.deadAt = t; downed++; booms.push({ x: sh.tx || tgt.x, y: sh.ty || tgt.y, t0: t, small: true }); } }
       shots = shots.filter(sh => t - sh.t0 < 0.3);
       decoys = decoys.filter(d => t < d.land + 0.2);
       booms = booms.filter(b => t - b.t0 < 0.8);
@@ -9693,6 +9707,7 @@
     function impact(t, beam, b) {
       const through = t - faultAt < beatLen() * 1.05 && !phantomActive();
       if (through) {
+        nThrough++;
         if (b) b.state = 'done';
         energy = Math.max(0, energy - (beam ? 12 : 8)); energyBar.style.width = energy + '%';
         hitFlash = 1; shake = Math.max(shake, beam ? 16 : 11);
@@ -9702,6 +9717,7 @@
         if (energy <= 0) endGame();
       } else {
         shieldFlash = 1;
+        nReflected++;
         if (b) { b.state = 'reflect'; b.back = t + 0.22; b.rx = tgt.x; b.ry = tgt.y; }
         if (beam && mother) { score += 400; scoreEl.textContent = score; }
         if (save.settings.sfx) { tone(1568, 0.06, 'triangle', 0.02); tone(2349, 0.08, 'sine', 0.012, 0.02); }
@@ -9849,6 +9865,12 @@
         const ang = s.out ? -Math.PI / 2 : Math.atan2(tgt.y - y, tgt.x - x);
         const charge = !s.fired && t > s.fireAt - b * 1.2 ? Math.min(1, (t - (s.fireAt - b * 1.2)) / (b * 1.2)) : 0;
         hull(x, y, targetR * (s.kind === 'disc' ? 0.82 : 0.74), s.kind === 'disc' ? Math.sin(t * 2) * 0.1 : ang, s.out ? Math.max(0, 1 - (t - s.out)) : 1, charge, s.kind);
+        if (t - s.hurt < 0.18) {                                             // a shot just chipped its armour
+          const k = 1 - (t - s.hurt) / 0.18, hr = targetR * 0.6;
+          const hg = ctx.createRadialGradient(x, y, 0, x, y, hr);
+          hg.addColorStop(0, `rgba(220,255,255,${0.8 * k})`); hg.addColorStop(1, 'rgba(120,240,255,0)');
+          ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(x, y, hr, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
         if (charge > 0) { ctx.save(); ctx.strokeStyle = `rgba(125,255,59,${0.25 * charge})`; ctx.setLineDash([4, 6]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tgt.x, tgt.y); ctx.stroke(); ctx.restore(); }
       }
       // the mothership's beam
@@ -9902,6 +9924,7 @@
     return {
       get active() { return active(); }, get inFight() { return inFight(); }, get phase() { return phase; },
       get downed() { return downed; }, get wave() { return wave; },
+      get stats() { return { fired: nFired, reflected: nReflected, through: nThrough, downed }; },
       shouldWarp, begin, update, drawBack, drawFront, onHit, fault, cancel,
       devArm() { forced = true; }, prewarm,
       _ships: () => ships, _bolts: () => bolts, _galaxy: () => [gx, gy]
