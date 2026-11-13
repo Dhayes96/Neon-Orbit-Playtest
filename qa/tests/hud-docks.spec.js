@@ -55,6 +55,8 @@ function probe(label) {
   const cut = (el, textEl) => { const rg = document.createRange(); rg.selectNodeContents(textEl); const cs = getComputedStyle(el);
     return rg.getBoundingClientRect().width > el.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth) + 1; };
   if (docks.chip && cut(abilityStatus, abilityStatusText)) bad.push(`${label}: chip text cut off`);
+  const timer = abilityStatus.querySelector('.on');   // compact mode may drop the count, never the timer / HOLD
+  if (docks.chip && timer && (getComputedStyle(timer).display === 'none' || !timer.getClientRects().length)) bad.push(`${label}: chip lost its timer`);
   if (docks.fever && cut(feverBanner, feverBanner)) bad.push(`${label}: Fever text cut off`);
   return { bad, wide: document.body.classList.contains('hud-wide'), docks, R: targetR, anchors: anchors.map((a) => a.id).join(' ') };
 }
@@ -81,7 +83,8 @@ for (const [name, w, h, dpr, touch] of SIZES) {
     await settle(); res.states.fever = await page.evaluate(probe, 'fever'); await shot(page, `${name}-fever`);
     // B: Supernova + the widest real chip text (a running Tri-Laser, Overclocked: time + slices left)
     await page.evaluate(() => { setFeverLevel(2); abilityStatus.classList.add('on-air');
-      abilityStatusText.innerHTML = '⚡' + ABILITIES.triLaser.short + ' <span class="on">12s</span><span class="uses">· 5 SLICES</span>'; });
+      abilityStatusText.innerHTML = '⚡' + ABILITIES.triLaser.short + ' <span class="on">12s</span><span class="uses">· 5 SLICES</span>';
+      fitAbilityChip(); });   // as tickAbilityHud() does after every text change
     await settle(); res.states.supernova = await page.evaluate(probe, 'supernova');
     // C: the same in a boss fight with the longest boss name
     await page.evaluate(() => { stageChip.classList.add('boss-hidden'); bossNameEl.textContent = 'ECLIPSE SOVEREIGN'; bossHud.classList.add('show'); });

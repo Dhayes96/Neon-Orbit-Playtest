@@ -247,8 +247,9 @@
       left: auto; right: var(--dock-right, 76px); top: var(--dock-mid, 97px); translate: 0 -50%;
       max-width: var(--dock-right-max, 220px);
     }
-    body.dock-tight #abilityStatus .uses { display: none; }
     body.hud-wide #abilityStatus.on-air { font-size: 12px; }
+    body.hud-wide #abilityStatus.tight { font-size: 10.5px; letter-spacing: 0.05em; padding-left: 10px; padding-right: 10px; }
+    #abilityStatus.tight .uses { display: none; }
     /* Hyperdrive has its own FIRE / CORE buttons, and powers can't be used in it */
     body.hyper-on #abilityStatus { display: none !important; }
     #abilityStatus.show { display: block; }
@@ -6347,7 +6348,6 @@
     const half = boss ? Math.max(chipHalf, bossNameEl.getBoundingClientRect().width / 2 + 10) : chipHalf;
     const availL = (midX - half) - leftEdge, availR = rightEdge - (midX + half);
     document.body.classList.toggle('hud-wide', wide);
-    document.body.classList.toggle('dock-tight', wide && availR < 175);   // drop the "· 5 CUTS" count, keep the timer
     const rs = document.documentElement.style;
     if (wide) {
       const mid = (bandTop + hudBand) / 2;
@@ -6360,6 +6360,15 @@
     } else {
       hudDockReserve = si.top + DOCK_NARROW.chipTop + DOCK_NARROW.bossShift + DOCK_NARROW.chipH + 4;
     }
+    fitAbilityChip();
+  }
+  // A docked chip that doesn't fit (fonts differ per device, so this is measured, not guessed)
+  // goes compact: smaller type and no "· 5 CUTS" count; the timer always stays.
+  function fitAbilityChip() {
+    if (typeof abilityStatus === 'undefined' || !abilityStatus) return;
+    abilityStatus.classList.remove('tight');
+    if (!document.body.classList.contains('hud-wide') || !abilityStatus.classList.contains('show')) return;
+    if (abilityStatus.scrollWidth > abilityStatus.clientWidth + 1) abilityStatus.classList.add('tight');
   }
 
   if (typeof MutationObserver === 'function') {
@@ -7654,6 +7663,7 @@
       const total = tune ? tune.stages : 5;
       abilityStatusText.innerHTML = label + ' <span class="off">' + Math.max(0, total - abStagesLeft) + '/' + total + '</span>';
     }
+    fitAbilityChip();
   }
 
   // The live countdown while a core runs, refreshed every frame: seconds left (a
@@ -7678,6 +7688,7 @@
       abilityStatusText.innerHTML = label + ' <span class="on">' + secs + 's</span>' +
         (capped ? '<span class="uses">· ' + abUsesLeft + ' ' + (abilityId === 'hexSaw' ? 'CUTS' : 'SLICES') + '</span>' : '');
       abilityStatus.classList.toggle('ending', ending);
+      fitAbilityChip();
     }
     const b = Math.round(frac * 400) / 400;
     if (b !== abHudBar && abilityTimerBar) { abHudBar = b; abilityTimerBar.style.transform = 'scaleX(' + b + ')'; }
