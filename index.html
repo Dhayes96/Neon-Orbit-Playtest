@@ -350,6 +350,7 @@
       font-size: 12px; padding: 7px 16px; letter-spacing: 0.16em;
     }
     body.hud-wide #feverBanner.tight { font-size: 10.5px !important; padding: 6px 12px; letter-spacing: 0.08em; }
+    body.hud-wide #feverBanner.tighter { font-size: 9.5px !important; padding: 5px 9px; letter-spacing: 0.02em; }
     /* v0.3.0 tiers: Supernova burns white-hot; Singularity is a black core with a glowing rim. */
     #feverBanner.lvl2 {
       color: #1a0700; font-size: 15px;
@@ -6516,17 +6517,35 @@
   }
   // Wider than its box? (Text width vs content box: scrollWidth can't be used on the Fever banner,
   // whose shine sweeps outside it.)
+  // Measured in layout pixels: the banner is usually mid scale-in (or popping) when this runs, and
+  // a transform scales the text's rect but not the padding. The box shrinks to its text up to its
+  // max-width, so "too wide" means text + padding within 1 px of that limit.
   function textOverflows(el, textEl) {
     const r = document.createRange(); r.selectNodeContents(textEl || el);
-    const cs = getComputedStyle(el), w = el.getBoundingClientRect().width;
-    return r.getBoundingClientRect().width > w - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth) + 1;
+    const cs = getComputedStyle(el), box = el.getBoundingClientRect().width, lw = el.offsetWidth;
+    const k = lw > 0 && box > 0 ? box / lw : 1;
+    const pads = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight) + parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth);
+    const mw = parseFloat(cs.maxWidth), limit = isFinite(mw) ? Math.min(mw, Math.max(lw, 1)) : lw;
+    return r.getBoundingClientRect().width / k + pads > (isFinite(mw) ? mw : limit) - 1;
   }
   // The docked Fever banner goes compact when its tier name doesn't fit beside Pause.
+  // Fonts differ per device, so the docked Fever banner is measured: compact, then smaller, and
+  // only as a last resort its short label ("Combo Fever" -> "Fever").
   function fitFeverBanner() {
     if (typeof feverBanner === 'undefined' || !feverBanner) return;
-    feverBanner.classList.remove('tight');
+    feverBanner.classList.remove('tight', 'tighter');
+    // undo an earlier short label (unless the tier has changed the text since)
+    if (feverBanner.dataset.full && feverBanner.textContent === feverBanner.dataset.short) feverBanner.textContent = feverBanner.dataset.full;
+    delete feverBanner.dataset.full; delete feverBanner.dataset.short;
     if (!document.body.classList.contains('hud-wide') || !feverBanner.classList.contains('on')) return;
-    if (textOverflows(feverBanner)) feverBanner.classList.add('tight');
+    if (!textOverflows(feverBanner)) return;
+    feverBanner.classList.add('tight');
+    if (!textOverflows(feverBanner)) return;
+    feverBanner.classList.add('tighter');
+    if (!textOverflows(feverBanner)) return;
+    const full = feverBanner.textContent;
+    let tier = null; try { tier = FEVER_TIERS.find((x) => x && x.banner === full); } catch (e) {}
+    if (tier && tier.label !== full) { feverBanner.dataset.full = full; feverBanner.dataset.short = tier.label; feverBanner.textContent = tier.label; }
   }
   // A docked chip that doesn't fit (fonts differ per device, so this is measured, not guessed)
   // goes compact: smaller type and no "· 5 CUTS" count; the timer always stays.
