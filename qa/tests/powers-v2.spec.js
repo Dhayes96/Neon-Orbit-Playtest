@@ -11,16 +11,24 @@ const { boot, writeResult } = require('./harness');
 
 const ALL = { cubex: true, hexatron: true, triarch: true, vantaPrism: true, eclipseSovereign: true, metronox: true, nullstar: true };
 
+// Not before the beat, and on the first frame after it: within 0.1 s, or (on a slow CI frame) the
+// previous update was still short of the beat. Never more than 0.5 s late.
+const onBeat = (c) => c.t >= c.hit - 0.012 && c.t - c.hit < 0.5 && (c.t - c.hit < 0.1 || c.prev < c.hit - 0.01);
+
 async function startWith(page, ability) {
   const errors = await boot(page, { save: { level: 50, equippedAbility: ability, bossUnlocks: ALL } });
   await page.evaluate(() => startGame(false));
   await page.waitForFunction(() => state === 'playing');
   await page.evaluate(() => {
     window.breakCombo = function () {}; setInterval(() => { energy = 100; }, 100);
-    const log = window.__pw = { cuts: [], absorbs: [] };
+    const log = window.__pw = { cuts: [], absorbs: [], prevT: -9, curT: -9 };
+    // the game time of the previous ability update: "on its beat" means on the first update at or
+    // after the beat, however late a slow CI frame makes that update
+    const origUpd = window.updateAbility;
+    window.updateAbility = function (dt, t) { log.prevT = log.curT; log.curT = t; return origUpd.apply(this, arguments); };
     for (const fn of ['sawCut', 'prismAbsorb']) {
       const orig = window[fn];
-      window[fn] = function (note, t) { (fn === 'sawCut' ? log.cuts : log.absorbs).push({ t, hit: note.hitTime, state: note.sawState, active: abActive }); return orig.apply(this, arguments); };
+      window[fn] = function (note, t) { (fn === 'sawCut' ? log.cuts : log.absorbs).push({ t, hit: note.hitTime, prev: log.prevT, state: note.sawState, active: abActive }); return orig.apply(this, arguments); };
     }
   });
   await page.waitForTimeout(2500);   // let rings start flowing
@@ -53,7 +61,7 @@ test('Hex Saw v2: giant blade, rings caught at the rim, every cut on its beat', 
   expect(samples.some((s) => s.sparks > 0), 'sparks fly').toBe(true);
   expect(log.cuts.length, 'it cut rings').toBeGreaterThan(3);
   // (the final sweep when the blade stops cuts whatever is still on the teeth, early by design)
-  const offBeat = log.cuts.filter((c) => c.active && (c.t < c.hit - 0.012 || c.t - c.hit > 0.1));
+  const offBeat = log.cuts.filter((c) => c.active && !onBeat(c));
   expect(offBeat.length, `every ring is cut on its beat: ${JSON.stringify(offBeat)}`).toBe(0);
   expect(await page.evaluate(() => notes.filter((n) => !n.hit && !n.missed && n.sawState === 2).length), 'nothing left on the teeth').toBe(0);
 });
@@ -72,7 +80,7 @@ test('Black Prism: swallows every ring on its beat, refracts it, invincible, sha
   writeResult('powers-v2-prism', { mid, fans, after });
   expect(errors).toEqual([]);
   expect(mid.absorbs.length, 'it swallowed rings').toBeGreaterThan(3);
-  expect(mid.absorbs.every((a) => a.t >= a.hit - 0.012 && a.t - a.hit < 0.1), 'each one on its beat').toBe(true);
+  expect(mid.absorbs.filter((a) => !onBeat(a)), 'each one on its beat').toEqual([]);
   expect(mid.misses, 'no misses while it runs').toBe(missesBefore);
   expect(fans, 'spectrum fans fire').toBeGreaterThan(0);
   expect(after.shards, 'the crystal shatters at the end').toBeGreaterThan(0);
