@@ -864,6 +864,16 @@
       color: #fff6c9; text-shadow: 0 0 12px rgba(255,210,61,0.85);
     }
     /* Hyperdrive: FIRE and the core's hyperdrive power (bottom centre, clear of the steering halves) */
+    @media (orientation: landscape) and (max-height: 520px) {
+      body.hyper-on #stageChip, body.hyper-on #trackName { opacity: 0 !important; transition: opacity .3s; }   /* they sat over the tunnel's end */
+    }
+    /* Low graphics (chosen, or detected: no GPU, or frames too slow): no frosted-glass blur. The
+       blur is redone every frame over the moving scene; with it off the menu holds 60 fps where it
+       dropped to 18-40 (Nov 13 sweep, software rendering). Panels get a solid dark fill instead. */
+    body.gfx-low *, body.gfx-low *::before, body.gfx-low *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+    body.gfx-low .panel { background: rgba(8, 8, 20, 0.78); }
+    body.gfx-low #pauseOverlay { background: rgba(4, 4, 14, 0.86); }
+    body.gfx-low .card { background: rgba(14, 10, 30, 0.92); }
     .hyper-btns {
       position: fixed; left: 50%; transform: translateX(-50%);
       bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
@@ -6185,7 +6195,7 @@
      share of those that became hits.                                          */
   let runStats = null;
   function freshRunStats() {
-    return { taps: 0, hits: 0, perfects: 0, goods: 0, oks: 0, misses: 0, offTarget: 0, maxCombo: 0, highestStage: 1 };
+    return { taps: 0, hits: 0, tapHits: 0, perfects: 0, goods: 0, oks: 0, misses: 0, offTarget: 0, maxCombo: 0, highestStage: 1 };
   }
   // Accuracy = of the note outcomes that count against you (hits, misses,
   // off-target), what share were clean hits. This is the grade-worthy metric.
@@ -6197,9 +6207,12 @@
   }
   // Hit Rate = of every input you made, what share landed a note. A looser,
   // input-centric read (mashing tanks this but not necessarily accuracy).
+  // Only hits from your own taps count here: rings a power clears for you (Hex Saw, Tri-Laser,
+  // Event Horizon, the Supernova wave...) are hits without a tap, and counting them took the rate
+  // past 100% (Nov 13 sweep: 130% on a run with powers).
   function runHitRate() {
     if (!runStats || runStats.taps === 0) return 0;
-    return Math.round((runStats.hits / runStats.taps) * 100);
+    return Math.round(Math.min(1, (runStats.tapHits || 0) / runStats.taps) * 100);
   }
   // Letter grade from accuracy + how far the player got. Rewards clean, deep runs.
   function runGrade() {
@@ -8302,11 +8315,15 @@
       const vx = W / 2, vy = si.top + H * 0.3;
       const F = Math.min(W, H * 0.62) * 0.62;
       const zU = 2.0, zFar = 19, zNear = 0.7;
-      const yCraft = H * 0.76 - si.bottom * 0.4;
+      // Short landscape screens (a phone on its side, the CrazyGames 800x450 frame): lanes spaced by
+      // the width, not the height, and the craft lifted clear of the FIRE button (Nov 13 sweep: the
+      // lanes were 74 px apart under a 350 px saucer, and FIRE sat on top of it).
+      const short = W > H && H < 520;
+      const yCraft = short ? Math.min(H * 0.76 - si.bottom * 0.4, H - si.bottom - 92 - targetR * 0.6) : H * 0.76 - si.bottom * 0.4;
       const hW = (yCraft - vy) * zU / F;                    // how far below the tunnel axis the lanes run
-      const lanePx = Math.min(W * 0.3, H * 0.19);
+      const lanePx = short ? Math.min(W * 0.3, H * 0.34) : Math.min(W * 0.3, H * 0.19);
       const L = lanePx * zU / F;
-      return { vx, vy, F, zU, zFar, zNear, L, hW, yCraft, lanePx };
+      return { vx, vy, F, zU, zFar, zNear, L, hW, yCraft, lanePx, short };
     }
     const zOf = (G, o, t) => G.zU + (o.arrive - t) / HYPER_APPROACH * (G.zFar - G.zU);
     const scr = (G, ln, z) => [G.vx + (ln - 1) * G.L * G.F / z, G.vy + G.hW * G.F / z];
@@ -8405,7 +8422,9 @@
       for (const b of [btnFire, btnCore]) b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
     }
     let lastSync = '';
+    let _bodyHyper = false;
     function syncButtons() {
+      if (_bodyHyper !== active) { _bodyHyper = active; document.body.classList.toggle('hyper-on', active); }
       ensureButtons();
       const show = active && state === 'playing' && phase(nowT()).main;
       const cfg = HYPER_CORES[abilityId];
@@ -8694,7 +8713,7 @@
     function drawCraft(G, t, k, dive) {
       const lx = G.vx + (laneVis - 1) * G.L * G.F / G.zU;
       let cx = tgt.x + (lx - tgt.x) * k, cy = tgt.y + (G.yCraft - tgt.y) * k;
-      let sc = 1 + 0.68 * k;                               // 20% closer than v1
+      let sc = 1 + (G.short ? 0.3 : 0.68) * k;             // 20% closer than v1 (less on a short landscape screen)
       if (dive > 0) { cx += (G.vx - cx) * dive; cy += (G.vy - cy) * dive; sc *= 1 - 0.92 * dive; }
       const bank = (lane - laneVis) * -0.32 * k + Math.sin(t * 1.7) * 0.03 * k;
       if (k > 0.05 && dive < 0.6) {
@@ -8910,7 +8929,7 @@
     function drawHud(t) {
       const age = t - t0, left = Math.max(0, HYPER_DUR - age);
       const si = safeInsets();
-      const w = Math.min(W * 0.56, 300), x = (W - w) / 2, y = si.top + 178;   // under the tier banner
+      const w = Math.min(W * 0.56, 300), x = (W - w) / 2, y = si.top + (W > H && H < 520 ? Math.min(178, H * 0.33) : 178);   // under the tier banner
       ctx.save();
       ctx.fillStyle = 'rgba(0,0,0,0.45)';
       ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x - 2, y - 2, w + 4, 10, 5) : ctx.rect(x - 2, y - 2, w + 4, 10); ctx.fill();
@@ -8919,8 +8938,13 @@
       ctx.fillStyle = g;
       ctx.fillRect(x, y, w * Math.min(1, left / HYPER_DUR), 6);
       ctx.font = '900 11px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillText('HYPERDRIVE · ' + Math.ceil(left) + 's · ' + stats.rings + ' RINGS · ' + stats.blasted + ' BLASTED', W / 2, y + 22);
+      const hudTxt = 'HYPERDRIVE · ' + Math.ceil(left) + 's · ' + stats.rings + ' RINGS · ' + stats.blasted + ' BLASTED';
+      // a dark pill behind the line: the black hole's disk sits right behind it and is near white
+      const tw = ctx.measureText(hudTxt).width + 18;
+      ctx.fillStyle = 'rgba(4,0,14,0.62)';
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W / 2 - tw / 2, y + 11, tw, 16, 8) : ctx.rect(W / 2 - tw / 2, y + 11, tw, 16); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.95)';
+      ctx.fillText(hudTxt, W / 2, y + 22);
       for (const p of pops) {
         const k2 = (t - p.t0) / 0.8;
         ctx.globalAlpha = 1 - k2;
@@ -8982,6 +9006,7 @@
       get ammo() { return ammo; },
       get coreCharges() { return coreCharges; },
       scene(t) { return active && (t - t0) < HYPER_DUR - HYPER_OUT * 0.45; },
+      _geo: () => geo(),                                  // (read-only, for the layout tests)
       syncButtons,
       warpWant() { return active ? 1 : 0; }
     };
@@ -9945,7 +9970,7 @@
     bestNote.hit = true;
     combo += 1;
     maxCombo = Math.max(maxCombo, combo);
-    if (runStats) { runStats.hits++; runStats.maxCombo = maxCombo; }
+    if (runStats) { runStats.hits++; runStats.tapHits++; runStats.maxCombo = maxCombo; }
 
     let points = 0, text = '';
     const color = bestNote.color;
@@ -10593,6 +10618,11 @@
   // Shaders compile in parallel where supported, so phones don't hitch at boot.
   // Low graphics (Settings, or automatic on devices without a GPU) skips WebGL entirely.
   const SPACE_MODE = true;
+  let _gfxLowClass = null;
+  function syncGfxClass() {
+    try { const lo = !!SpaceFX.low; if (lo !== _gfxLowClass) { _gfxLowClass = lo; document.body.classList.toggle('gfx-low', lo); } } catch (e) {}
+  }
+  setInterval(syncGfxClass, 1000);
   const SpaceFX = (() => {
     const cv = document.getElementById('space');
     const TAU = Math.PI * 2;
@@ -11697,6 +11727,7 @@
     const q = ['ultra', 'high', 'lite'].includes(s.spaceQuality) ? s.spaceQuality : 'high';
     const lo = document.getElementById('lowGfxToggle'); if (lo) lo.checked = SpaceFX.low;
     const blk = document.getElementById('spaceSeg'); if (blk) blk.closest('.setting-block').classList.toggle('gfx-low', SpaceFX.low);
+    syncGfxClass();
     document.querySelectorAll('#spaceSeg button').forEach((b) => b.classList.toggle('on', b.dataset.sq === q));
     const d = document.getElementById('spaceDesc'); if (d) d.textContent = SPACE_DESC[q];
     const m = document.getElementById('spaceMotionToggle'); if (m) m.checked = s.spaceMotion !== false;
