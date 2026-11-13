@@ -180,6 +180,34 @@ test('backgrounded: the footage and score pause; back: PAUSED with Play File', a
   expect(errors.filter((e) => !/project-zero/.test(e))).toEqual([]);
 });
 
+for (const [W, H] of [[844, 390], [667, 375], [390, 844], [1024, 768]]) {
+  test(`${W}x${H}: the case, the dossier, the evidence frame and the reward all fit on screen`, async ({ page }) => {
+    test.setTimeout(60000);
+    await page.setViewportSize({ width: W, height: H });
+    const { errors } = await bootZ(page, { level: 100, bestStage: 100 });
+    const inView = (ids) => page.evaluate((ids) => ids.map((id) => { const r = document.getElementById(id).getBoundingClientRect();
+      return { id, ok: r.width > 0 && r.left >= -1 && r.top >= -1 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1 }; }).filter((x) => !x.ok).map((x) => x.id), ids);
+    const clear = (a, b) => page.evaluate(([a, b]) => { const r1 = document.getElementById(a).getBoundingClientRect(), r2 = document.getElementById(b).getBoundingClientRect();
+      return r1.bottom <= r2.top + 1 || r2.bottom <= r1.top + 1 || r1.right <= r2.left + 1 || r2.right <= r1.left + 1; }, [a, b]);
+    await page.click('#zeroCase');
+    await page.waitForTimeout(1300);
+    expect(await inView(['zfCase', 'zfClose']), 'the case').toEqual([]);
+    await page.waitForFunction(() => ZeroFiles.phase === 'doc', null, { timeout: 8000 });
+    await page.waitForTimeout(2300);
+    expect(await inView(['zfDoc', 'zfSkip']), 'the dossier').toEqual([]);
+    expect(await page.evaluate(() => { const p = document.querySelector('.zf-paper').getBoundingClientRect(), t = document.querySelector('.zf-top').getBoundingClientRect(); return p.top >= t.bottom - 1 || p.right <= t.left + 1; }), 'the dossier clears the top buttons').toBe(true);
+    await page.waitForFunction(() => ZeroFiles.phase === 'evidence', null, { timeout: 8000 });
+    expect(await inView(['zfFrame', 'zfClock']), 'the evidence frame').toEqual([]);
+    expect(await page.evaluate(() => document.getElementById('zfFrame').getBoundingClientRect().height), 'a usable frame height').toBeGreaterThan(Math.min(260, H - 120));
+    await page.click('#zfSkip');
+    await page.waitForTimeout(900);
+    expect(await inView(['zfOrb', 'zfEquip', 'zfReplay', 'zfMenu', 'zfClose']), 'the reward').toEqual([]);
+    expect(await clear('zfOrb', 'zfEquip')).toBe(true);
+    await page.click('#zfMenu');
+    expect(errors.filter((e) => !/project-zero/.test(e))).toEqual([]);
+  });
+}
+
 test('while the files are open, the menu behind them ignores keys; Escape closes; nothing lingers', async ({ page }) => {
   const { errors } = await bootZ(page, { level: 100, bestStage: 100 });
   await page.click('#zeroCase');

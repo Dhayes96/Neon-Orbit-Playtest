@@ -1322,6 +1322,36 @@
     .energy-wrap.second-life::before { content: ''; position: absolute; left: -14px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%;
       background: radial-gradient(circle at 40% 35%, #fff1dc, #ffb25e 55%, #c2541c); box-shadow: 0 0 8px rgba(255,170,80,0.9); }
 
+    /* phones on their side: the files fit the short screen (orb beside its text, a taller evidence frame) */
+    @media (orientation: landscape) and (max-height: 520px) {
+      .zf-stage { padding-top: calc(env(safe-area-inset-top, 0px) + 50px); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); }
+      .zf-case { width: min(420px, 86vw, calc((100vh - 130px) * 1.4)); }
+      .zf-hint { margin-top: 8px; }
+      .zf-paper { width: min(560px, 74vw); padding: 14px 26px 16px; }
+      .zf-paper .zf-ref { margin-bottom: 10px; padding-bottom: 6px; }
+      .zf-t1 { font-size: clamp(24px, 9vh, 46px); }
+      .zf-t3 { margin-top: 8px; }
+      .zf-redact { margin-top: 12px; gap: 6px; }
+      .zf-evidence { gap: 6px; }
+      .zf-ev-frame { max-height: calc(100vh - 100px); width: min(560px, 80vw); }
+      .zf-ev-head, .zf-ev-foot { width: min(560px, 80vw); }
+      .zf-reward { display: grid; grid-template-columns: auto minmax(0, 430px); grid-template-rows: auto auto auto; column-gap: 26px; row-gap: 4px;
+        align-content: center; justify-content: center; align-items: center; text-align: left; }
+      .zf-reward canvas { grid-row: 1 / 4; width: min(210px, calc(100vh - 110px)); height: min(210px, calc(100vh - 110px)); }
+      .zf-r1 { font-size: clamp(18px, 3vw, 26px); }
+      .zf-r2 { font-size: 11.5px; margin-bottom: 4px; }
+      .zf-reward .btn-stack { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+      .zf-reward .btn-stack #zfEquip { grid-column: 1 / 3; }
+      .zf-reward .btn { padding-top: 10px; padding-bottom: 10px; margin: 0; }
+    }
+    @supports (height: 100dvh) {
+      @media (orientation: landscape) and (max-height: 520px) {
+        .zf-case { width: min(420px, 86vw, calc((100dvh - 130px) * 1.4)); }
+        .zf-ev-frame { max-height: calc(100dvh - 100px); }
+        .zf-reward canvas { width: min(210px, calc(100dvh - 110px)); height: min(210px, calc(100dvh - 110px)); }
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .zero-case .zc-led, .zf-light.red i, .zf-caret::after { animation: none; }
       .zf-case .zf-lid { transition: opacity 300ms ease; }
