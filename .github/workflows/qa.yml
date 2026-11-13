@@ -61,6 +61,9 @@ jobs:
       - name: Alien Fleet (Big Bang warp) + STAR-WARRIOR
         if: ${{ !cancelled() }}
         run: npx playwright test tests/fleet-starwarrior.spec.js --project=desktop-chrome
+      - name: Score mode in the combo panel (no floating Fever banner)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/combo-mode.spec.js --project=desktop-chrome
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: fast-results, path: qa/results, retention-days: 14 }
