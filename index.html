@@ -10735,7 +10735,7 @@
     };
   })();
 
-  // ================= BOSS DODGING (Nov 13: the Eclipse Sovereign first) =================
+  // ================= BOSS DODGING (Nov 13: the Eclipse Sovereign first, then every boss) =================
   // Dennel: fight a boss on the beat, now and then dodge the UFO out of an attack, then flow
   // back into striking. The rule that makes it work: A DODGE IS A BEAT.
   //  - The UFO has three spots on one row (left, centre, right). Swipe left/right anywhere, or
@@ -10751,7 +10751,6 @@
   //    count survives, and the tier comes back after 10 PERFECTs in a row.
   var dodge = null;        // live only during a dodge-enabled boss encounter
   var tierOwed = 0;        // highest score mode a boss hit took away (won back with PERFECTs)
-  const DODGE_BOSSES = { eclipseSovereign: 1 };
   const DODGE = { hitEnergy: 14, early: 0.10, late: 0.17, glide: 0.13, quiet: 1.4, regain: 10, danger: '#ff6a3d', safe: '#e9d5ff' };   // red-orange is the one colour kept for danger (some rings are gold)
 
   // Where everything sits in a dodge fight: the UFO's three spots and the boss, sized to fit between
@@ -10801,48 +10800,109 @@
     }
     return tb;
   }
+  // Each boss has its own attack, and each attack asks something different of you:
+  //   CUBEX        crush    a block falls on your spot. Step off. (the lesson)
+  //   HEXATRON     signal   it plays the pattern first, as lights and tones, then fires it: two
+  //                         (later three) volleys, each leaving one spot, the next one step on.
+  //   TRIARCH      feint    three blades threaten all three spots; one lifts away two beats
+  //                         before they fall. Wait for it, then step.
+  //   VANTA PRISM  split    the beam splits to the outer spots, then focuses on the centre (or
+  //                         the other way round): the safe spot flips between the two impacts.
+  //   ECLIPSE      gaze     a beam at your spot;  sweep  a ring shard through two spots.
+  //   METRONOX     slow/quick  it keeps its own clock: one swing counts in half-time, the next
+  //                         in double-time. A step is PERFECT on its tick, not the song's beat.
+  //   NULLSTAR     pull     gravity drags the UFO to the centre two beats before the centre
+  //                         collapses; and it borrows the others' attacks.
+  // A kind's build() runs when the attack locks on: k = beats after T, danger = the spots taken.
+  // Every build leaves a way out one step from where you stand.
+  const DODGE_BOSSES = {
+    cubex:            { pools: [['crush']], hit: 10 },
+    hexatron:         { pools: [['signal']], hit: 12 },
+    triarch:          { pools: [['feint']], hit: 12 },
+    vantaPrism:       { pools: [['split']], hit: 14 },
+    eclipseSovereign: { pools: [['gaze', 'gaze', 'sweep'], ['gaze', 'sweep', 'gaze', 'sweep']], hit: 14 },
+    metronox:         { pools: [['slow', 'quick']], hit: 14 },
+    nullstar:         { pools: [['pull', 'crush', 'pull', 'signal'], ['pull', 'feint', 'split', 'pull', 'sweep', 'gaze']], hit: 16 }
+  };
+  const dodgePair = (s, side) => s === 1 ? [1, side] : [s, 2 - s];           // your spot and one more: the safe one is a step away
+  const dodgeBut = (safe) => [0, 1, 2].filter((x) => x !== safe);
+  const DODGE_KINDS = {
+    gaze:   { lockB: 3, label: 'THE GAZE', shape: 'ring', build: (a, s) => [{ k: 0, danger: [s] }] },
+    sweep:  { lockB: 3, label: 'RING SHARD', shape: 'ring', build: (a, s) => [{ k: 0, danger: dodgePair(s, a.side) }] },
+    crush:  { lockB: 3, label: 'CRUSHED', shape: 'square', build: (a, s) => [{ k: 0, danger: [s] }] },
+    signal: { lockB: 5, closeB: 1, label: 'SIGNAL FIRE', shape: 'hex', span: (ph) => ph >= 2 ? 4 : 2,
+      build: (a, s) => {
+        const next = (p, alt) => p === 1 ? alt : 1;
+        const path = [next(s, a.side)]; path.push(next(path[0], 2 - a.side));
+        if (a.phase >= 2) path.push(next(path[1], a.side));
+        return path.map((safe, i) => ({ k: i * 2, danger: dodgeBut(safe) }));
+      } },
+    feint:  { lockB: 4, revealB: 2, label: 'THE RAZORS', shape: 'tri', build: () => [{ k: 0, danger: null, pre: [0, 1, 2] }],
+      reveal: (a, s) => dodgeBut(s === 1 ? a.side : 1) },
+    split:  { lockB: 3, label: 'REFRACTION', shape: 'diamond', span: () => 2,
+      build: (a) => a.side ? [{ k: 0, danger: [1] }, { k: 2, danger: [0, 2] }] : [{ k: 0, danger: [0, 2] }, { k: 2, danger: [1] }] },
+    slow:   { lockB: 6, unit: 2, label: 'THE PENDULUM', shape: 'clock', build: (a, s) => [{ k: 0, danger: dodgePair(s, a.side) }] },
+    quick:  { lockB: 2, unit: 0.5, label: 'THE PENDULUM', shape: 'clock', build: (a, s) => [{ k: 0, danger: [s] }] },
+    pull:   { lockB: 4, pullB: 2, label: 'COLLAPSE', shape: 'ring', build: () => [{ k: 0, danger: [1] }] }
+  };
   function dodgePlan(t) {
-    const b = Conductor.beatDur();
-    const spacing = bossPhase === 0 ? 12 : 8;                  // beats between impacts
-    const lockB = dodge.firstDone ? 3 : 5;                     // the first attack of a fight is shown for longer
+    const b = Conductor.beatDur(), cfg = DODGE_BOSSES[activeBoss.id];
+    const pool = cfg.pools[Math.min(cfg.pools.length - 1, bossPhase > 0 ? 1 : 0)];
+    const kind = pool[dodge.seq % pool.length], K = DODGE_KINDS[kind], unit = K.unit || 1;
+    const spacing = bossPhase === 0 ? 12 : 8;                  // beats from one attack's end to the next impact
+    const lockB = K.lockB + (dodge.firstDone ? 0 : 2);         // the first attack of a fight is shown for longer
     const T = dodgeDownbeat(Math.max(dodge.nextAfter, t + leadTime + (lockB + 1.5) * b));
-    const pool = bossPhase === 0 ? ['gaze', 'gaze', 'sweep'] : ['gaze', 'sweep', 'gaze', 'sweep'];
-    const a = { kind: pool[dodge.seq % pool.length], T, b, lockAt: T - lockB * b, callAt: T - (lockB + 1) * b,
-      q0: T - DODGE.quiet * b, q1: T + DODGE.quiet * b, side: dodge.seq % 2 ? 2 : 0,
-      danger: null, from: 1, locked: false, called: false, done: false, perfect: false, pulse: -1, note: null };
+    const last = T + (K.span ? K.span(bossPhase) : 0) * b;
+    const a = { kind, K, T, b, unit, last, phase: bossPhase, lockAt: T - lockB * b, callAt: T - (lockB + 1) * b,
+      q0: T - (Math.max(1, unit) + 0.4) * b, q1: last + DODGE.quiet * b, side: dodge.seq % 2 ? 2 : 0,
+      strikes: null, danger: null, from: 1, locked: false, called: false, done: false, hit: false, perfect: false, perfects: 0, pulse: -1, note: null };
     dodge.seq++;
     // the song leaves the gap, then hands back one ring on the next beat: the counter ring
     notes = notes.filter((n) => n.hit || n.missed || n.hitTime < a.q0 || n.hitTime > a.q1);
-    spawnNote(T + b, beatIndex++);
+    spawnNote(last + b, beatIndex++);
     a.note = notes[notes.length - 1]; a.note.counter = true;
     dodge.atk = a;
-    dodge.nextAfter = T + spacing * b;
+    dodge.nextAfter = last + spacing * b;
   }
   function dodgeLock(a) {
-    a.locked = true;
-    const s = dodge.st; a.from = s;
-    // always exactly one step to safety: the gaze takes your spot, a shard sweep takes two
-    if (a.kind === 'gaze') a.danger = [s];
-    else a.danger = s === 1 ? [1, a.side] : [s, 2 - s];
+    a.locked = true; a.from = dodge.st;
+    const built = a.K.build(a, dodge.st);
+    a.strikes = built.map((s, i) => {
+      const at = a.T + s.k * a.b, prev = i ? a.T + built[i - 1].k * a.b : a.lockAt;
+      // `from`: when this strike's own countdown starts (its reticle begins to close, and a step can count for it)
+      return { at, danger: s.danger, pre: s.pre || null, done: false, perfect: false, from: a.K.closeB ? Math.max(prev, at - a.K.closeB * a.b) : prev };
+    });
+    a.danger = a.strikes[0].danger;                            // the first strike's spots (what the Sovereign's eye follows)
   }
-  function dodgeResolve(a, t) {
-    a.done = true;
-    dodge.firstDone = true;
-    const hit = a.danger.indexOf(dodge.st) !== -1;
-    for (const i of a.danger) createBurst(dodge.sts[i].x, dodge.sts[i].y, DODGE.danger, 22, 1.3);
+  // gravity (Nullstar): the UFO is moved for you
+  function dodgeDrag(to, t) {
+    const p = dodge.sts[to];
+    dodge.st = to;
+    tgtAnim = { fromX: tgt.x, fromY: tgt.y, toX: p.x, toY: p.y, start: t, dur: 0.32 };
+    shockwaves.push({ x: p.x, y: p.y, r: targetR * 0.4, alpha: 0.7, speed: 520, width: 5, color: '#b026ff' });
+    createBurst(p.x, p.y, '#b026ff', 18, 1.1);
+    if (save.settings.sfx) tone(70, 0.4, 'sine', 0.09);
+    buzz(40);
+  }
+  function dodgeStrike(a, s, t) {
+    s.done = true;
+    const last = s === a.strikes[a.strikes.length - 1], hit = s.danger.indexOf(dodge.st) !== -1;
+    for (const i of s.danger) createBurst(dodge.sts[i].x, dodge.sts[i].y, DODGE.danger, 22, 1.3);
     shake = Math.max(shake, hit ? 11 : 5);
     if (save.settings.sfx) { tone(55, 0.42, 'sine', 0.1); tone(a.kind === 'gaze' ? 1568 : 988, 0.1, 'sawtooth', 0.028); }
-    if (hit) { dodgeHit(a); return; }
-    dodge.clean++;
-    if (a.perfect && a.note && !a.note.hit && !a.note.missed) { a.note.charged = true; a.note.color = '#f3e8ff'; }
+    if (hit) { a.hit = true; dodgeHit(a); } else dodge.clean++;
+    if (!last) return;
+    a.done = true;
+    if (dodge) dodge.firstDone = true;
+    if (!a.hit && a.perfects > 0 && a.note && !a.note.hit && !a.note.missed) { a.note.charged = true; a.note.color = '#f3e8ff'; }
   }
   function dodgeHit(a) {
     if (guardBlock('hit')) return;                              // Black Prism takes it
     dodge.hits++;
-    energy = Math.max(0, energy - DODGE.hitEnergy);
+    energy = Math.max(0, energy - ((DODGE_BOSSES[activeBoss.id] || {}).hit || DODGE.hitEnergy));
     energyBar.style.width = energy + '%';
     dodgeTierDrop();
-    showToast('HIT', '#ffd76b', a.kind === 'gaze' ? 'THE GAZE' : 'RING SHARD');
+    showToast('HIT', '#ffd76b', a.K.label);
     buzz([60, 30, 60]);
     if (save.settings.sfx) tone(98, 0.22, 'sawtooth', 0.05, 0.02);
     if (energy <= 0) endGame();
@@ -10877,12 +10937,12 @@
     abHoldStart = 0; abHoldProgress = 0;                        // a swipe is never a hold
     if (save.settings.sfx) tone(620 + ns * 70, 0.05, 'triangle', 0.03);
     buzz(8);
-    const a = dodge.atk;
-    if (a && a.locked && !a.done && !a.perfect && a.danger.indexOf(was) !== -1 && a.danger.indexOf(ns) === -1) {
-      const tt = t - audioOffset();
-      const k = Math.round((a.T - tt) / a.b), off = tt - (a.T - k * a.b);
+    const a = dodge.atk, sk = a && a.locked ? a.strikes.find((x) => !x.done && x.danger) : null;
+    if (sk && !sk.perfect && sk.danger.indexOf(was) !== -1 && sk.danger.indexOf(ns) === -1) {
+      // on its count? (the song's beat for most; Metronox keeps half-time and double-time)
+      const tt = t - audioOffset(), u = a.unit * a.b, k = Math.round((sk.at - tt) / u), off = tt - (sk.at - k * u);
       if (k >= 1 && off >= -DODGE.early && off <= DODGE.late) {
-        a.perfect = true; dodge.perfects++;
+        sk.perfect = true; a.perfect = true; a.perfects++; dodge.perfects++;
         awardAbilityPerfect(p.x, p.y, DODGE.safe, 'DODGE', true);
       } else showToast('DODGE', '#cdb8ff');
     }
@@ -10890,7 +10950,7 @@
   }
   // a tap that lands on nothing: free inside the song's own gap; otherwise it may be the start of
   // a swipe, so it is judged when the finger lifts or has stayed put
-  function dodgeStrayFree(t) { const a = dodge && dodge.atk; return !!(a && t > a.q0 - 0.05 && t < a.T + 0.6 * a.b); }
+  function dodgeStrayFree(t) { const a = dodge && dodge.atk; return !!(a && t > a.q0 - 0.05 && t < a.last + 0.6 * a.b); }
   function dodgeDeferStray(e) {
     if (!e || e.pointerId == null) return false;
     if (dodge.stray) strayTapPenalty();
@@ -10940,81 +11000,190 @@
     if (!a.called && t >= a.callAt) { a.called = true; dodgeCall(a); }
     if (!a.locked && t >= a.lockAt) dodgeLock(a);
     if (a.locked && !a.done) {
-      const k = Math.floor((t - a.lockAt) / a.b + 0.02);
-      if (k !== a.pulse) { a.pulse = k; if (save.settings.sfx) tone(k % 2 ? 1320 : 1760, 0.04, 'square', 0.016); }
-      if (t >= a.T) dodgeResolve(a, t);
+      const K = a.K, s0 = a.strikes[0];
+      if (K.reveal && !a.revealed && t >= a.T - K.revealB * a.b) {          // Triarch: one blade lifts away
+        a.revealed = true; s0.danger = a.danger = K.reveal(a, dodge.st); s0.from = a.T - K.revealB * a.b;
+        if (save.settings.sfx) { tone(1175, 0.09, 'triangle', 0.03); tone(1568, 0.12, 'triangle', 0.03, 0.07); }
+      }
+      if (K.pullB && !a.pulled && t >= a.T - K.pullB * a.b) { a.pulled = true; if (dodge.st !== 1) dodgeDrag(1, t); }
+      const k = Math.floor((t - a.lockAt) / (a.unit * a.b) + 0.02);       // it ticks on its own count
+      if (k !== a.pulse) {
+        a.pulse = k;
+        if (save.settings.sfx) {
+          if (a.kind === 'signal' && k < a.strikes.length) { const safe = [0, 1, 2].find((x) => a.strikes[k].danger.indexOf(x) === -1); tone([392, 523, 659][safe], 0.22, 'square', 0.035); }
+          else tone(k % 2 ? 1320 : 1760, 0.04, 'square', 0.016);
+        }
+      }
+      for (const s of a.strikes) if (!s.done && s.danger && t >= s.at) { dodgeStrike(a, s, t); if (!dodge) return; }
     }
-    if (dodge && a.done && t > a.T + 0.55) dodge.atk = null;
+    if (dodge && a.done && t > a.last + 0.55) dodge.atk = null;
   }
   // each attack has its own call, always the same, one beat before it locks on
   function dodgeCall(a) {
     if (!save.settings.sfx) return;
-    if (a.kind === 'gaze') { tone(196, 0.2, 'sawtooth', 0.03); tone(294, 0.32, 'sawtooth', 0.032, 0.16); }
-    else { tone(880, 0.06, 'square', 0.02); tone(880, 0.06, 'square', 0.02, 0.11); tone(110, 0.3, 'sawtooth', 0.035, 0.2); }
+    const k = a.kind;
+    if (k === 'gaze') { tone(196, 0.2, 'sawtooth', 0.03); tone(294, 0.32, 'sawtooth', 0.032, 0.16); }
+    else if (k === 'sweep') { tone(880, 0.06, 'square', 0.02); tone(880, 0.06, 'square', 0.02, 0.11); tone(110, 0.3, 'sawtooth', 0.035, 0.2); }
+    else if (k === 'crush') { tone(147, 0.12, 'square', 0.035); tone(110, 0.12, 'square', 0.035, 0.14); tone(73, 0.3, 'square', 0.04, 0.28); }
+    else if (k === 'signal') { [1047, 1319, 1568].forEach((f, i) => tone(f, 0.05, 'square', 0.022, i * 0.06)); }
+    else if (k === 'feint') { tone(1480, 0.07, 'sawtooth', 0.02); tone(1109, 0.07, 'sawtooth', 0.02, 0.08); tone(1480, 0.07, 'sawtooth', 0.02, 0.16); }
+    else if (k === 'split') { tone(523, 0.3, 'sine', 0.04); tone(784, 0.3, 'sine', 0.03, 0.05); tone(1047, 0.3, 'sine', 0.025, 0.1); }
+    else if (k === 'slow') { tone(220, 0.5, 'triangle', 0.045); }
+    else if (k === 'quick') { tone(1760, 0.03, 'square', 0.02); tone(1760, 0.03, 'square', 0.02, 0.07); tone(1760, 0.03, 'square', 0.02, 0.14); tone(1760, 0.03, 'square', 0.02, 0.21); }
+    else if (k === 'pull') { tone(98, 0.7, 'sine', 0.07); tone(65, 0.9, 'sine', 0.07, 0.15); }
   }
 
-  // ---- drawing: the orbit the UFO rides, the telegraphs, the impacts ----
+  // ---- drawing: the row the UFO rides, the telegraphs, the impacts ----
   function dodgeEye() { const r = bossR(); return [bossX(), bossY() + r * 0.03]; }
+  function dodgeShape(x, y, r, shape) {
+    ctx.beginPath();
+    if (shape === 'square') ctx.rect(x - r * 0.92, y - r * 0.92, r * 1.84, r * 1.84);
+    else if (shape === 'hex' || shape === 'tri' || shape === 'diamond') {
+      const n = shape === 'hex' ? 6 : shape === 'tri' ? 3 : 4, a0 = shape === 'tri' ? Math.PI / 2 : 0, q = r * (shape === 'tri' ? 1.3 : shape === 'diamond' ? 1.12 : 1.06);
+      for (let j = 0; j < n; j++) { const an = a0 + j / n * Math.PI * 2, px = x + Math.cos(an) * q, py = y + Math.sin(an) * q; if (j) ctx.lineTo(px, py); else ctx.moveTo(px, py); }
+      ctx.closePath();
+    } else ctx.arc(x, y, r, 0, Math.PI * 2);
+  }
+  function dodgeBeam(ex, ey, p, w1, alpha, col) {
+    const nx = -(p.y - ey), ny = p.x - ex, nl = Math.hypot(nx, ny) || 1, w0 = 5;
+    ctx.globalAlpha = alpha; ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.moveTo(ex + nx / nl * w0, ey + ny / nl * w0); ctx.lineTo(p.x + nx / nl * w1, p.y + ny / nl * w1);
+    ctx.lineTo(p.x - nx / nl * w1, p.y - ny / nl * w1); ctx.lineTo(ex - nx / nl * w0, ey - ny / nl * w0);
+    ctx.closePath(); ctx.fill();
+  }
   function dodgeDrawBack(t) {
     if (!dodge || !bossActive || state === 'bossDefeat') return;
     const sts = dodge.sts, C = sts[1], dx = sts[2].x - C.x, low = !!(SpaceFX && SpaceFX.low);
-    const introK = state === 'bossIntro' && ecl ? clamp01((t - ecl.lock[0]) / Math.max(0.3, ecl.tOpen - ecl.lock[0])) : 1;
+    const isEcl = activeBoss && activeBoss.kind === 'eclipse';
+    const introK = state === 'bossIntro' ? (ecl ? clamp01((t - ecl.lock[0]) / Math.max(0.3, ecl.tOpen - ecl.lock[0])) : clamp01(1 - (bossIntroUntil - t) / 1.2)) : 1;
     if (introK <= 0) return;
+    const bc = (activeBoss && activeBoss.colors) || ['#b026ff', '#ffd23d'];
     ctx.save();
-    // the Sovereign's innermost ring, closed round the player: three spots on its orbit
-    const rx = Math.min(W / 2 - 5, dx + targetR * 1.5), ry = targetR * 1.3, beat = musicBeatFloat();
-    ctx.lineWidth = 2.5; ctx.lineCap = 'butt';
-    for (let i = 0; i < 10; i++) {
-      const a0 = i / 10 * Math.PI * 2 + beat * Math.PI / 32, a1 = a0 + Math.PI * 2 / 10 * (i % 3 === 0 ? 0.5 : 0.78);
-      ctx.strokeStyle = i % 2 ? 'rgba(176,38,255,0.9)' : 'rgba(255,210,61,0.9)';
-      ctx.globalAlpha = 0.3 * introK;
-      ctx.beginPath(); ctx.ellipse(C.x, C.y, rx * (1 + (1 - introK) * 1.5), ry * (1 + (1 - introK) * 1.5), 0, a0, a1); ctx.stroke();
+    if (isEcl) {
+      // the Sovereign's innermost ring, closed round the player: three spots on its orbit
+      const rx = Math.min(W / 2 - 5, dx + targetR * 1.5), ry = targetR * 1.3, beat = musicBeatFloat();
+      ctx.lineWidth = 2.5; ctx.lineCap = 'butt';
+      for (let i = 0; i < 10; i++) {
+        const a0 = i / 10 * Math.PI * 2 + beat * Math.PI / 32, a1 = a0 + Math.PI * 2 / 10 * (i % 3 === 0 ? 0.5 : 0.78);
+        ctx.strokeStyle = i % 2 ? 'rgba(176,38,255,0.9)' : 'rgba(255,210,61,0.9)';
+        ctx.globalAlpha = 0.3 * introK;
+        ctx.beginPath(); ctx.ellipse(C.x, C.y, rx * (1 + (1 - introK) * 1.5), ry * (1 + (1 - introK) * 1.5), 0, a0, a1); ctx.stroke();
+      }
+    } else {
+      // the row: a faint rail in the boss's colour joining the three spots
+      ctx.globalAlpha = 0.22 * introK; ctx.strokeStyle = bc[0]; ctx.lineWidth = 2; ctx.setLineDash([3, 9]);
+      ctx.beginPath(); ctx.moveTo(sts[0].x, C.y); ctx.lineTo(sts[2].x, C.y); ctx.stroke(); ctx.setLineDash([]);
     }
     for (let i = 0; i < 3; i++) {
-      const on = i === dodge.st;
-      ctx.globalAlpha = (on ? 0 : 0.5) * introK;
-      ctx.fillStyle = '#d9c2ff';
+      ctx.globalAlpha = (i === dodge.st ? 0 : 0.5) * introK;
+      ctx.fillStyle = isEcl ? '#d9c2ff' : bc[0];
       ctx.beginPath(); ctx.moveTo(sts[i].x, sts[i].y - 5); ctx.lineTo(sts[i].x + 5, sts[i].y); ctx.lineTo(sts[i].x, sts[i].y + 5); ctx.lineTo(sts[i].x - 5, sts[i].y); ctx.closePath(); ctx.fill();
     }
     const a = dodge.atk;
     if (a && a.called) {
-      const [ex, ey] = dodgeEye();
-      const span = a.T - a.lockAt, k = a.locked ? clamp01((t - a.lockAt) / span) : 0;
-      const ph = a.locked ? ((t - a.lockAt) / a.b) % 1 : 0, pulse = Math.pow(1 - ph, 2);
-      const after = a.done ? (t - a.T) : -1;
+      const [ex, ey] = dodgeEye(), K = a.K, dr = targetR * 0.8, u = a.unit * a.b;
+      const ph = a.locked ? (((t - a.lockAt) / u) % 1 + 1) % 1 : 0, pulse = Math.pow(1 - ph, 2);
+      const k0 = a.locked ? clamp01((t - a.lockAt) / (a.T - a.lockAt)) : 0;         // the whole wind-up, 0..1
+      const after0 = a.locked && a.strikes[0].done ? t - a.strikes[0].at : -1;
       ctx.globalCompositeOperation = 'lighter';
-      if (a.locked) for (const i of a.danger) {
-        const s = sts[i], dr = targetR * 0.8;
-        if (!a.done) {
-          // where: a soft disc. when: a reticle that closes on the spot and arrives on the downbeat
-          ctx.globalAlpha = 0.16 + 0.2 * k + 0.16 * pulse;
-          ctx.fillStyle = DODGE.danger; ctx.beginPath(); ctx.arc(s.x, s.y, dr, 0, Math.PI * 2); ctx.fill();
-          const rr = dr + (targetR * 1.7) * (1 - k);
-          ctx.globalAlpha = 0.6 + 0.4 * pulse; ctx.strokeStyle = '#ffb199'; ctx.lineWidth = 3;
-          ctx.beginPath(); ctx.arc(s.x, s.y, rr, 0, Math.PI * 2); ctx.stroke();
-          for (let j = 0; j < 4; j++) { const an = j * Math.PI / 2 + Math.PI / 4; ctx.beginPath(); ctx.moveTo(s.x + Math.cos(an) * rr, s.y + Math.sin(an) * rr); ctx.lineTo(s.x + Math.cos(an) * (rr + 9), s.y + Math.sin(an) * (rr + 9)); ctx.stroke(); }
-          if (a.kind === 'gaze') {                                 // the line of sight
-            ctx.globalAlpha = 0.12 + 0.2 * k + 0.12 * pulse; ctx.lineWidth = 1.5 + 2 * k;
-            ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(s.x, s.y); ctx.stroke();
-          }
-        } else if (after < 0.34) {
-          const f = Math.pow(1 - after / 0.34, 2);
-          ctx.globalAlpha = f; ctx.fillStyle = '#ffffff';
-          ctx.beginPath(); ctx.arc(s.x, s.y, dr * (1 + 0.5 * (1 - f)), 0, Math.PI * 2); ctx.fill();
-          if (a.kind === 'gaze') {                                 // the beam itself
-            const nx = -(s.y - ey), ny = s.x - ex, nl = Math.hypot(nx, ny) || 1, w0 = 5, w1 = dr * 0.9;
-            ctx.globalAlpha = f * 0.9; ctx.fillStyle = DODGE.danger;
-            ctx.beginPath();
-            ctx.moveTo(ex + nx / nl * w0, ey + ny / nl * w0); ctx.lineTo(s.x + nx / nl * w1, s.y + ny / nl * w1);
-            ctx.lineTo(s.x - nx / nl * w1, s.y - ny / nl * w1); ctx.lineTo(ex - nx / nl * w0, ey - ny / nl * w0);
-            ctx.closePath(); ctx.fill();
+      if (a.locked) a.strikes.forEach((s, si) => {
+        const dz = s.danger || s.pre, live = !!s.danger && t >= s.from, after = s.done ? t - s.at : -1;
+        const k = live ? clamp01((t - s.from) / Math.max(0.05, s.at - s.from)) : 0;
+        for (const i of dz) {
+          const p = sts[i];
+          if (s.done) {
+            if (after < 0.34) {
+              const f = Math.pow(1 - after / 0.34, 2);
+              ctx.globalAlpha = f; ctx.fillStyle = '#ffffff'; dodgeShape(p.x, p.y, dr * (1 + 0.5 * (1 - f)), K.shape); ctx.fill();
+              if (a.kind !== 'sweep' && a.kind !== 'crush' && a.kind !== 'feint') dodgeBeam(ex, ey, p, dr * 0.9, f * 0.9, DODGE.danger);
+            }
+          } else if (live) {
+            // where: a soft shape on the spot. when: a reticle that closes on it and arrives with the impact
+            ctx.globalAlpha = 0.16 + 0.2 * k + 0.16 * pulse; ctx.fillStyle = DODGE.danger; dodgeShape(p.x, p.y, dr, K.shape); ctx.fill();
+            const rr = dr + (targetR * 1.7) * (1 - k);
+            ctx.globalAlpha = 0.6 + 0.4 * pulse; ctx.strokeStyle = '#ffb199'; ctx.lineWidth = 3; dodgeShape(p.x, p.y, rr, K.shape); ctx.stroke();
+            const nt = K.shape === 'clock' ? 12 : 4;
+            for (let j = 0; j < nt; j++) { const an = j * Math.PI * 2 / nt + Math.PI / 4; ctx.beginPath(); ctx.moveTo(p.x + Math.cos(an) * rr * 1.06, p.y + Math.sin(an) * rr * 1.06); ctx.lineTo(p.x + Math.cos(an) * (rr * 1.06 + 9), p.y + Math.sin(an) * (rr * 1.06 + 9)); ctx.stroke(); }
+            if (K.shape === 'clock') {                               // Metronox: a hand that goes once round and strikes at twelve
+              const an = -Math.PI / 2 + k * Math.PI * 2;
+              ctx.globalAlpha = 0.9; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + Math.cos(an) * rr, p.y + Math.sin(an) * rr); ctx.stroke();
+            }
+            if (a.kind === 'gaze' || a.kind === 'split' || a.kind === 'signal') {   // the line of fire
+              ctx.globalAlpha = 0.12 + 0.2 * k + 0.12 * pulse; ctx.lineWidth = 1.5 + 2 * k; ctx.strokeStyle = '#ffb199';
+              ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(p.x, p.y); ctx.stroke();
+            }
+          } else if (!s.danger) {
+            // Triarch before the reveal: all three threatened, none certain
+            ctx.globalAlpha = 0.14 + 0.1 * pulse; ctx.strokeStyle = '#ffb199'; ctx.lineWidth = 2; ctx.setLineDash([5, 6]); dodgeShape(p.x, p.y, dr, K.shape); ctx.stroke(); ctx.setLineDash([]);
+          } else {
+            // a later strike, waiting its turn
+            const sigBeat = a.kind === 'signal' ? (t - a.lockAt) / a.b - si : -1;      // Hexatron plays strike si on beat si of the signal
+            if (a.kind === 'signal') {
+              if (sigBeat >= 0 && sigBeat < 1) {
+                const f = Math.pow(1 - sigBeat, 1.5);
+                ctx.globalAlpha = 0.25 + 0.6 * f; ctx.fillStyle = DODGE.danger; dodgeShape(p.x, p.y, dr, 'hex'); ctx.fill();
+                ctx.globalAlpha = 1; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; dodgeShape(p.x, p.y, dr * (1 + 0.25 * f), 'hex'); ctx.stroke();
+              } else if (si === a.strikes.findIndex((x) => !x.done)) {
+                ctx.globalAlpha = 0.2; ctx.strokeStyle = '#ffb199'; ctx.lineWidth = 2; ctx.setLineDash([4, 7]); dodgeShape(p.x, p.y, dr, 'hex'); ctx.stroke(); ctx.setLineDash([]);
+              }
+            } else {
+              ctx.globalAlpha = 0.34; ctx.strokeStyle = '#ffb199'; ctx.lineWidth = 2; ctx.setLineDash([6, 6]); dodgeShape(p.x, p.y, dr, K.shape); ctx.stroke(); ctx.setLineDash([]);
+              ctx.globalAlpha = 0.14; ctx.lineWidth = 1.5; ctx.setLineDash([3, 8]); ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(p.x, p.y); ctx.stroke(); ctx.setLineDash([]);
+            }
           }
         }
-      }
-      // the ring shard: it hangs beyond the row's end, then swings along the row through its spots on the downbeat
-      if (a.kind === 'sweep') {
-        const dz = a.locked ? a.danger : (dodge.st === 1 ? [1, a.side] : [dodge.st, 2 - dodge.st]);
-        const dr = targetR * 0.8, yAt = (x) => C.y - dx * 0.1 * Math.pow((x - C.x) / dx, 2);
+        // Hexatron: number the volleys while it plays them
+        if (a.kind === 'signal' && !s.done) {
+          const sb = (t - a.lockAt) / a.b - si;
+          if (sb >= 0 && sb < 1) {
+            const safe = [0, 1, 2].find((x) => s.danger.indexOf(x) === -1), p = sts[safe];
+            ctx.globalAlpha = 0.95 * (1 - sb * 0.5); ctx.fillStyle = DODGE.safe; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.font = '900 ' + Math.round(targetR * 0.5) + 'px Inter, system-ui, sans-serif';
+            ctx.fillText(String(si + 1), p.x, dodge.lay.side ? p.y + targetR * 1.5 : p.y - targetR * 1.5);   // (under the row when the boss bar is just above it)
+          }
+        }
+      });
+      ctx.globalCompositeOperation = 'source-over';
+      // --- each attack's own body ---
+      if (a.kind === 'crush') {
+        // Cubex: a block hangs over your spot, follows you until it locks, then falls
+        const i = a.locked ? a.strikes[0].danger[0] : dodge.st, p = sts[i], hs = targetR * 0.66;
+        if (after0 < 0.3) {
+          const fall = after0 >= 0 ? 1 : Math.pow(k0, 3), y = p.y - targetR * 3.1 * (1 - fall) - (after0 >= 0 ? 0 : Math.sin(t * 18) * 2 * k0);
+          ctx.globalAlpha = (a.locked ? 0.95 : 0.5) * (after0 >= 0 ? 1 - after0 / 0.3 : 1);
+          ctx.fillStyle = 'rgba(6,10,4,0.82)'; ctx.fillRect(p.x - hs, y - hs, hs * 2, hs * 2);
+          ctx.strokeStyle = bc[0]; ctx.lineWidth = 3; ctx.strokeRect(p.x - hs, y - hs, hs * 2, hs * 2);
+          ctx.strokeStyle = bc[1] || bc[0]; ctx.lineWidth = 1.5; ctx.strokeRect(p.x - hs * 0.55, y - hs * 0.55, hs * 1.1, hs * 1.1);
+        }
+      } else if (a.kind === 'feint') {
+        // Triarch: three blades; the one that lifts away is your way out
+        const s = a.locked ? a.strikes[0] : null, rev = s && s.danger, bl = targetR * 0.5;
+        const kr = rev ? clamp01((t - s.from) / Math.max(0.05, s.at - s.from)) : 0;
+        if (after0 < 0.25) for (let i = 0; i < 3; i++) {
+          const p = sts[i], gone = rev && s.danger.indexOf(i) === -1;
+          const wob = !rev && a.phase >= 1 && i === (a.side ? 0 : 2) ? Math.sin(t * 26) * 5 : 0;      // a decoy twitch (later phases)
+          const up = gone ? clamp01((t - s.from) / 0.35) : 0;
+          const y = p.y - targetR * 2.5 + (rev && !gone ? Math.pow(kr, 3) * targetR * 2.5 : 0) - up * targetR * 1.4 + (after0 >= 0 ? 0 : wob);
+          ctx.globalAlpha = (a.locked ? 0.95 : 0.5) * (1 - up) * (after0 >= 0 ? 1 - after0 / 0.25 : 1);
+          ctx.fillStyle = rev && !gone ? DODGE.danger : 'rgba(20,4,8,0.85)';
+          ctx.beginPath(); ctx.moveTo(p.x, y + bl * 1.5); ctx.lineTo(p.x + bl * 0.62, y - bl); ctx.lineTo(p.x - bl * 0.62, y - bl); ctx.closePath(); ctx.fill();
+          ctx.strokeStyle = gone ? DODGE.safe : bc[0]; ctx.lineWidth = 2.5; ctx.stroke();
+        }
+      } else if (a.kind === 'pull' && a.locked && !a.done) {
+        // Nullstar: the row itself falls toward the centre
+        const tp = (t * 1.4) % 1;
+        ctx.strokeStyle = bc[2] || '#b026ff'; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        for (const d of [-1, 1]) for (let j = 0; j < 3; j++) {
+          const x = C.x + d * (dx * (0.92 - 0.2 * j) - tp * dx * 0.2);
+          ctx.globalAlpha = (0.25 + 0.5 * k0) * (1 - Math.abs((j + tp) / 3 - 0.5));
+          ctx.beginPath(); ctx.moveTo(x + d * 8, C.y - 12); ctx.lineTo(x - d * 5, C.y); ctx.lineTo(x + d * 8, C.y + 12); ctx.stroke();
+        }
+      } else if (a.kind === 'sweep') {
+        // Eclipse: the ring shard hangs beyond the row's end, then swings along the row through its spots
+        ctx.globalCompositeOperation = 'lighter';
+        const dz = a.locked ? a.strikes[0].danger : dodgePair(dodge.st, a.side), after = after0, k = k0;
+        const yAt = (x) => C.y - dx * 0.1 * Math.pow((x - C.x) / dx, 2);
         const runs = [];
         if (dz.indexOf(0) !== -1) runs.push({ from: Math.max(12, sts[0].x - dx * 0.62), to: (dz.indexOf(1) !== -1 ? sts[1].x : sts[0].x) + dr * 0.85 });
         if (dz.indexOf(2) !== -1) runs.push({ from: Math.min(W - 12, sts[2].x + dx * 0.62), to: (dz.indexOf(1) !== -1 ? sts[1].x : sts[2].x) - dr * 0.85 });
@@ -11030,7 +11199,6 @@
             for (let q = 1; q <= 8; q++) { const xx = rn.from + (x - rn.from) * q / 8; ctx.lineTo(xx, yAt(xx)); }
             ctx.stroke();
           }
-          // the shard: a broken piece of its ring, edge-on
           ctx.save(); ctx.translate(x, y); ctx.rotate(dir > 0 ? 0.25 : -0.25);
           ctx.globalAlpha = fade; ctx.fillStyle = '#ffd23d';
           const bl = targetR * 0.62, bw = Math.max(7, targetR * 0.16);
@@ -11044,16 +11212,17 @@
   }
   function dodgeDrawFront(t) {
     if (!dodge || state !== 'bossBattle') return;
-    const a = dodge.atk;
-    if (!a || !a.locked || a.done || a.danger.indexOf(dodge.st) === -1) return;
-    // you are standing in it: chevrons point at the way out, on the beat
-    const ph = ((t - a.lockAt) / a.b) % 1, pulse = Math.pow(1 - ph, 2);
+    const a = dodge.atk, s = a && a.locked ? a.strikes.find((x) => !x.done && x.danger && t >= x.from) : null;
+    if (!s || s.danger.indexOf(dodge.st) === -1) return;
+    // you are standing in it: chevrons point at the way out, on its count
+    const ph = (((t - a.lockAt) / (a.unit * a.b)) % 1 + 1) % 1, pulse = Math.pow(1 - ph, 2);
     ctx.save();
     ctx.strokeStyle = DODGE.safe; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
     for (const d of [-1, 1]) {
-      const ns = dodge.st + d;
-      if (ns < 0 || ns > 2 || a.danger.indexOf(ns) !== -1) continue;
-      for (let j = 0; j < 2; j++) {
+      const n1 = dodge.st + d, n2 = dodge.st + 2 * d;
+      const near = n1 >= 0 && n1 <= 2 && s.danger.indexOf(n1) === -1, far = !near && n2 >= 0 && n2 <= 2 && s.danger.indexOf(n2) === -1;
+      if (!near && !far) continue;
+      for (let j = 0; j < (far ? 3 : 2); j++) {
         const x = tgt.x + d * (targetR * 1.18 + j * 13 + pulse * 7), y = tgt.y;
         ctx.globalAlpha = (0.55 + 0.45 * pulse) * (j ? 0.55 : 1);
         ctx.beginPath(); ctx.moveTo(x - d * 7, y - 11); ctx.lineTo(x + d * 4, y); ctx.lineTo(x - d * 7, y + 11); ctx.stroke();

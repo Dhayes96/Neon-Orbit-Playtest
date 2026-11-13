@@ -6,7 +6,7 @@
 //    Rings follow it. A swipe's touch-down is never a stray tap; a real stray tap still is.
 //  - Step off the danger spot on a beat: PERFECT (combo +1), and the counter ring hits twice
 //    as hard. Stand still: energy and one score-mode tier, never the combo.
-//  - Other bosses are untouched.
+//  - The other bosses have their own attacks: qa/tests/boss-dodge.spec.js.
 const { test, expect } = require('@playwright/test');
 const { boot } = require('./harness');
 
@@ -164,23 +164,6 @@ test('controls: A/D and the arrows step; a swipe steps and is never a stray tap;
   await page.mouse.click(300, 400); await page.keyboard.press('Space');
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => runStats.misses)).toBe(m0);
-  expect(real(errors)).toEqual([]);
-});
-
-test('other bosses are untouched: no dodge, no steps, stray taps as before', async ({ page }) => {
-  test.setTimeout(60000);
-  const errors = await toBoss(page, { stage: 40, bot: 'none' });
-  expect(await page.evaluate(() => ({ dodge: !!dodge, ecl: !!ecl, hud: bossHud.classList.contains('show') }))).toEqual({ dodge: false, ecl: false, hud: true });
-  await page.waitForFunction(() => state === 'bossBattle', null, { timeout: 15000 });
-  const a = await page.evaluate(() => ({ x: tgt.x, misses: runStats.misses }));
-  await page.keyboard.press('ArrowLeft'); await page.keyboard.press('KeyD');
-  await page.evaluate(() => { notes = []; scheduleNotes = function () {}; });
-  await page.mouse.move(300, 400); await page.mouse.down();
-  await page.waitForTimeout(30);
-  const b = await page.evaluate(() => ({ x: tgt.x, misses: runStats.misses }));
-  await page.mouse.up();
-  expect(b.x).toBe(a.x);
-  expect(b.misses, 'judged at once, as always').toBe(a.misses + 1);
   expect(real(errors)).toEqual([]);
 });
 
