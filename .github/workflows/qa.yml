@@ -64,6 +64,9 @@ jobs:
       - name: Score mode in the combo panel (no floating Fever banner)
         if: ${{ !cancelled() }}
         run: npx playwright test tests/combo-mode.spec.js --project=desktop-chrome
+      - name: Project Zero (LVL 100 + stage 100 briefcase, files, Zero Form, Second Life)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/project-zero.spec.js --project=desktop-chrome
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: fast-results, path: qa/results, retention-days: 14 }

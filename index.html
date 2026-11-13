@@ -10312,8 +10312,7 @@
   // footage and score are separate files next to index.html, requested only when the case opens.
   const ZERO = {
     footage: 'assets/project-zero/footage.mp4', score: 'assets/project-zero/score.m4a', poster: 'assets/project-zero/poster.jpg',
-    caseEnd: 1.6, title: 4, foot: 27, total: 36,      // the native timeline (s), as in the approved reel
-    light: [0.5, 0.42]                                // where the light sits in the footage's last frame (0..1)
+    caseEnd: 1.6, title: 4, foot: 27, total: 36       // the native timeline (s), as in the approved reel
   };
   function zeroLights() { return { lvl: (save.level || 0) >= 100, stage: (save.bestStage || 0) >= 100 }; }
   function zeroUnlocked() { const l = zeroLights(); return l.lvl && l.stage; }
@@ -10327,9 +10326,10 @@
   }
 
   // ---- the orb ----
-  // Modelled on the footage: a soft, glowing halo with a brighter, slightly uneven rim round a
-  // warmer, dimmer heart, wrapped in amber-orange haze; it flickers and breathes and is never
-  // sharp. A larger glow never means a larger hitbox: the gameplay anchor and radii are the
+  // Modelled on the close-up in the footage (about 23-26 s in): a soft pale pink-ivory ring, its
+  // brightest band about halfway out and up to the left, round a darker rose-brown heart, wrapped
+  // in a faint red haze (the distant shots read as a single amber point). It flickers and breathes
+  // and is never sharp. A larger glow never means a larger hitbox: the gameplay anchor and radii are the
   // saucer's. Hits make it flare warm; the music makes it breathe. Cached sprite + one gradient
   // per frame (Low graphics drops the outer haze layer and the drifting cells).
   let zeroFlash = 0, zeroCollapse = null, _zeroHalo = null;
@@ -10338,8 +10338,8 @@
     if (_zeroHalo) return _zeroHalo;
     const c = document.createElement('canvas'); c.width = c.height = 256;
     const g = c.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
-    gr.addColorStop(0, 'rgba(255,216,170,0.9)'); gr.addColorStop(0.16, 'rgba(255,176,104,0.55)');
-    gr.addColorStop(0.42, 'rgba(226,92,46,0.16)'); gr.addColorStop(1, 'rgba(150,36,20,0)');
+    gr.addColorStop(0, 'rgba(255,200,180,0.8)'); gr.addColorStop(0.16, 'rgba(240,140,118,0.45)');
+    gr.addColorStop(0.42, 'rgba(190,70,60,0.14)'); gr.addColorStop(1, 'rgba(120,30,30,0)');
     g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
     return (_zeroHalo = c);
   }
@@ -10375,15 +10375,24 @@
     // the body: soft edge first (a wider, fainter copy reads as the camera's blur), then the orb
     c.globalCompositeOperation = 'source-over';
     c.globalAlpha = 0.35 * flick;
-    c.fillStyle = 'rgba(255,186,140,0.55)'; zeroBlob(c, r * 1.16, 0.05, t, 2.2); c.fill();
+    const bl = c.createRadialGradient(0, 0, r * 0.55, 0, 0, r * 1.4);
+    bl.addColorStop(0, 'rgba(206,138,132,0.6)'); bl.addColorStop(0.55, 'rgba(196,118,112,0.3)'); bl.addColorStop(1, 'rgba(170,80,80,0)');
+    c.fillStyle = bl; zeroBlob(c, r * 1.4, 0.07, t, 2.2); c.fill();                            // the blur round it
     c.globalAlpha = flick;
-    const g = c.createRadialGradient(r * 0.05, r * 0.08, 0, 0, 0, r);
-    g.addColorStop(0, 'rgba(214,112,104,0.92)');       // the dimmer, warmer heart
-    g.addColorStop(0.42, 'rgba(240,160,140,0.95)');
-    g.addColorStop(0.7, 'rgba(255,232,214,1)');         // the bright rim
-    g.addColorStop(0.88, 'rgba(255,246,236,1)');
-    g.addColorStop(1, 'rgba(255,196,150,0.85)');
-    c.fillStyle = g; zeroBlob(c, r, 0.035, t, 0.7); c.fill();
+    // the heart sits a little low and right of centre, the ring is brighter up and to the left
+    const g = c.createRadialGradient(r * 0.1, r * 0.12, 0, 0, 0, r);
+    g.addColorStop(0, 'rgba(140,84,82,0.96)');          // the darker rose-brown heart
+    g.addColorStop(0.26, 'rgba(160,98,94,0.97)');
+    g.addColorStop(0.52, 'rgba(242,206,198,1)');        // the pale pink-ivory ring
+    g.addColorStop(0.66, 'rgba(232,184,176,1)');
+    g.addColorStop(0.84, 'rgba(206,140,134,0.85)');
+    g.addColorStop(1, 'rgba(176,104,104,0)');
+    c.fillStyle = g; zeroBlob(c, r * 1.06, 0.06, t, 0.7); c.fill();
+    c.globalCompositeOperation = 'lighter';
+    const hi = c.createRadialGradient(-r * 0.3, -r * 0.34, 0, -r * 0.3, -r * 0.34, r * 0.62);   // soft glare, up and left
+    hi.addColorStop(0, 'rgba(255,236,226,0.3)'); hi.addColorStop(1, 'rgba(255,220,206,0)');
+    c.globalAlpha = flick; c.fillStyle = hi; c.beginPath(); c.arc(-r * 0.3, -r * 0.34, r * 0.62, 0, Math.PI * 2); c.fill();
+    c.globalCompositeOperation = 'source-over';
     // slow cells drifting in the heart
     if (!low) {
       c.globalCompositeOperation = 'lighter';
@@ -10391,14 +10400,14 @@
         const a = t * (0.35 + i * 0.17) + i * 2.1, d = r * (0.18 + 0.1 * Math.sin(t * 0.7 + i));
         const cx = Math.cos(a) * d, cy = Math.sin(a) * d, cr = r * (0.28 + 0.06 * Math.sin(t + i));
         const cg = c.createRadialGradient(cx, cy, 0, cx, cy, cr);
-        cg.addColorStop(0, 'rgba(255,190,150,0.22)'); cg.addColorStop(1, 'rgba(255,150,120,0)');
+        cg.addColorStop(0, 'rgba(255,190,170,0.12)'); cg.addColorStop(1, 'rgba(255,150,130,0)');
         c.fillStyle = cg; c.beginPath(); c.arc(cx, cy, cr, 0, Math.PI * 2); c.fill();
       }
     }
     // a hit: a warm flare round the rim
     if (zeroFlash > 0.02) {
       c.globalCompositeOperation = 'lighter'; c.globalAlpha = zeroFlash * 0.8;
-      c.strokeStyle = 'rgba(255,214,160,0.9)'; c.lineWidth = r * 0.14; zeroBlob(c, r * 1.02, 0.03, t, 0.7); c.stroke();
+      c.strokeStyle = 'rgba(255,226,206,0.9)'; c.lineWidth = r * 0.16; zeroBlob(c, r * 0.58, 0.03, t, 0.7); c.stroke();
     }
     c.restore();
   }
@@ -10679,7 +10688,8 @@
       syncMenu, openCase, close, skip,
       get open() { return open; }, get phase() { return phase; }, get granted() { return granted; },
       get media() { return { video: video ? video.currentSrc || video.src : null, audio: audio ? audio.src : null, failed: mediaFailed, playing: !!(audio && !audio.paused) }; },
-      _clock: () => now()
+      _clock: () => now(),
+      _av: () => ({ v: video ? video.currentTime : null, a: audio ? audio.currentTime : null, vReady: video ? video.readyState : 0, aReady: audio ? audio.readyState : 0, vPaused: video ? video.paused : null })
     };
   })();
 

@@ -57,7 +57,7 @@ for (const [name, save, lights] of [
   });
 }
 
-test('both clearances: the files open, the media loads only now, the reward survives a missing file', async ({ page }) => {
+test('both clearances: the files open, the media loads only now, Skip lands on the reward and it persists', async ({ page }) => {
   test.setTimeout(60000);
   const { errors, media } = await bootZ(page, { level: 104, bestStage: 100, settings: { music: true } });
   expect(await caseState(page)).toEqual({ visible: true, armed: true });
@@ -88,12 +88,96 @@ test('both clearances: the files open, the media loads only now, the reward surv
   expect(await page.evaluate(() => ({ open: ZeroFiles.open, media: ZeroFiles.media, state, armed: document.getElementById('zeroCase').classList.contains('armed') })))
     .toEqual({ open: false, media: { video: null, audio: null, failed: false, playing: false }, state: 'menu', armed: false });
   // after a reload: still equipped, the Craft picker is there, and the saucer can come back
+  // (the harness seeds its save on every load, so carry the real one across the reload)
+  await page.evaluate(() => sessionStorage.setItem('__pzKeep', localStorage.getItem('rhythmVoidSave.v1')));
+  await page.addInitScript(() => { const k = sessionStorage.getItem('__pzKeep'); if (k) localStorage.setItem('rhythmVoidSave.v1', k); });
   await page.reload(); await page.waitForTimeout(500);
   const after = await page.evaluate(() => { showScreen('settings'); return { craft: save.craft, zero: craftIsZero(), block: document.getElementById('craftBlock').classList.contains('hidden'), n: document.querySelectorAll('#craftGrid button').length }; });
   expect(after).toEqual({ craft: 'zero', zero: true, block: false, n: 2 });
   await page.click('#craftGrid button:first-child');
   expect(await page.evaluate(() => ({ craft: save.craft, zero: craftIsZero() }))).toEqual({ craft: 'saucer', zero: false });
   expect(errors.filter((e) => !/project-zero/.test(e)), 'no page errors (a missing media file is reported, not thrown)').toEqual([]);
+});
+
+test('the footage and the score follow the files\' clock (where this browser decodes them)', async ({ page, browserName }) => {
+  test.setTimeout(60000);
+  const { errors } = await bootZ(page, { level: 100, bestStage: 100, settings: { music: true } });
+  await page.click('#zeroCase');
+  await page.waitForFunction(() => ZeroFiles.phase === 'evidence', null, { timeout: 15000 });
+  await page.waitForTimeout(2500);
+  const r = await page.evaluate(() => Object.assign({ clock: ZeroFiles._clock(), failed: ZeroFiles.media.failed, msg: !document.getElementById('zfEvMsg').classList.contains('hidden') }, ZeroFiles._av()));
+  writeResult('project-zero-sync-' + (browserName || 'chromium'), r);
+  if (r.failed || r.vReady < 2) { test.skip(true, 'this browser does not decode the footage here (the FILE DAMAGED path is covered above)'); return; }
+  expect(r.msg, 'no Play File prompt with autoplay allowed').toBe(false);
+  expect(r.vPaused).toBe(false);
+  expect(Math.abs(r.v - (r.clock - 4)), 'footage within 0.4 s of the files\' clock').toBeLessThan(0.4);
+  if (r.aReady >= 2) expect(Math.abs(r.a - r.clock), 'score within 0.4 s of the files\' clock').toBeLessThan(0.4);
+  await page.click('#zfClose');
+  expect(errors.filter((e) => !/project-zero/.test(e))).toEqual([]);
+});
+
+test('a missing or damaged file never costs the reward: FILE DAMAGED, then Zero Form all the same', async ({ page }) => {
+  test.setTimeout(60000);
+  const { errors } = await bootZ(page, { level: 100, bestStage: 100 });
+  await page.evaluate(() => { ZERO.footage = 'assets/project-zero/missing.mp4'; ZERO.score = 'assets/project-zero/missing.m4a'; });
+  await page.click('#zeroCase');
+  await page.waitForFunction(() => ZeroFiles.phase === 'evidence', null, { timeout: 15000 });
+  await page.waitForTimeout(800);
+  const ev = await page.evaluate(() => ({ msg: document.getElementById('zfEvMsg').classList.contains('hidden') ? '' : document.getElementById('zfEvMsgText').textContent,
+    playFile: !document.getElementById('zfPlayFile').hidden, failed: ZeroFiles.media.failed, opened: save.zero.opened }));
+  expect(ev).toEqual({ msg: 'FILE DAMAGED · FOOTAGE COULD NOT BE LOADED', playFile: false, failed: true, opened: true });
+  // the files' own clock keeps running: the reward arrives on time even with nothing to show
+  await page.click('#zfSkip');
+  await page.waitForTimeout(300);
+  await page.click('#zfEquip');
+  expect(await page.evaluate(() => ({ phase: ZeroFiles.phase, craft: save.craft, zero: craftIsZero() }))).toEqual({ phase: 'reward', craft: 'zero', zero: true });
+  await page.click('#zfMenu');
+  expect(await page.evaluate(() => ZeroFiles.media)).toEqual({ video: null, audio: null, failed: false, playing: false });
+  expect(errors.filter((e) => !/project-zero|Failed to load resource/.test(e)), 'a missing file is reported on screen, not thrown').toEqual([]);
+});
+
+test('a blocked play() asks for an explicit Play File, and the files wait for it', async ({ page }) => {
+  test.setTimeout(60000);
+  const { errors } = await bootZ(page, { level: 100, bestStage: 100 });
+  await page.evaluate(() => { window.__realPlay = HTMLVideoElement.prototype.play; HTMLVideoElement.prototype.play = function () { return Promise.reject(new DOMException('blocked', 'NotAllowedError')); }; });
+  await page.click('#zeroCase');
+  await page.waitForFunction(() => ZeroFiles.phase === 'evidence', null, { timeout: 15000 });
+  await page.waitForTimeout(500);
+  const a = await page.evaluate(() => ({ msg: document.getElementById('zfEvMsgText').textContent, shown: !document.getElementById('zfEvMsg').classList.contains('hidden'), playFile: !document.getElementById('zfPlayFile').hidden, focus: document.activeElement && document.activeElement.id, clock: ZeroFiles._clock() }));
+  expect(a).toMatchObject({ msg: 'PLAYBACK BLOCKED', shown: true, playFile: true, focus: 'zfPlayFile' });
+  await page.waitForTimeout(700);
+  expect(await page.evaluate(() => ZeroFiles._clock()), 'the files wait, frozen, for the tap').toBe(a.clock);
+  await page.evaluate(() => { HTMLVideoElement.prototype.play = window.__realPlay; });
+  await page.click('#zfPlayFile');
+  await page.waitForTimeout(600);
+  const b = await page.evaluate(() => ({ shown: !document.getElementById('zfEvMsg').classList.contains('hidden'), phase: ZeroFiles.phase, clock: ZeroFiles._clock() }));
+  expect(b.shown).toBe(false);
+  expect(b.phase).toBe('evidence');
+  expect(b.clock).toBeGreaterThan(a.clock + 0.3);
+  await page.keyboard.press('Escape');
+  expect(errors.filter((e) => !/project-zero/.test(e))).toEqual([]);
+});
+
+test('backgrounded: the footage and score pause; back: PAUSED with Play File', async ({ page }) => {
+  test.setTimeout(60000);
+  const { errors } = await bootZ(page, { level: 100, bestStage: 100 });
+  await page.click('#zeroCase');
+  await page.waitForFunction(() => ZeroFiles.phase === 'evidence', null, { timeout: 15000 });
+  await page.waitForTimeout(800);
+  const hide = (h) => page.evaluate((h) => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => h }); document.dispatchEvent(new Event('visibilitychange')); }, h);
+  await hide(true);
+  await page.waitForTimeout(200);
+  const a = await page.evaluate(() => Object.assign({ clock: ZeroFiles._clock(), playing: ZeroFiles.media.playing }, ZeroFiles._av()));
+  expect(a.playing, 'score paused').toBe(false);
+  expect(a.vPaused, 'footage paused').toBe(true);
+  await page.waitForTimeout(500);
+  expect(await page.evaluate(() => ZeroFiles._clock())).toBe(a.clock);
+  await hide(false);
+  await page.waitForTimeout(200);
+  expect(await page.evaluate(() => ({ msg: document.getElementById('zfEvMsgText').textContent, playFile: !document.getElementById('zfPlayFile').hidden })))
+    .toEqual({ msg: 'PAUSED', playFile: true });
+  await page.click('#zfClose');
+  expect(errors.filter((e) => !/project-zero/.test(e))).toEqual([]);
 });
 
 test('while the files are open, the menu behind them ignores keys; Escape closes; nothing lingers', async ({ page }) => {
