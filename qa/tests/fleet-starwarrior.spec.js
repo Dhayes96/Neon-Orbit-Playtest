@@ -5,9 +5,10 @@
 //    enemy fire that lands while you're on the beat is reflected, fire that lands right after a
 //    miss gets through. Survive and STAR-WARRIOR unlocks, then the craft warps home and the run
 //    carries on. After that, Big Bang is the normal Big Bang again.
-//  - STAR-WARRIOR is an equippable power: the craft is a living fireball; holding opens a portal
-//    that swallows every ring (all PERFECT); when it closes the orb is charged, and the next hold
-//    (or 8 s) releases everything as a full-screen blast wave that clears the field (and hits a boss).
+//  - STAR-WARRIOR (reworked, Dennel Nov 12 evening) is a boss-fight power: hold to summon the fleet
+//    you beat for 12 s. Waves of fighters warp in all over the screen, take station round the boss and
+//    fire on the beat; every ring you hit calls a volley; the mothership joins the last wave. It hurts
+//    the boss (up to its cap) and never plays a ring for you. Outside a boss fight it waits ("BOSS").
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -128,83 +129,80 @@ test('Fleet fire gets through only right after a slip; Phantom Step dodges it', 
   expect(errors).toEqual([]);
 });
 
-test('STAR-WARRIOR: a living orb; the portal swallows every ring; the release clears the field', async ({ page }) => {
-  test.setTimeout(60000);
+test('STAR-WARRIOR waits for a boss, then the fleet fights for you for 12 s (and never plays a ring)', async ({ page }) => {
+  test.setTimeout(90000);
   const errors = await start(page, 'starWarrior', { ...BOSSES, fleet: true });
-  expect(await page.evaluate(() => ({ orb: starOrbOn(), name: ABILITIES.starWarrior.name }))).toEqual({ orb: true, name: 'Star-Warrior' });
   await page.evaluate(() => { window.__fl.auto = false; setInterval(() => { energy = 100; }, 100); });
-  await page.waitForTimeout(2500);
-  const before = await page.evaluate(() => ({ misses: runStats.misses, perfects }));
-  await page.evaluate(() => { abReady = true; activateAbility(); });
-  // while the portal is open nothing reaches the craft: every ring is pulled in as a PERFECT
-  let maxLive = 0;
-  for (let i = 0; i < 16; i++) {
-    await page.waitForTimeout(400);
-    maxLive = Math.max(maxLive, await page.evaluate(() => { const t = clockNow() - startTime; return notes.filter((n) => !n.hit && !n.missed && noteRadius(n, t) < targetR * 3.3).length; }));
-  }
-  await page.waitForFunction(() => !abActive, null, { timeout: 8000 });
-  const charged = await page.evaluate(() => ({ charged: starCharged, held: starHeld.length, misses: runStats.misses, perfects, chip: abilityStatusText.textContent, canHold: canActivateAbility() }));
-  expect(charged.misses, 'no misses while the portal is open').toBe(before.misses);
-  expect(maxLive, 'no ring gets close to the craft').toBe(0);
-  expect(charged.held, 'it swallowed rings').toBeGreaterThan(4);
-  expect(charged.perfects - before.perfects).toBeGreaterThanOrEqual(charged.held);
-  expect(charged.charged).toBe(true);
-  expect(charged.chip).toContain('RELEASE');
-  expect(charged.canHold, 'a hold releases it').toBe(true);
-
-  await page.waitForTimeout(300);
-  const score0 = await page.evaluate(() => score);
+  await page.waitForTimeout(1500);
+  // charged in normal play: it waits, and a hold does nothing
+  const waiting = await page.evaluate(() => { abReady = true; updateAbilityHud(); activateAbility();
+    return { can: canActivateAbility(), on: abActive, chip: abilityStatusText.textContent, craft: typeof drawStarOrb }; });
+  expect(waiting).toEqual({ can: false, on: false, chip: 'STAR BOSS', craft: 'undefined' });
   await page.evaluate(() => {
-    const orig = window.starRelease;          // remember exactly what was in flight when it went off
-    window.starRelease = function () { window.__inFlight = notes.filter((n) => !n.hit && !n.missed); return orig.apply(this, arguments); };
-    abHoldStart = performance.now() - ABILITY_HOLD_MS - 10;   // a full hold
-  });
-  await page.waitForFunction(() => !starCharged, null, { timeout: 3000 });
-  // (rings spawned after the release are new: only what was in flight when it went off must be gone)
-  const blast = await page.evaluate(() => ({ blast: !!starBlast, live: (window.__inFlight || [null]).filter((n) => !n || (!n.hit && !n.missed)).length, score, ready: abReady, chip: abilityStatusText.textContent }));
-  expect(blast.blast, 'the blast wave goes off').toBe(true);
-  expect(blast.live, 'and clears the field').toBe(0);
-  expect(blast.score - score0, 'it pays for what it ate').toBeGreaterThanOrEqual(150 * charged.held);
-  expect(blast.ready, 'releasing does not spend a recharge').toBe(false);
-  expect(blast.chip).not.toContain('RELEASE');
-
-  // left charged, it lets go on its own after 8 s
-  await page.evaluate(() => { starHeld = ['#fff', '#fff']; starCharged = true; starChargeAt = clockNow() - startTime - 8.2; });
-  await page.waitForFunction(() => !starCharged, null, { timeout: 3000 });
-  expect(errors).toEqual([]);
-});
-
-test('STAR-WARRIOR in a boss fight: the portal and the blast both hit the boss', async ({ page }) => {
-  test.setTimeout(60000);
-  const errors = await start(page, 'starWarrior', { ...BOSSES, fleet: true });
-  await page.evaluate(() => {
-    setInterval(() => { energy = 100; }, 100);
     window.__dmg = [];
     const orig = window.damageBoss;
-    window.damageBoss = function (amount, isPerfect, fromAbility) { window.__dmg.push({ amount, t: clockNow() - startTime, blast: !!starBlast }); return orig.apply(this, arguments); };
-    hitsTotal = stageHitsNeeded(20, diff); stageUp(20);
+    window.damageBoss = function (amount, isPerfect, fromAbility) { window.__dmg.push({ amount, t: clockNow() - startTime, ability: abActive && abilityId === 'starWarrior' }); return orig.apply(this, arguments); };
+    hitsTotal = stageHitsNeeded(30, diff); stageUp(30);
   });
-  await page.waitForFunction(() => state === 'bossBattle', null, { timeout: 15000 });
-  await page.waitForTimeout(1500);
-  await page.evaluate(() => { window.__fl.auto = false; abReady = true; activateAbility(); });
-  await page.waitForFunction(() => !abActive, null, { timeout: 12000 });
-  const held = await page.evaluate(() => starHeld.length);
-  const h0 = await page.evaluate(() => bossHealth);
+  await page.waitForFunction(() => state === 'bossBattle', null, { timeout: 20000 });
+  await page.waitForTimeout(800);
+  const live = await page.evaluate(() => ({ can: canActivateAbility(), chip: abilityStatusText.textContent }));
+  expect(live).toEqual({ can: true, chip: 'STAR HOLD' });
+  const before = await page.evaluate(() => ({ h: bossHealth, misses: runStats.misses, perfects, t: clockNow() - startTime }));
   await page.evaluate(() => activateAbility());
-  await page.waitForTimeout(1500);
-  const h1 = await page.evaluate(() => bossHealth);
-  const dmg = await page.evaluate(() => window.__dmg);
-  writeResult('starwarrior-boss', { held, h0, h1, dmg: dmg.length });
-  expect(held).toBeGreaterThan(0);
-  expect(dmg.length, 'the portal feeds the boss shots').toBeGreaterThan(0);
-  expect(h0 - h1, 'the blast wave slams the boss').toBeGreaterThanOrEqual(Math.min(80, 4 * held) - 0.5);
+  const samples = [];
+  for (let i = 0; i < 26; i++) {
+    await page.waitForTimeout(500);
+    samples.push(await page.evaluate(() => ({ t: clockNow() - startTime, on: abActive, ships: Fleet.allyCount, allies: Fleet.alliesOn, h: bossHealth })));
+  }
+  const after = await page.evaluate(() => ({ h: bossHealth, misses: runStats.misses, perfects, allies: Fleet.alliesOn, cap: tuningFor('starWarrior').bossCap }));
+  const dmg = await page.evaluate(() => window.__dmg.filter((d) => d.ability).reduce((a, d) => a + d.amount, 0));
+  writeResult('starwarrior-allies', { before, after, samples, dmg });
   expect(errors).toEqual([]);
+  const at = (sec) => samples.find((s) => s.t - before.t >= sec) || samples[samples.length - 1];
+  expect(at(2).ships, 'the first wave is on station').toBeGreaterThanOrEqual(4);
+  expect(at(6).ships, 'the second wave joins').toBeGreaterThanOrEqual(8);
+  expect(at(10).ships, 'and the third').toBeGreaterThanOrEqual(12);
+  expect(at(11).on, 'still running at 11 s').toBe(true);
+  expect(at(12.6).on, 'over after 12 s').toBe(false);
+  expect(after.allies, 'and they leave').toBe(false);
+  expect(dmg, 'the fleet hurts the boss').toBeGreaterThan(30);
+  expect(dmg, 'within the power\'s cap').toBeLessThanOrEqual(after.cap + 0.01);
+  expect(after.perfects, 'it never plays a ring for you').toBe(before.perfects);
+  expect(after.misses, 'unplayed rings are still missed').toBeGreaterThan(before.misses);
+});
+
+test('STAR-WARRIOR: hits call volleys; the fleet leaves when the boss falls', async ({ page }) => {
+  test.setTimeout(60000);
+  const errors = await start(page, 'starWarrior', { ...BOSSES, fleet: true });
+  await page.evaluate(() => { setInterval(() => { energy = 100; }, 100); hitsTotal = stageHitsNeeded(20, diff); stageUp(20); });
+  await page.waitForFunction(() => state === 'bossBattle', null, { timeout: 20000 });
+  await page.waitForTimeout(800);
+  // a perfect player (the autoplayer is on): count the squadron's shots with and without hits
+  await page.evaluate(() => {
+    window.__dmg = [];
+    const orig = window.damageBoss;
+    window.damageBoss = function (amount) { if (abActive && abilityId === 'starWarrior') window.__dmg.push({ amount, t: clockNow() - startTime }); return orig.apply(this, arguments); };
+    abReady = true; activateAbility();
+  });
+  await page.waitForTimeout(5000);
+  const withHits = await page.evaluate(() => ({ n: __dmg.length, sum: __dmg.reduce((a, d) => a + d.amount, 0), perfects }));
+  // the boss falls mid-summon: the fleet goes home, nothing is left behind
+  await page.evaluate(() => { bossHealth = 1; damageBoss(5, true, false); });
+  await page.waitForFunction(() => !bossActive || state !== 'bossBattle', null, { timeout: 5000 });
+  await page.waitForTimeout(2500);
+  const end = await page.evaluate(() => ({ allies: Fleet.alliesOn, on: abActive, state }));
+  writeResult('starwarrior-volleys', { withHits, end });
+  expect(errors).toEqual([]);
+  expect(withHits.perfects, 'the player hit rings').toBeGreaterThan(3);
+  expect(withHits.n, 'beat fire plus a volley per hit').toBeGreaterThan(withHits.perfects);
+  expect(end.allies, 'the fleet leaves when the boss falls').toBe(false);
 });
 
 test('Saves, settings and the CrazyGames build', async ({ page }) => {
   // an old save (no fleet key, Star-Warrior equipped without it) loads safely
   const errors = await boot(page, { save: { equippedAbility: 'starWarrior', bossUnlocks: BOSSES } });
-  expect(await page.evaluate(() => ({ fleet: save.bossUnlocks.fleet, eq: save.equippedAbility, orb: starOrbOn() }))).toEqual({ fleet: false, eq: 'none', orb: false });
+  expect(await page.evaluate(() => ({ fleet: save.bossUnlocks.fleet, eq: save.equippedAbility }))).toEqual({ fleet: false, eq: 'none' });
   // the loadout keeps it secret until earned
   await page.evaluate(() => refreshSettings());
   const locked = await page.evaluate(() => [...document.querySelectorAll('#abilityGrid .ability-swatch')].map((b) => b.textContent).find((t) => t.includes('beyond the Big Bang')));
@@ -219,6 +217,6 @@ test('Saves, settings and the CrazyGames build', async ({ page }) => {
   execFileSync(process.execPath, [path.join(GAME, 'tools', 'build-crazygames.mjs')], { cwd: GAME });
   const cg = fs.readFileSync(path.join(GAME, 'dist', 'crazygames', 'index.html'), 'utf8');
   expect(cg).toContain('const Fleet = (() =>');
-  expect(cg).toContain('function drawStarOrb(');
+  expect(cg).toContain('function summon(t) {');
   expect(cg).not.toContain('data-dev="fleet"');
 });
