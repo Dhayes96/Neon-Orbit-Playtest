@@ -11,9 +11,10 @@ const { test, expect } = require('@playwright/test');
 const { boot } = require('./harness');
 
 const UNLOCKS = { cubex: true, hexatron: true, triarch: true, vantaPrism: true };
-async function toBoss(page, { stage = 50, seen = true, bot = 'tap', keepEnergy = true } = {}) {
+async function toBoss(page, { stage = 50, seen = true, bot = 'tap', keepEnergy = true, click = false } = {}) {
   const errors = await boot(page, { save: { level: 60, bossUnlocks: Object.assign({}, UNLOCKS, seen ? { eclipseSovereign: true } : {}) } });
-  await page.evaluate(() => startGame(false));
+  if (click) await page.click('#startBtn');          // a real tap: the audio starts
+  else await page.evaluate(() => startGame(false));
   await page.waitForFunction(() => state === 'playing');
   await page.evaluate(({ stage, bot, keepEnergy }) => {
     window.__breaks = 0; const bc = breakCombo; window.breakCombo = function () { window.__breaks++; return bc.apply(this, arguments); };
@@ -199,3 +200,21 @@ test('leaving the fight ends the dodge: defeat, and a fresh run', async ({ page 
   await page.keyboard.press('ArrowLeft');
   expect(real(errors)).toEqual([]);
 });
+
+for (const how of ['die', 'menu']) {
+  test(`${how === 'die' ? 'a death' : 'a quit to the menu'} mid-fight: the music still fades out (the Sovereign's duck must not cancel it)`, async ({ page }) => {
+    test.setTimeout(60000);
+    const errors = await toBoss(page, { bot: 'tap', click: true });
+    await page.waitForFunction(() => state === 'bossBattle', null, { timeout: 20000 });
+    await page.waitForTimeout(600);
+    const live = await page.evaluate(() => ({ ctx: audioCtx && audioCtx.state, gain: musicGain ? musicGain.gain.value : null }));
+    expect(live.ctx, 'audio runs (started by a real tap)').toBe('running');
+    expect(live.gain, 'the fight music is up').toBeGreaterThan(0.1);
+    await page.evaluate((how) => { if (how === 'die') { energy = 0; endGame(); } else { pauseGame('button'); endGame({ toMenu: true }); } }, how);
+    await page.waitForTimeout(1500);
+    const r = await page.evaluate(() => ({ gain: musicGain.gain.value, dodge: !!dodge, ecl: !!ecl, ducking: music._ducking }));
+    expect(r.gain, 'faded out').toBeLessThan(0.02);
+    expect(r).toMatchObject({ dodge: false, ecl: false, ducking: false });
+    expect(real(errors)).toEqual([]);
+  });
+}

@@ -10848,7 +10848,10 @@
   function dodgeEnd() {
     if (!dodge) return;
     dodge = null;
-    if (ecl) { ecl = null; eclDuck(1, 0.05); }
+    // the Sovereign's duck is lifted only while the song still plays: after a death or a quit
+    // to the menu, stopMusic's fade-out must not be cancelled (it was, Nov 13: the last notes
+    // rang on at full volume)
+    if (ecl) { ecl = null; if (music.on) eclDuck(1, 0.05); else { music._ducking = false; music._duckFactor = 1; } }
     const t = clockNow() - startTime, a = anchors[anchorIdx];
     if (a) tgtAnim = { fromX: tgt.x, fromY: tgt.y, toX: a.x, toY: a.y, start: t, dur: 0.3 };
   }
@@ -11899,6 +11902,7 @@
     phDodges = []; phEndAt = -9; phantomMusicOn = false; phantomMusicMix = 0;
     novaWave = null; novaShards = []; skyNova = null;
     clearBossCombat();
+    dodgeEnd();                                         // a run can end mid-dodge-fight
     Hyper.cancel();
     Fleet.cancel();
     if (typeof abilityBtn !== 'undefined' && abilityBtn) abilityBtn.classList.remove('show', 'ready');
