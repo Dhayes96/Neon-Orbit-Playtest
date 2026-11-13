@@ -867,6 +867,13 @@
     @media (orientation: landscape) and (max-height: 520px) {
       body.hyper-on #stageChip, body.hyper-on #trackName { opacity: 0 !important; transition: opacity .3s; }   /* they sat over the tunnel's end */
     }
+    /* Low graphics (chosen, or detected: no GPU, or frames too slow): no frosted-glass blur. The
+       blur is redone every frame over the moving scene; with it off the menu holds 60 fps where it
+       dropped to 18-40 (Nov 13 sweep, software rendering). Panels get a solid dark fill instead. */
+    body.gfx-low *, body.gfx-low *::before, body.gfx-low *::after { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+    body.gfx-low .panel { background: rgba(8, 8, 20, 0.78); }
+    body.gfx-low #pauseOverlay { background: rgba(4, 4, 14, 0.86); }
+    body.gfx-low .card { background: rgba(14, 10, 30, 0.92); }
     .hyper-btns {
       position: fixed; left: 50%; transform: translateX(-50%);
       bottom: calc(env(safe-area-inset-bottom, 0px) + 22px);
@@ -10611,6 +10618,11 @@
   // Shaders compile in parallel where supported, so phones don't hitch at boot.
   // Low graphics (Settings, or automatic on devices without a GPU) skips WebGL entirely.
   const SPACE_MODE = true;
+  let _gfxLowClass = null;
+  function syncGfxClass() {
+    try { const lo = !!SpaceFX.low; if (lo !== _gfxLowClass) { _gfxLowClass = lo; document.body.classList.toggle('gfx-low', lo); } } catch (e) {}
+  }
+  setInterval(syncGfxClass, 1000);
   const SpaceFX = (() => {
     const cv = document.getElementById('space');
     const TAU = Math.PI * 2;
@@ -11715,6 +11727,7 @@
     const q = ['ultra', 'high', 'lite'].includes(s.spaceQuality) ? s.spaceQuality : 'high';
     const lo = document.getElementById('lowGfxToggle'); if (lo) lo.checked = SpaceFX.low;
     const blk = document.getElementById('spaceSeg'); if (blk) blk.closest('.setting-block').classList.toggle('gfx-low', SpaceFX.low);
+    syncGfxClass();
     document.querySelectorAll('#spaceSeg button').forEach((b) => b.classList.toggle('on', b.dataset.sq === q));
     const d = document.getElementById('spaceDesc'); if (d) d.textContent = SPACE_DESC[q];
     const m = document.getElementById('spaceMotionToggle'); if (m) m.checked = s.spaceMotion !== false;
