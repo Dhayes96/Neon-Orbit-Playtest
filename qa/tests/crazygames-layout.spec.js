@@ -53,9 +53,9 @@ for (const [w, h] of SIZES) {
     // tutorial (first-run flow)
     await page.click('#startBtn');
     await page.waitForSelector('#tutorialScreen:not(.hidden)', { timeout: 5000 });
-    res.tutorial = await page.evaluate(visibilityProbe, ['tutNext', 'tutSkip']);
+    res.tutorial = await page.evaluate(visibilityProbe, ['tutNext']);
     await shot(page, `${w}x${h}-tutorial`);
-    await page.click('#tutSkip');
+    await page.click('#tutNext');   // one-card tutorial: Play
     await page.waitForFunction(() => state === 'playing', null, { timeout: 8000 });
     await page.waitForTimeout(800);
     // pause
