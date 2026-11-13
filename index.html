@@ -1506,7 +1506,7 @@
             <circle cx="0" cy="0" r="26" fill="#060009" stroke="#b026ff" stroke-width="2"/>
             <path d="M-15 -8 Q-9 -14 -3 -8 Q-9 -10 -15 -8 Z M15 -8 Q9 -14 3 -8 Q9 -10 15 -8 Z" fill="#ffd23d" stroke="#ffd23d" stroke-width="1.6" stroke-linejoin="round"/>
             <path d="M-16 4 Q0 22 16 4 Z" fill="#170012" stroke="#ffd23d" stroke-width="1.8"/>
-            <path d="M-12 7 L-9 11 L-6 8 L-3 12 L0 8.5 L3 12 L6 8 L9 11 L12 7" fill="none" stroke="#ffd23d" stroke-width="1.4"/>
+            <g fill="#ffffff"><polygon points="-12.6,4.9 -9.4,4.9 -11.0,8.6"/> <polygon points="-8.6,4.9 -5.4,4.9 -7.0,7.4"/> <polygon points="-4.6,4.9 -1.4,4.9 -3.0,7.4"/> <polygon points="-0.6,4.9 2.6,4.9 1.0,7.4"/> <polygon points="3.4,4.9 6.6,4.9 5.0,7.4"/> <polygon points="7.4,4.9 10.6,4.9 9.0,8.6"/> <polygon points="-10.3,8.9 -7.7,8.9 -9.0,5.9"/> <polygon points="-6.3,11.2 -3.7,11.2 -5.0,8.2"/> <polygon points="-2.3,12.4 0.3,12.4 -1.0,9.4"/> <polygon points="1.7,11.9 4.3,11.9 3.0,8.9"/> <polygon points="5.7,10.2 8.3,10.2 7.0,7.2"/></g>
           </symbol>
           <symbol id="cxPlanet" viewBox="-30 -30 60 60">
             <circle r="24" fill="#3b7fb0" stroke="#bff3ff" stroke-width="1.6"/>
@@ -1608,7 +1608,7 @@
         </div>
 
         <div class="cp">
-          <p class="cap">Beat a warden and keep its power: <b>Quantize</b>, <b>Hex Saw</b>, <b>Tri-Laser</b>, <b>Prism Guard</b> and the <b>Event Horizon</b>.</p>
+          <p class="cap">Beat a warden and keep its power: <b>Quantize</b>, <b>Hex Saw</b>, <b>Tri-Laser</b>, <b>Black Prism</b> and the <b>Event Horizon</b>.</p>
           <div class="art"><svg viewBox="0 0 396 96" role="img" aria-label="Five power badges: a cube, a saw, three lasers, a shield and a black hole">
             <rect width="396" height="96" fill="url(#cxDots)"/>
             <g transform="translate(46 48)"><circle r="30" fill="#13240a" stroke="#a6ff3d" stroke-width="3"/><g fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"><rect x="-14" y="-6" width="18" height="18"/><rect x="-6" y="-14" width="18" height="18"/><path d="M-14 -6 L-6 -14 M4 -6 L12 -14 M4 12 L12 4 M-14 12 L-6 4"/></g></g>
@@ -2491,8 +2491,8 @@
     hexSaw: {
       name: 'Hex Saw', short: 'SAW', type: 'hold', bossName: 'Hexatron',
       unlockText: 'Defeat Hexatron at Stage 20',
-      flavor: "Forged from Hexatron's rotating signal core.",
-      desc: 'Hold the target to spin up a hex saw. Cut rings count as PERFECT and energy drain pauses. Up to 20s / 15 cuts. Recharges every 5 stages.'
+      flavor: "Hexatron's own saw ring, ripped off the boss and bolted round your saucer.",
+      desc: 'Hold the target to spin up Hexatron\'s giant saw. Rings that reach it are caught on the teeth, ground in sparks and shredded on their beat: every cut is a PERFECT, and energy drain pauses. Up to 20s / 15 cuts. Recharges every 5 stages.'
     },
     triLaser: {
       name: 'Tri-Laser', short: 'LASER', type: 'hold', bossName: 'Triarch',
@@ -2501,10 +2501,10 @@
       desc: 'Hold the target to fire three rotating beams across the screen. Sliced rings count as PERFECT and drain pauses. 10s / 14 slices. Recharges every 6 stages.'
     },
     prismGuard: {
-      name: 'Prism Guard', short: 'GUARD', type: 'hold', bossName: 'Vanta Prism',
+      name: 'Black Prism', short: 'PRISM', type: 'hold', bossName: 'Vanta Prism',
       unlockText: 'Defeat Vanta Prism at Stage 40',
-      flavor: "Built from Vanta Prism's fractured shield shell.",
-      desc: 'Hold the target to raise a purple forcefield for 15 seconds of pure invincibility — no misses, no broken combos, every ring resolves as PERFECT and drain stops. It bursts on collapse, clearing the field. Recharges every 6 stages.'
+      flavor: "Vanta Prism's black crystal heart. It still drinks the light.",
+      desc: 'Hold the target to seal your saucer inside Vanta Prism\'s black crystal for 15 seconds. The crystal swallows every ring on its beat and splits it into a rainbow that rakes the sky (and the boss): all PERFECT, no misses, no broken combos, and drain stops. When it ends, the crystal shatters and clears the field. Recharges every 6 stages.'
     },
     eventHorizon: {
       name: 'Event Horizon', short: 'HORIZON', type: 'hold', bossName: 'Eclipse Sovereign',
@@ -7963,6 +7963,11 @@
     abActive = false;
     abHoldStart = 0; abHoldProgress = 0;
     if (wasId === 'prismGuard') prismBlast();
+    if (wasId === 'hexSaw') {
+      const t = clockNow() - startTime;
+      for (const note of notes) if (!note.hit && !note.missed && note.sawState === 2) { note.hit = true; sawCut(note, t); }
+      for (const note of notes) delete note.sawState;
+    }
     if (wasId === 'eventHorizon' && reason !== 'travel') hawkingFlare();
     if (wasId === 'bigBang' && reason !== 'travel') bigBangFinale();
     if (wasId === 'phantomStep') phantomEnd(clockNow() - startTime);
@@ -7992,7 +7997,7 @@
       note.hit = true; cleared++;
       createBurst(note.tx, note.ty, '#b06bff', 12, 0.8);
     }
-    if (cleared > 0) showToast('SHIELD BURST', '#b06bff', cleared + ' CLEARED');
+    if (cleared > 0) showToast('PRISM SHATTERS', '#b06bff', cleared + ' CLEARED');
     // capped boss damage from the blast
     if (bossActive && abBossDmgLeft > 0) {
       const dmg = Math.min(12, abBossDmgLeft);
@@ -9315,8 +9320,10 @@
   function abilitySound(id, phase) {
     if (!save.settings.sfx) return;
     if (id === 'hexSaw') {
-      if (phase === 'start') { for (let i = 0; i < 3; i++) tone(140 + i * 40, 0.14, 'sawtooth', 0.03, i * 0.03); }
-      else tone(120, 0.16, 'sawtooth', 0.025);
+      if (phase === 'start') {            // the blade spinning up: a rising snarl, a clang, a whine
+        [70, 95, 130, 175, 235, 320].forEach((f, i) => tone(f, 0.12, 'sawtooth', 0.034, i * 0.045));
+        tone(1320, 0.06, 'square', 0.02, 0.3); tone(2640, 0.18, 'triangle', 0.016, 0.3);
+      } else { [320, 220, 150, 100].forEach((f, i) => tone(f, 0.12, 'sawtooth', 0.024, i * 0.05)); }
     } else if (id === 'triLaser') {
       if (phase === 'start') { [520, 780, 1040].forEach((f, i) => tone(f, 0.12, 'square', 0.03, i * 0.04)); }
       else tone(300, 0.14, 'square', 0.022);
@@ -9353,7 +9360,7 @@
     abLoopTimer -= dt;
     if (abLoopTimer > 0) return;
     abLoopTimer = 0.22;
-    if (abilityId === 'hexSaw') { tone(150, 0.1, 'sawtooth', 0.018); tone(226, 0.08, 'square', 0.010); }
+    if (abilityId === 'hexSaw') { tone(150, 0.1, 'sawtooth', 0.02); tone(226, 0.08, 'square', 0.011); tone(905, 0.05, 'triangle', 0.006); }
     else if (abilityId === 'triLaser') { tone(620, 0.07, 'square', 0.012); }
   }
   let abLoopTimer = 0;
@@ -9621,6 +9628,23 @@
   }
 
   // ---- Per-frame ability driver ----
+  // HEX SAW: a ring on the teeth throws sparks where it touches the blade; a cut shreds it.
+  function sawGrind(note, t, first) {
+    const R = hexSawR(t), a = (note.angle || 0) + t * 3.1;
+    const x = note.tx + Math.cos(a) * R * 1.1, y = note.ty + Math.sin(a) * R * 1.1;
+    if (first) { sawSpray(x, y, a, 14, true); if (save.settings.sfx) tone(1650 + fxRand() * 300, 0.05, 'square', 0.012); }
+    else if (fxRand() < 0.7) sawSpray(x, y, a, 2, false);
+  }
+  function sawCut(note, t) {
+    const R = hexSawR(t), a = (note.angle || 0) + t * 3.1;
+    const x = note.tx + Math.cos(a) * R * 1.1, y = note.ty + Math.sin(a) * R * 1.1;
+    for (let k = 0; k < 4; k++) { const b = a + k * Math.PI / 2; sawSpray(note.tx + Math.cos(b) * R * 1.12, note.ty + Math.sin(b) * R * 1.12, b, 7, true); }
+    shockwaves.push({ x: note.tx, y: note.ty, r: R * 1.05, alpha: 0.85, speed: 520, width: 4, color: '#00f5ff' });
+    createBurst(x, y, '#ffffff', 10, 1.2);
+    shake = Math.max(shake, 3);
+    if (save.settings.sfx) { tone(2200, 0.04, 'square', 0.016); tone(880, 0.07, 'sawtooth', 0.02, 0.01); }
+    awardAbilityPerfect(x, y, '#00f5ff', 'HEX SAW');
+  }
   function updateAbility(dt, t) {
     if (abilityId === 'none') return;
 
@@ -9663,13 +9687,11 @@
     tickAbilityHud(t);
 
     if (abilityId === 'prismGuard') {
-      // INVINCIBLE: every ring that reaches the target resolves as a PERFECT.
+      // BLACK PRISM: still invincible (stray taps are absorbed by guardBlock), and every ring
+      // is swallowed by the crystal ON its beat and split into a spectrum.
       for (const note of notes) {
         if (note.hit || note.missed) continue;
-        if (Math.abs(t - note.hitTime) < windows().ok * 1.3) {
-          note.hit = true;
-          awardAbilityPerfect(note.tx, note.ty, '#b06bff', 'PRISM GUARD');
-        }
+        if (t >= note.hitTime - 0.01) prismAbsorb(note, t);
       }
     } else if (abilityId === 'phantomStep') {
       // Every ring that reaches the craft finds an afterimage (a hair after its beat,
@@ -9699,13 +9721,19 @@
         buzz([30, 40, 30]);
       }
     } else if (abilityId === 'hexSaw') {
-      // cut rings as they arrive at the saw — each cut is a PERFECT
+      // Rings that reach the blade are caught on its teeth and ground there (drawNotes holds them
+      // at the rim); each is cut on its own beat. Rings already inside the blade when it spun up
+      // are simply cut on their beat. Each cut is a PERFECT.
+      const sawR = hexSawR(t), fullR = targetR * HEXSAW_R;
       for (const note of notes) {
         if (note.hit || note.missed) continue;
-        if (Math.abs(t - note.hitTime) < windows().ok * 1.3) {
+        if (note.sawState === undefined) note.sawState = noteRadius(note, t) < fullR * 1.02 ? 0 : 1;
+        if (note.sawState === 1 && noteRadius(note, t) <= sawR) { note.sawState = 2; sawGrind(note, t, true); }
+        else if (note.sawState === 2) sawGrind(note, t, false);
+        if (t >= note.hitTime - 0.01) {                 // on its beat (was: anywhere in the OK window, often early)
           note.hit = true;
           abUsesLeft--;
-          awardAbilityPerfect(note.tx, note.ty, '#00f5ff', 'HEX SAW');
+          sawCut(note, t);
           if (abUsesLeft <= 0) break;
         }
       }
@@ -9733,7 +9761,7 @@
   function guardBlock(kind) {
     if (!invincibleActive()) return false;
     guardBreakFlash = 1;
-    awardAbilityPerfect(tgt.x, tgt.y, '#b06bff', 'PRISM GUARD');
+    awardAbilityPerfect(tgt.x, tgt.y, '#b06bff', 'BLACK PRISM');
     tone(720, 0.09, 'triangle', 0.045);
     tone(1080, 0.08, 'sine', 0.03, 0.05);
     buzz([15, 25]);
@@ -9749,7 +9777,7 @@
     abActive = false;
     abHoldStart = 0; abHoldProgress = 0; abFlash = 0;
     abUsesLeft = 0; abBossDmgLeft = 0; abUntil = 0;
-    prismShards = [];
+    prismShards = []; prismFans = []; prismFlash = 0;
     realmMusicOn = false; realmMusicMix = 0; realmSnap = 0;
     realmTimeTotal = 0; realmPlanet = null; devours = [];
     abLoopTimer = 0;
@@ -11824,7 +11852,7 @@
       snMix += ((lvl >= 2 ? 1 : 0) - snMix) * k3;
       singMix += ((lvl >= 3 && !singHold ? 1 : 0) - singMix) * Math.min(1, dt * 2.2);
       hzMix += ((act && abilityId === 'eventHorizon' ? 1 : 0) - hzMix) * k3;
-      shieldMix += ((act && abilityId === 'prismGuard' ? 1 : 0) - shieldMix) * Math.min(1, dt * 6);
+      shieldMix += (0 - shieldMix) * Math.min(1, dt * 6);   // Black Prism draws its own crystal (no shader dome)
 
       const spin = (0.55 + bpm / 220) * (1 + feverMix * 0.8) * (1 + 0.5 * snMix + 0.3 * singMix + 0.7 * hzMix);
       diskPhase += dt * spin * 1.7;
@@ -12810,33 +12838,118 @@
   }
   function easeOut3(k) { k = Math.min(1, Math.max(0, k)); return 1 - Math.pow(1 - k, 3); }
 
-  // HEX SAW: six plasma blades orbit the event horizon, unfolding out of the photon ring.
+  // Cosmetic randomness for sparks and shards: its own little PRNG, so the seeded Math.random
+  // that picks note patterns (and the QA harness's replays) is never touched.
+  let _fxSeed = 0x9e3779b9;
+  function fxRand() { _fxSeed = (_fxSeed + 0x6D2B79F5) | 0; let t = Math.imul(_fxSeed ^ (_fxSeed >>> 15), 1 | _fxSeed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }
+
+  // HEX SAW (v2, Nov 12): Hexatron's own saw ring, ripped off the boss and bolted round the
+  // saucer. A huge gunmetal blade (2.15x the craft) spins up out of the hull with fourteen
+  // white-hot teeth, Hexatron's cyan and pink hex frames turning inside it, vents cut through
+  // the disc. Every ring that closes in is CAUGHT on the teeth and ground in a fountain of
+  // sparks until its beat, then shredded (on the beat, so the cuts keep time with the song).
+  const HEXSAW_R = 2.15;
+  let sawSparks = [], sawLastT = 0;
+  function hexSawR(t) { return targetR * (0.85 + (HEXSAW_R - 0.85) * easeOut3(powerAge(t) / 0.38)); }
+  function sawSpray(x, y, a, n, hot) {      // sparks thrown off the blade, tangent to its spin
+    for (let i = 0; i < n; i++) {
+      const sp = (260 + fxRand() * 520) * (hot ? 1.3 : 1), da = (fxRand() - 0.5) * 0.9;
+      const d = a + Math.PI / 2 + da;
+      sawSparks.push({ x, y, vx: Math.cos(d) * sp, vy: Math.sin(d) * sp, life: 0.25 + fxRand() * 0.35, max: 0.6, hot: hot || fxRand() < 0.3 });
+    }
+    if (sawSparks.length > 360) sawSparks.splice(0, sawSparks.length - 360);
+  }
+  function drawSawSparks(t) {
+    const dt = Math.min(0.05, Math.max(0, t - sawLastT)); sawLastT = t;
+    if (!sawSparks.length) return;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+    for (const p of sawSparks) {
+      p.life -= dt; p.vy += 900 * dt; p.vx *= 0.985;
+      const x0 = p.x, y0 = p.y; p.x += p.vx * dt; p.y += p.vy * dt;
+      const k = Math.max(0, p.life / p.max);
+      ctx.globalAlpha = Math.min(1, k * 1.6);
+      ctx.strokeStyle = p.hot ? '#ffffff' : (k > 0.5 ? '#fff3b0' : '#00f5ff');
+      ctx.lineWidth = p.hot ? 2.2 : 1.6;
+      ctx.beginPath(); ctx.moveTo(x0 - p.vx * 0.018, y0 - p.vy * 0.018); ctx.lineTo(p.x, p.y); ctx.stroke();
+    }
+    ctx.restore();
+    sawSparks = sawSparks.filter(p => p.life > 0);
+  }
   function drawHexSawFX(t, x, y) {
-    const e = easeOut3(powerAge(t) / 0.28);
-    const R0 = targetR * (1.0 + 0.42 * e);
-    const rot = t * 9;
+    const R = hexSawR(t), Ri = R * 0.76, teeth = 14, rot = t * 7.5;
+    const e = easeOut3(powerAge(t) / 0.38), low = save.settings.environmentDetail === 'off';
+    const toothPath = (r0, r1, a0) => {
+      ctx.beginPath();
+      for (let i = 0; i < teeth; i++) {
+        const a = a0 + i / teeth * Math.PI * 2, w = Math.PI * 2 / teeth;
+        // a sawtooth: steep leading edge, long sloped back, a little hooked tip
+        const p = (aa, rr) => [Math.cos(aa) * rr, Math.sin(aa) * rr];
+        const q0 = p(a, r0), q1 = p(a + w * 0.08, r1), q2 = p(a + w * 0.22, r1 * 0.985), q3 = p(a + w * 0.92, r0);
+        if (i === 0) ctx.moveTo(q0[0], q0[1]); else ctx.lineTo(q0[0], q0[1]);
+        ctx.lineTo(q1[0], q1[1]); ctx.lineTo(q2[0], q2[1]); ctx.lineTo(q3[0], q3[1]);
+      }
+      ctx.closePath();
+    };
     ctx.save();
     ctx.translate(x, y);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.lineCap = 'round';
-    for (let k = 0; k < 6; k++) {
-      const a0 = rot + k * Math.PI / 3;
-      for (let s = 4; s >= 0; s--) {                 // motion-blur echoes behind each blade
-        const a = a0 - s * 0.07, fade = 1 - s / 5;
-        ctx.globalAlpha = 0.85 * fade * e;
-        ctx.strokeStyle = s === 0 ? '#ffffff' : (s < 2 ? '#00f5ff' : '#ff2bd6');
-        ctx.lineWidth = (s === 0 ? 2.2 : 4.5) * (0.6 + 0.4 * fade);
-        ctx.beginPath(); ctx.arc(0, 0, R0 + s * 1.5, a, a + 0.42); ctx.stroke();
+    // motion blur: ghost blades trailing the spin
+    if (!low) {
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      for (let k = 1; k <= 3; k++) {
+        ctx.globalAlpha = 0.16 * (4 - k) / 3 * e;
+        ctx.fillStyle = k === 1 ? '#00f5ff' : '#ff2bd6';
+        toothPath(R * 0.96, R * 1.17, rot - k * 0.07); ctx.fill();
       }
-      const tip = a0 + 0.42;
-      ctx.globalAlpha = e; ctx.fillStyle = '#ffffff';
-      ctx.beginPath(); ctx.arc(Math.cos(tip) * R0, Math.sin(tip) * R0, 2.6, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
     }
-    ctx.lineWidth = 1.4;                              // Hexatron's frames, counter-rotating
-    ctx.globalAlpha = 0.55 * e; ctx.strokeStyle = '#00f5ff';
-    drawPolygon(0, 0, R0 * 0.86, 6, -t * 2.6); ctx.stroke();
-    ctx.globalAlpha = 0.35 * e; ctx.strokeStyle = '#ff2bd6';
-    drawPolygon(0, 0, R0 * 1.12, 6, t * 1.4 + Math.PI / 6); ctx.stroke();
+    // the blade: gunmetal disc with teeth, the middle hollow so the craft shows through
+    ctx.save();
+    toothPath(R * 0.96, R * 1.17, rot);
+    ctx.moveTo(Ri, 0); ctx.arc(0, 0, Ri, 0, Math.PI * 2, true);
+    const mg = ctx.createRadialGradient(-R * 0.35, -R * 0.45, R * 0.1, 0, 0, R * 1.2);
+    mg.addColorStop(0, '#6f93a8'); mg.addColorStop(0.35, '#26465c'); mg.addColorStop(0.75, '#0c1c2b'); mg.addColorStop(1, '#2c5670');
+    ctx.fillStyle = mg; ctx.globalAlpha = 0.9 * e; ctx.fill('evenodd');
+    // brushed-metal sheen that stays put while the blade turns under it
+    ctx.globalCompositeOperation = 'lighter';
+    const sh = ctx.createLinearGradient(-R, -R, R, R);
+    sh.addColorStop(0, 'rgba(160,240,255,0)'); sh.addColorStop(0.42, 'rgba(160,240,255,0.18)'); sh.addColorStop(0.5, 'rgba(255,255,255,0.32)'); sh.addColorStop(0.58, 'rgba(160,240,255,0.14)'); sh.addColorStop(1, 'rgba(160,240,255,0)');
+    ctx.fillStyle = sh; ctx.fill('evenodd');
+    ctx.globalCompositeOperation = 'source-over';
+    // hex vents through the disc, turning with it
+    ctx.fillStyle = 'rgba(0,10,18,0.85)';
+    for (let i = 0; i < 6; i++) {
+      const a = rot + i / 6 * Math.PI * 2, vr = (Ri + R * 0.96) / 2;
+      drawPolygon(Math.cos(a) * vr, Math.sin(a) * vr, R * 0.07, 6, a); ctx.fill();
+    }
+    ctx.restore();
+    // edges: cyan rims, teeth outlined, tips white-hot
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#00f5ff'; ctx.lineWidth = 7; ctx.globalAlpha = 0.22 * e;      // neon bloom
+    toothPath(R * 0.96, R * 1.17, rot); ctx.stroke();
+    ctx.strokeStyle = '#bffcff'; ctx.lineWidth = 2; ctx.globalAlpha = 0.95 * e;
+    toothPath(R * 0.96, R * 1.17, rot); ctx.stroke();
+    ctx.strokeStyle = '#00f5ff'; ctx.lineWidth = 1.4; ctx.globalAlpha = 0.7 * e;
+    ctx.beginPath(); ctx.arc(0, 0, Ri, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, R * 0.9, 0, Math.PI * 2); ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < teeth; i++) {
+      const a = rot + (i + 0.08) / teeth * Math.PI * 2;
+      ctx.globalAlpha = (0.6 + 0.4 * Math.sin(t * 20 + i)) * e;
+      ctx.beginPath(); ctx.arc(Math.cos(a) * R * 1.17, Math.sin(a) * R * 1.17, 2.4, 0, Math.PI * 2); ctx.fill();
+    }
+    // Hexatron's frames: cyan hex counter-rotating, pink hex the other way
+    ctx.lineWidth = 2; ctx.globalAlpha = 0.75 * e; ctx.strokeStyle = '#00f5ff';
+    drawPolygon(0, 0, Ri * 0.98, 6, -t * 2.2); ctx.stroke();
+    ctx.lineWidth = 1.6; ctx.globalAlpha = 0.6 * e; ctx.strokeStyle = '#ff2bd6';
+    drawPolygon(0, 0, Ri * 0.86, 6, t * 1.6 + Math.PI / 6); ctx.stroke();
+    // the hub glow: the saw's cyan heart around the craft
+    const hg = ctx.createRadialGradient(0, 0, Ri * 0.6, 0, 0, Ri);
+    hg.addColorStop(0, 'rgba(0,245,255,0)'); hg.addColorStop(1, 'rgba(0,245,255,0.22)');
+    ctx.globalAlpha = e; ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(0, 0, Ri, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // a grinder's spray off the blade, steady, plus whatever it is chewing on (sawGrind)
+    if (!low && fxRand() < 0.55) { const a = rot * 0.3 + Math.PI * 0.8; sawSpray(x + Math.cos(a) * R * 1.12, y + Math.sin(a) * R * 1.12, a, 2, false); }
     ctx.restore();
   }
 
@@ -12884,38 +12997,88 @@
     ctx.restore();
   }
 
-  // PRISM GUARD: the light-bending dome is drawn by SpaceFX; here, purple lightning
-  // crawls its rim and nodes of charge ride around it.
+  // BLACK PRISM (Nov 12, replaces Prism Guard): Vanta Prism's own crystal, a black faceted
+  // bipyramid with the boss's green fracture seam and violet heart, closes round the saucer
+  // with its shards in orbit. A thin rainbow streams into it from the top of the sky (the boss
+  // swallows light the same way). On every beat it drinks the incoming ring and SPLITS it: a
+  // fan of six spectrum beams rakes the sky (at the boss in a boss fight).
+  const PRISM_RB = ['#ff3b3b', '#ff9a2e', '#ffe14d', '#62ff6b', '#38c8ff', '#9a6bff'];
+  let prismFans = [], prismFlash = 0, prismFanSide = 1, prismLastT = 0;
+  function prismAbsorb(note, t) {
+    note.hit = true;
+    prismFanSide = -prismFanSide;
+    let dir = -Math.PI / 2 + prismFanSide * 0.42;
+    if (bossActive) dir = Math.atan2(bossY() - tgt.y, bossX() - tgt.x) + prismFanSide * 0.12;
+    prismFans.push({ t0: t, dir });
+    if (prismFans.length > 6) prismFans.shift();
+    prismFlash = 1;
+    shake = Math.max(shake, 2.5);
+    if (save.settings.sfx) [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, 0.09, 'triangle', 0.018, i * 0.022));
+    awardAbilityPerfect(tgt.x, tgt.y - targetR * 0.4, '#b06bff', 'BLACK PRISM');
+  }
   function drawPrismGuardFX(t, x, y) {
-    const R = targetR * (1 + 1.05 * easeOut3(powerAge(t) / 0.35));
+    const e = easeOut3(powerAge(t) / 0.42), low = save.settings.environmentDetail === 'off';
+    const dt = Math.min(0.05, Math.max(0, t - prismLastT)); prismLastT = t;
+    prismFlash = Math.max(0, prismFlash - dt * 3.2);
+    const S = targetR * 1.32 * (0.4 + 0.6 * e);
     ctx.save();
-    ctx.translate(x, y);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.lineJoin = 'round';
-    const arcs = save.settings.environmentDetail === 'off' ? 2 : 4;
-    for (let k = 0; k < arcs; k++) {
-      const seed = Math.floor(t * 2.5 + k * 7);
-      const base = (t * (0.9 + k * 0.35) + k * 1.9) % (Math.PI * 2);
-      const span = 0.55 + ((seed * 37) % 40) / 100;
-      for (let pass = 0; pass < 2; pass++) {
-        ctx.strokeStyle = pass ? '#f3e2ff' : (k % 2 ? 'rgba(200,140,255,0.5)' : 'rgba(150,80,255,0.5)');
-        ctx.lineWidth = pass ? 1.3 : 4.5;
-        ctx.globalAlpha = pass ? 0.95 : 0.6;
-        ctx.beginPath();
-        for (let i = 0; i <= 7; i++) {
-          const a = base + span * i / 7;
-          const rr = R * (1 + Math.sin(seed * 12.9898 + i * 78.233) * 0.045);
-          if (i === 0) ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); else ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
-        }
-        ctx.stroke();
-      }
-    }
-    ctx.fillStyle = '#ecd2ff';
+    // 1. the light it drinks: a thin rainbow pouring in from high above
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+    const sx = x - W * 0.18, sy = -20;
     for (let i = 0; i < 6; i++) {
-      const a = -t * 1.6 + i / 6 * Math.PI * 2;
-      ctx.globalAlpha = 0.9;
-      ctx.beginPath(); ctx.arc(Math.cos(a) * R, Math.sin(a) * R, 2.4 + Math.sin(t * 9 + i) * 1.0, 0, Math.PI * 2); ctx.fill();
+      const off = (i - 2.5) * 3.2, fl = 0.55 + 0.45 * Math.sin(t * 6 + i * 1.3);
+      ctx.strokeStyle = hexToRgba(PRISM_RB[i], 0.28 * fl * e); ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(sx + off * 3, sy); ctx.quadraticCurveTo(x - S * 0.6 + off, y - S * 2.2, x + off * 0.3, y - S * 0.2); ctx.stroke();
     }
+    // 2. the spectrum fans: every swallowed ring leaves the crystal as six beams
+    prismFans = prismFans.filter(f => t - f.t0 < 0.55);
+    const reach = Math.max(W, H) * 1.3;
+    for (const f of prismFans) {
+      const k = (t - f.t0) / 0.55, grow = easeOut3(Math.min(1, k / 0.18)), fade = 1 - k;
+      for (let i = 0; i < 6; i++) {
+        const a = f.dir + (i - 2.5) * 0.085 * (1 + k * 0.6);
+        const L = reach * grow, x1 = x + Math.cos(a) * L, y1 = y + Math.sin(a) * L;
+        const g = ctx.createLinearGradient(x, y, x1, y1);
+        g.addColorStop(0, hexToRgba(PRISM_RB[i], 0.95 * fade)); g.addColorStop(0.6, hexToRgba(PRISM_RB[i], 0.45 * fade)); g.addColorStop(1, hexToRgba(PRISM_RB[i], 0));
+        ctx.strokeStyle = g; ctx.lineWidth = (low ? 5 : 9) * (1 - k * 0.5);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x1, y1); ctx.stroke();
+      }
+      ctx.strokeStyle = `rgba(255,255,255,${0.9 * fade})`; ctx.lineWidth = 2.2;   // the white core it came from
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(f.dir) * reach * 0.35 * grow, y + Math.sin(f.dir) * reach * 0.35 * grow); ctx.stroke();
+    }
+    ctx.restore();
+    ctx.translate(x, y);
+    const P = { yaw: t * 0.9, pitch: -0.24 + Math.sin(t * 0.7) * 0.05, roll: Math.sin(t * 0.5) * 0.06, S };
+    // 3. shards in orbit, the far ones first
+    const shard = meshOnce('vpShard', () => bipyramid(4, 0.11, 0.22, 0.22));
+    const PS = { yaw: 0, pitch: P.pitch, roll: 0, S };
+    const shards = [];
+    for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2 + t * 1.1; shards.push({ x: Math.cos(a) * 1.55, y: Math.sin(a * 2 + t) * 0.14, z: Math.sin(a) * 1.25, i }); }
+    const drawShard = (sh) => drawMesh(shard, PS, { tint: '#2a1450', edge: '#c49bff', lw: 1.4, glow: 0, alpha: 0.9 * e }, { yaw: t * 2.4 + sh.i, roll: 0.3, tx: sh.x, ty: sh.y, tz: sh.z });
+    if (!low) for (const sh of shards) if (rot3([sh.x, sh.y, sh.z], 0, P.pitch, 0)[2] < 0) drawShard(sh);
+    // 4. the violet heart, beating, flaring on every swallow
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    const thump = Math.pow(1 - musicBeatPhase(), 3);
+    const hr = S * (0.95 + 0.15 * thump + 0.35 * prismFlash);
+    const hg = ctx.createRadialGradient(0, 0, 0, 0, 0, hr);
+    hg.addColorStop(0, `rgba(255,255,255,${0.35 + 0.5 * prismFlash})`); hg.addColorStop(0.3, `rgba(176,107,255,${0.45 * e})`); hg.addColorStop(1, 'rgba(60,0,120,0)');
+    ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(0, 0, hr, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+    // 5. the crystal: translucent black facets, edges violet (white on a swallow)
+    const body = meshOnce('bpBody', () => bipyramid(6, 0.62, 1.22, 1.22));
+    drawMesh(body, P, { tint: '#1c0b38', edge: prismFlash > 0.35 ? '#ffffff' : '#b06bff', lw: 2.2, glow: low ? 0 : 10, alpha: 0.5 * e });
+    // the green fracture seam round its equator, front half
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = `rgba(125,255,104,${(0.45 + 0.35 * Math.sin(t * 3)) * e})`; ctx.lineWidth = 2;
+    ctx.beginPath(); let on = false;
+    for (let i = 0; i <= 36; i++) {
+      const a = i / 36 * Math.PI * 2, R3 = rot3([Math.cos(a) * 0.62, 0, Math.sin(a) * 0.62], P.yaw, P.pitch, P.roll), q = proj3(R3, P.S);
+      if (R3[2] > 0) { if (on) ctx.lineTo(q[0], q[1]); else { ctx.moveTo(q[0], q[1]); on = true; } } else on = false;
+    }
+    ctx.stroke();
+    ctx.restore();
+    // 6. near shards
+    if (!low) for (const sh of shards) if (rot3([sh.x, sh.y, sh.z], 0, P.pitch, 0)[2] >= 0) drawShard(sh);
     ctx.restore();
   }
 
@@ -13177,6 +13340,7 @@
       else if (abilityId === 'quantize') drawQuantizeFX(t, x, y);
       else if (abilityId === 'bigBang') drawBigBangFX(t, x, y);
     }
+    drawSawSparks(t);
     drawDevours(t);
     drawBangBolts(t);
     drawBangBlast(t);
@@ -15355,20 +15519,46 @@
       else { ctx.moveTo(s * 0.5, -0.36); ctx.lineTo(s * 0.12, -0.2); }
       ctx.stroke();
     }
-    // the grin: a wide crescent full of teeth
+    // the grin (Nov 12): a dark maw rimmed in gold, with two rows of white, sharp teeth. The
+    // teeth are clipped to the mouth, so they can never poke out past the lips. It gapes a little
+    // on every beat and wider as it gets angry; a violet throat glows behind the teeth.
     const wide = 0.62 + rage * 0.08 + thump * 0.03;
-    ctx.beginPath();
-    ctx.moveTo(-wide, 0.08); ctx.quadraticCurveTo(0, 0.82, wide, 0.08); ctx.quadraticCurveTo(0, 0.36, -wide, 0.08); ctx.closePath();
-    ctx.fill();
-    ctx.shadowBlur = 0; ctx.fillStyle = '#120a22';
-    ctx.beginPath();
-    const tn = 7;
-    for (let i = 0; i <= tn; i++) {
-      const u = -wide * 0.86 + i / tn * wide * 1.72, top = 0.08 + (0.28 * (1 - Math.pow(u / wide, 2)));
-      const y0 = top + 0.02, y1 = top + (i % 2 ? 0.2 : 0.12) * (1 - Math.abs(u / wide) * 0.6);
-      if (i === 0) ctx.moveTo(u, y0); ctx.lineTo(u, y1); ctx.lineTo(u + wide * 1.72 / tn * 0.5, y0);
-    }
-    ctx.lineWidth = 0.03; ctx.strokeStyle = '#120a22'; ctx.stroke();
+    const cU = 0.27 - rage * 0.03, cL = 0.98 + rage * 0.12 + thump * 0.08;     // upper / lower lip control points
+    const lipY = (c, u) => 0.08 + 2 * u * (1 - u) * (c - 0.08);             // quadratic lip at parameter u (0..1)
+    const lipX = (u) => wide * (2 * u - 1);
+    const maw = () => { ctx.beginPath(); ctx.moveTo(-wide, 0.08); ctx.quadraticCurveTo(0, cL, wide, 0.08); ctx.quadraticCurveTo(0, cU, -wide, 0.08); ctx.closePath(); };
+    ctx.save();
+    maw();
+    ctx.shadowBlur = 0;
+    const th = ctx.createRadialGradient(0, (lipY(cU, 0.5) + lipY(cL, 0.5)) / 2, 0.02, 0, 0.3, wide);
+    th.addColorStop(0, `rgba(190,70,255,${0.75 + thump * 0.25})`); th.addColorStop(0.35, '#3c0a4e'); th.addColorStop(1, '#08020e');
+    ctx.fillStyle = th; ctx.fill();
+    ctx.clip();
+    const teethRow = (c, n, u0, u1, down, sizes) => {
+      for (let i = 0; i < n; i++) {
+        const u = u0 + (i + 0.5) / n * (u1 - u0), hw = (u1 - u0) / n * 0.5;
+        const gap = lipY(cL, u) - lipY(cU, u);
+        const len = gap * sizes[i % sizes.length] * (down ? 1 : 0.9);
+        const xa = lipX(u - hw * 0.96), xb = lipX(u + hw * 0.96), xm = lipX(u);
+        const ya = lipY(c, u - hw * 0.96) + (down ? -0.03 : 0.03), yb = lipY(c, u + hw * 0.96) + (down ? -0.03 : 0.03);
+        const tipY = lipY(c, u) + (down ? len : -len);
+        const tg = ctx.createLinearGradient(xm, lipY(c, u), xm, tipY);
+        tg.addColorStop(0, '#d9d0e6'); tg.addColorStop(0.55, '#ffffff'); tg.addColorStop(1, '#ffffff');
+        ctx.fillStyle = flash > 0.4 ? '#ffffff' : tg;
+        ctx.beginPath(); ctx.moveTo(xa, ya); ctx.quadraticCurveTo(xm - (xb - xa) * 0.12, (ya + tipY) / 2, xm, tipY); ctx.quadraticCurveTo(xm + (xb - xa) * 0.12, (yb + tipY) / 2, xb, yb); ctx.closePath();
+        ctx.fill();
+        ctx.lineWidth = 0.012; ctx.strokeStyle = 'rgba(70,30,90,0.55)'; ctx.stroke();
+      }
+    };
+    // upper row (fangs at the corners of the smile), then the lower row between them
+    teethRow(cU, 9, 0.04, 0.96, true, [0.5, 0.36, 0.66, 0.36, 0.44, 0.36, 0.66, 0.36, 0.5]);
+    teethRow(cL, 8, 0.09, 0.91, false, [0.34, 0.28, 0.4, 0.3, 0.3, 0.4, 0.28, 0.34]);
+    ctx.restore();
+    // gold lips over the edges of the teeth
+    ctx.save();
+    ctx.strokeStyle = gold; ctx.lineWidth = 0.06; ctx.lineJoin = 'round'; ctx.shadowColor = cols[1]; ctx.shadowBlur = 14;
+    maw(); ctx.stroke();
+    ctx.restore();
     ctx.restore();
     // 6. front spikes, front halves of the halos, little orbiting cores
     for (const s of spikes) if (s.z >= 0) drawSpike(s);
@@ -15890,7 +16080,8 @@
       const progress = (t - note.created) / (note.hitTime - note.created);
       if (progress < -0.1 || progress > 1.22) continue;
       const eased = Math.min(1.2, Math.max(0, progress));
-      const r = spawnR + (targetR - spawnR) * eased + Math.sin(progress * Math.PI * 2) * note.wobble * 0.15;
+      let r = spawnR + (targetR - spawnR) * eased + Math.sin(progress * Math.PI * 2) * note.wobble * 0.15;
+      if (note.sawState === 2 && abActive && abilityId === 'hexSaw') r = Math.max(r, hexSawR(t) * 1.06 + Math.sin(t * 60 + note.angle * 9) * 1.5);   // caught on the teeth
       const dHit = Math.abs(t - note.hitTime);
       const alpha = progress < 0 ? 0 : Math.max(0, 1 - Math.max(0, progress - 1) * 5);
       const width = dHit < 0.08 ? 9 : 5;

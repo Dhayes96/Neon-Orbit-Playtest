@@ -55,6 +55,9 @@ jobs:
       - name: One-card tutorial + Liquid Glass controls
         if: ${{ !cancelled() }}
         run: npx playwright test tests/glass-tutorial.spec.js --project=desktop-chrome
+      - name: Powers v2 (Hex Saw, Black Prism)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/powers-v2.spec.js --project=desktop-chrome
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: fast-results, path: qa/results, retention-days: 14 }
