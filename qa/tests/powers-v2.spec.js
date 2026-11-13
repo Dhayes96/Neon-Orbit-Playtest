@@ -12,8 +12,9 @@ const { boot, writeResult } = require('./harness');
 const ALL = { cubex: true, hexatron: true, triarch: true, vantaPrism: true, eclipseSovereign: true, metronox: true, nullstar: true };
 
 // Not before the beat, and on the first frame after it: within 0.1 s, or (on a slow CI frame) the
-// previous update was still short of the beat. Never more than 0.5 s late.
-const onBeat = (c) => c.t >= c.hit - 0.012 && c.t - c.hit < 0.5 && (c.t - c.hit < 0.1 || c.prev < c.hit - 0.01);
+// previous update was still short of the beat, or the power wasn't on yet at the previous update (a
+// ring already past its beat, still in its OK window, when the power fired). Never more than 0.5 s late.
+const onBeat = (c) => c.t >= c.hit - 0.012 && c.t - c.hit < 0.5 && (c.t - c.hit < 0.1 || c.prev < c.hit - 0.01 || !c.prevOn);
 
 async function startWith(page, ability) {
   const errors = await boot(page, { save: { level: 50, equippedAbility: ability, bossUnlocks: ALL } });
@@ -21,14 +22,14 @@ async function startWith(page, ability) {
   await page.waitForFunction(() => state === 'playing');
   await page.evaluate(() => {
     window.breakCombo = function () {}; setInterval(() => { energy = 100; }, 100);
-    const log = window.__pw = { cuts: [], absorbs: [], prevT: -9, curT: -9 };
+    const log = window.__pw = { cuts: [], absorbs: [], prevT: -9, curT: -9, prevOn: false, curOn: false };
     // the game time of the previous ability update: "on its beat" means on the first update at or
     // after the beat, however late a slow CI frame makes that update
     const origUpd = window.updateAbility;
-    window.updateAbility = function (dt, t) { log.prevT = log.curT; log.curT = t; return origUpd.apply(this, arguments); };
+    window.updateAbility = function (dt, t) { log.prevT = log.curT; log.curT = t; log.prevOn = log.curOn; log.curOn = abActive; return origUpd.apply(this, arguments); };
     for (const fn of ['sawCut', 'prismAbsorb']) {
       const orig = window[fn];
-      window[fn] = function (note, t) { (fn === 'sawCut' ? log.cuts : log.absorbs).push({ t, hit: note.hitTime, prev: log.prevT, state: note.sawState, active: abActive }); return orig.apply(this, arguments); };
+      window[fn] = function (note, t) { (fn === 'sawCut' ? log.cuts : log.absorbs).push({ t, hit: note.hitTime, prev: log.prevT, prevOn: log.prevOn, state: note.sawState, active: abActive }); return orig.apply(this, arguments); };
     }
   });
   await page.waitForTimeout(2500);   // let rings start flowing
