@@ -76,6 +76,9 @@ jobs:
       - name: Hyperdrive (the flight draws, steers, fires, ends; a broken effect can't blank the field)
         if: ${{ !cancelled() }}
         run: npx playwright test tests/hyperdrive.spec.js --project=desktop-chrome
+      - name: Bug sweep fixes (Hit Rate, Hyperdrive HUD and landscape layout)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/sweep-fixes.spec.js --project=desktop-chrome
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: fast-results, path: qa/results, retention-days: 14 }
