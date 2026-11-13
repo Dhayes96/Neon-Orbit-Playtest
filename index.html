@@ -10484,10 +10484,19 @@
     let open = false, preview = false, granted = false, phase = 'closed';
     let clockAt = 0, clockFrom = 0, running = false, raf = 0, orbRaf = 0;
     let video = null, audio = null, soundOn = true, menuWasOn = false, needResume = false, mediaFailed = false;
+    let vHold = false, holdSince = 0, heldRun = false, audioHeld = false, lastASeek = -1e9;
     const RM = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
     function lights() { return preview ? { lvl: true, stage: true } : zeroLights(); }
     function show(id) { for (const s of stages) $(s).classList.toggle('hidden', s !== id); }
-    // the files' own clock: wall time, frozen while paused; the score and the footage follow it
+    // The files' own clock: wall time, frozen while paused. Nov 13 fix ("the video keeps freezing"):
+    // it used to seek the footage whenever it drifted 0.25 s, so on a connection slower than the
+    // footage, every stall made it seek further ahead into footage not yet downloaded, ~10 times a
+    // second, frozen on its first frame. Now nothing is ever chased:
+    //  - during the evidence the FOOTAGE leads: the clock follows the video, which is never seeked
+    //    while it plays; when it runs out of data the files (and the score) wait, with a small
+    //    LOADING FILE note, and carry on together when it plays again;
+    //  - the rest of the time the clock is nudged toward the SCORE (a seek at most every 1.5 s,
+    //    and only for a big gap).
     function now() { return running ? clockFrom + (performance.now() - clockAt) / 1000 : clockFrom; }
     function setClock(t, run) { clockFrom = t; clockAt = performance.now(); running = run; }
 
@@ -10527,7 +10536,12 @@
       if (granted) {
         menuWasOn = menuMusic.on; stopMenuMusic(0.5);
         startMedia();                                     // inside the tap, so the score is allowed to start
-        setClock(0, true);
+        // the files' clock starts with the score (it may take a moment to arrive), or after 1.5 s without it
+        setClock(0, false);
+        let started = false;
+        const go = () => { if (started || !open || phase !== 'case') return; started = true; setClock(audio && !audio.paused ? Math.min(audio.currentTime, 0.3) : 0, true); };
+        if (audio) audio.addEventListener('playing', go, { once: true });
+        setTimeout(go, 1500);
         if (!preview) { save.zero = Object.assign({ opened: false }, save.zero || {}); if (!save.zero.opened) { save.zero.opened = true; save.zero.openedAt = Date.now(); persist(); } }
         trackEvent('project_zero', { opened: true });
       } else {
@@ -10555,7 +10569,10 @@
       video = $('zfVideo');
       video.muted = true; video.playsInline = true; video.preload = 'auto';
       video.poster = ZERO.poster;
-      video.onerror = () => { mediaFailed = true; };
+      video.onerror = () => { mediaFailed = true; hold(false); if (open && phase === 'evidence') evidenceMissing(); };
+      video.onwaiting = () => { if (open && phase === 'evidence' && !needResume) hold(true); };
+      video.onplaying = () => { if (open && phase === 'evidence') hold(false); };
+      video.onended = () => { if (open && phase === 'evidence') toReward(false); };
       video.src = ZERO.footage;
       try { video.load(); } catch (e) {}
       audio = new Audio();
@@ -10567,17 +10584,47 @@
       if (p && p.catch) p.catch(() => {});                 // blocked or missing: the files run silent
     }
     function stopMedia() {
-      if (video) { try { video.pause(); } catch (e) {} video.removeAttribute('src'); video.removeAttribute('poster'); video.onerror = null; try { video.load(); } catch (e) {} }
+      vHold = false; heldRun = false; audioHeld = false;
+      if (video) { try { video.pause(); } catch (e) {} video.removeAttribute('src'); video.removeAttribute('poster'); video.onerror = video.onwaiting = video.onplaying = video.onended = null; try { video.load(); } catch (e) {} }
       if (audio) { try { audio.pause(); } catch (e) {} audio.removeAttribute('src'); try { audio.load(); } catch (e) {} }
       video = null; audio = null;
     }
-    function follow(t) {                                  // keep the score and footage on the files' clock
-      if (audio && audio.readyState >= 1 && !audio.paused && running) {
-        if (t < ZERO.total && Math.abs(audio.currentTime - t) > 0.25) { try { audio.currentTime = t; } catch (e) {} }
+    // Can this element jump to t? A host without byte-range support (the browser then reports
+    // nothing seekable) restarts a file from 0 on every seek, so we only seek where it will land.
+    function canSeek(el, t) {
+      try { const r = el.seekable; for (let i = 0; i < r.length; i++) if (r.end(i) > r.start(i) && t >= r.start(i) && t <= r.end(i)) return true; } catch (e) {}
+      return false;
+    }
+    function seekTo(el, t) { if (el && canSeek(el, t)) { try { el.currentTime = t; } catch (e) {} return true; } return false; }
+    // the footage ran out of data (hold) or has it again (release): the files wait for it
+    function hold(on) {
+      if (on === vHold) return;
+      vHold = on;
+      if (on) {
+        holdSince = performance.now();
+        if (running) { setClock(now(), false); heldRun = true; }
+        if (audio && !audio.paused) { try { audio.pause(); } catch (e) {} audioHeld = true; }
+        return;
       }
-      if (video && phase === 'evidence' && running) {
-        const vt = t - ZERO.title;
-        if (video.readyState >= 1 && vt >= 0 && vt < ZERO.foot && Math.abs(video.currentTime - vt) > 0.25) { try { video.currentTime = vt; } catch (e) {} }
+      if (!$('zfEvMsg').classList.contains('hidden') && /^LOADING/.test($('zfEvMsgText').textContent)) $('zfEvMsg').classList.add('hidden');
+      if (needResume) return;                             // backgrounded meanwhile: Play File decides
+      if (heldRun) { heldRun = false; setClock(phase === 'evidence' && video ? ZERO.title + video.currentTime : now(), true); }
+      if (audioHeld) { audioHeld = false; if (audio) { const p = audio.play(); if (p && p.catch) p.catch(() => {}); } }   // paused together, so no seek: they resume in step
+    }
+    function follow(t) {
+      const ms = performance.now();
+      if (phase === 'evidence' && video && running && !vHold && !video.paused && !video.seeking && video.readyState >= 3) {
+        // the footage leads: the clock follows it (softly, or at once after a big gap)
+        const tv = ZERO.title + video.currentTime, d = tv - now();
+        if (Math.abs(d) > 0.5) setClock(tv, true); else if (Math.abs(d) > 0.02) setClock(now() + d * 0.1, true);
+      } else if (phase !== 'evidence' && audio && running && !audio.paused && !audio.seeking && audio.readyState >= 3 && audio.currentTime > 0 && audio.currentTime < ZERO.total - 0.2) {
+        // elsewhere the score leads, the same way
+        const d = audio.currentTime - now();
+        if (Math.abs(d) < 0.6) { if (Math.abs(d) > 0.02) setClock(now() + d * 0.08, true); return; }
+      }
+      // the score keeps up with the clock: a seek only for a real gap, and never more than every 1.5 s
+      if (audio && running && !audio.paused && !audio.seeking && audio.readyState >= 1 && t < ZERO.total && ms - lastASeek > 1500 && Math.abs(audio.currentTime - now()) > 0.35) {
+        lastASeek = ms; seekTo(audio, now());
       }
     }
 
@@ -10597,6 +10644,9 @@
         if (t >= ZERO.title) beginEvidence();
       }
       if (phase === 'evidence') {
+        if (vHold && performance.now() - holdSince > 600 && $('zfEvMsg').classList.contains('hidden')) {
+          $('zfEvMsgText').textContent = 'LOADING FILE…'; $('zfPlayFile').hidden = true; $('zfEvMsg').classList.remove('hidden');
+        }
         const vt = Math.max(0, t - ZERO.title);
         $('zfClock').textContent = '00:' + String(Math.floor(vt)).padStart(2, '0');
         if (t >= ZERO.title + ZERO.foot) toReward(false);
@@ -10608,11 +10658,13 @@
       phase = 'evidence'; show('zfEvidence');
       $('zfEvMsg').classList.add('hidden');
       if (mediaFailed || !video) return evidenceMissing();
-      try { video.currentTime = Math.max(0, now() - ZERO.title); } catch (e) {}
+      const vt0 = Math.max(0, now() - ZERO.title);
+      if (Math.abs(video.currentTime - vt0) > 0.5) seekTo(video, vt0);   // (can't land there: it plays from where it is, and the clock follows it)
       const p = video.play();
       if (p && p.catch) p.catch(() => { if (open && phase === 'evidence') { if (mediaFailed) evidenceMissing(); else askToPlay('PLAYBACK BLOCKED'); } });
     }
     function evidenceMissing() {
+      if (vHold) hold(false);
       $('zfEvMsgText').textContent = 'FILE DAMAGED · FOOTAGE COULD NOT BE LOADED';
       $('zfPlayFile').hidden = true; $('zfEvMsg').classList.remove('hidden');
     }
@@ -10624,7 +10676,9 @@
     }
     function playFile() {
       $('zfEvMsg').classList.add('hidden');
-      setClock(now(), true);
+      needResume = false; vHold = false; heldRun = false; audioHeld = false;
+      setClock(phase === 'evidence' && video && video.readyState >= 1 ? ZERO.title + video.currentTime : now(), true);
+      if (audio && Math.abs(audio.currentTime - now()) > 0.35) { seekTo(audio, now()); lastASeek = performance.now(); }
       if (audio) { const p = audio.play(); if (p && p.catch) p.catch(() => {}); }
       if (video && phase === 'evidence') { const p = video.play(); if (p && p.catch) p.catch(() => evidenceMissing()); }
       if (!raf) raf = requestAnimationFrame(tick);
@@ -10632,7 +10686,8 @@
     function toReward(skipped) {
       phase = 'reward';
       if (video) try { video.pause(); } catch (e) {}
-      if (skipped && audio) { try { audio.currentTime = ZERO.title + ZERO.foot; } catch (e) {} }
+      if (vHold) { vHold = false; heldRun = false; if (audioHeld) { audioHeld = false; if (audio) { const p = audio.play(); if (p && p.catch) p.catch(() => {}); } } }
+      if (audio && Math.abs(audio.currentTime - (ZERO.title + ZERO.foot)) > 0.35) { seekTo(audio, ZERO.title + ZERO.foot); lastASeek = performance.now(); }
       setClock(ZERO.title + ZERO.foot, true);
       show('zfReward'); $('zfSkip').hidden = true;
       const eq = $('zfEquip');
@@ -10659,9 +10714,15 @@
       if (!granted) return;
       $('zfT1').textContent = ''; $('zfT2').textContent = ''; $('zfT3').textContent = ''; $('zfStamp').classList.remove('on');
       if (!video || !audio) startMedia();
-      if (audio) { try { audio.currentTime = ZERO.caseEnd; } catch (e) {} const p = audio.play(); if (p && p.catch) p.catch(() => {}); }
+      vHold = false; heldRun = false; audioHeld = false; needResume = false; lastASeek = performance.now();
+      $('zfEvMsg').classList.add('hidden');
+      let from = ZERO.caseEnd;
+      if (audio) {
+        if (!seekTo(audio, from)) { from = 0; try { audio.currentTime = 0; } catch (e) {} }   // no seeking on this host: start the score (and the files) from the top
+        const p = audio.play(); if (p && p.catch) p.catch(() => {});
+      }
       phase = 'doc'; show('zfDoc'); $('zfSkip').hidden = false;
-      setClock(ZERO.caseEnd, true);
+      setClock(from, true);
       cancelAnimationFrame(orbRaf);
       if (!raf) raf = requestAnimationFrame(tick);
     }
@@ -10698,7 +10759,8 @@
     function onVis() {                                     // backgrounded: everything stops; back: an explicit resume
       if (!open) return;
       if (document.hidden) {
-        if (running) { setClock(now(), false); needResume = true; }
+        if (running || vHold) { setClock(now(), false); needResume = true; }   // (waiting for the footage counts: it needs the same resume)
+        vHold = false; heldRun = false; audioHeld = false;
         if (video) try { video.pause(); } catch (e) {}
         if (audio) try { audio.pause(); } catch (e) {}
       } else if (needResume) {
