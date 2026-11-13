@@ -9339,6 +9339,16 @@
 
     const active = () => phase !== 'off';
     const full = () => ctx.fillRect(-80, -80, W + 160, H + 160);     // past the edges, so screen shake never shows a seam
+    // a burst of light from the middle of the screen (added light, so it brightens instead of greying)
+    function flash(f) {
+      if (f <= 0) return;
+      const cx = W * 0.5, cy = H * 0.4, R = Math.hypot(W, H) * 0.75;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+      g.addColorStop(0, `rgba(255,255,255,${f})`); g.addColorStop(0.25, `rgba(235,240,255,${0.75 * f})`);
+      g.addColorStop(0.6, `rgba(170,200,255,${0.3 * f})`); g.addColorStop(1, 'rgba(120,160,255,0)');
+      ctx.fillStyle = g; full(); ctx.restore();
+    }
     const inFight = () => phase === 'fight';
     const beatLen = () => 60 / Math.max(60, bpm || 120);
     function nextBeat(t) {
@@ -9761,8 +9771,8 @@
         warpStreaks(cx, cy, z, false);
         const g0 = m * 0.07, g1 = Math.max(W, H) * 2.4;
         drawGalaxyAt(cx, cy, g0 * Math.pow(g1 / g0, ez), t * 0.05 + ez * 2, 1);
-        if (L > 2.55) { const f = Math.max(0, 1 - Math.abs(L - 2.85) / 0.35); ctx.save(); ctx.globalAlpha = f; ctx.fillStyle = '#fff'; full(); ctx.restore(); }
         if (L > 2.7) drawSky(t, Math.min(1, (L - 2.7) / 0.3));
+        flash(Math.max(0, 1 - Math.abs(L - 2.82) / 0.3));               // arrival: a burst of light, not a grey wash
         return;
       }
       if (phase === 'victory' && t - tWin > VICTORY) {
@@ -9772,8 +9782,7 @@
         ctx.save(); ctx.globalAlpha = cover; ctx.fillStyle = '#020108'; full(); ctx.restore();
         ctx.save(); ctx.globalAlpha = cover; warpStreaks(W * 0.5, H * 0.4, Math.max(0.05, 1 - z), true); ctx.restore();
         drawGalaxyAt(W * 0.5, H * 0.4, Math.max(W, H) * 1.2 * Math.pow(1 - Math.min(1, z / 0.82), 3) + 2, t * 0.05, cover);
-        const fl = Math.max(0, 1 - Math.abs(z - 0.82) / 0.12);
-        if (fl > 0) { ctx.save(); ctx.globalAlpha = fl * 0.85; ctx.fillStyle = '#fff'; full(); ctx.restore(); }
+        flash(Math.max(0, 1 - Math.abs(z - 0.82) / 0.14));
         return;
       }
       drawSky(t, 1);
