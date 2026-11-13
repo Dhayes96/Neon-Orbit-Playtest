@@ -20,7 +20,7 @@ jobs:
   fast:
     name: static + smoke (PR gate, ~2 min)
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25      # the gate has grown with each feature (about 17 min with the boss-dodge suites)
     defaults: { run: { working-directory: qa } }
     steps:
       - uses: actions/checkout@v4
