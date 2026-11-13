@@ -1226,7 +1226,109 @@
     @supports not (backdrop-filter: blur(1px)) {
       @supports not (-webkit-backdrop-filter: blur(1px)) { .card { background: rgba(14,10,30,0.92); } }
     }
-  </style>
+  
+    /* ================= PROJECT ZERO (Level 100 secret) ================= */
+    /* the briefcase on the main menu: compact, bottom-right, a slow amber signal */
+    .zero-case {
+      position: fixed; right: calc(env(safe-area-inset-right, 0px) + 16px); bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+      width: 74px; height: 56px; padding: 0; border: 0; background: none; cursor: pointer; z-index: 12;
+      filter: drop-shadow(0 6px 14px rgba(0,0,0,0.6)); transition: transform 160ms ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .zero-case:hover, .zero-case:focus-visible { transform: translateY(-2px) scale(1.04); outline: none; }
+    .zero-case:focus-visible svg { filter: drop-shadow(0 0 6px rgba(255,190,110,0.9)); }
+    .zero-case svg { width: 100%; height: 100%; display: block; }
+    .zero-case .zc-led { animation: zcLed 2.6s ease-in-out infinite; }
+    .zero-case.armed .zc-led { animation-duration: 1.4s; }
+    @keyframes zcLed { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+    /* the files */
+    .zf { position: fixed; inset: 0; z-index: 60; color: #e9e2d2; font-family: 'Courier New', ui-monospace, Menlo, Consolas, monospace; }
+    .zf.hidden { display: none; }
+    .zf-backdrop { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 45%, rgba(18,14,10,0.78), rgba(2,2,4,0.96)); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); opacity: 0; transition: opacity 500ms ease; }
+    .zf.on .zf-backdrop { opacity: 1; }
+    .zf-stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      padding: calc(env(safe-area-inset-top, 0px) + 56px) calc(env(safe-area-inset-right, 0px) + 14px) calc(env(safe-area-inset-bottom, 0px) + 64px) calc(env(safe-area-inset-left, 0px) + 14px); }
+    .zf-stage.hidden { display: none; }
+    .zf-top { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 10px); right: calc(env(safe-area-inset-right, 0px) + 10px); display: flex; gap: 8px; z-index: 3; }
+    .zf-top button, .zf-ctl {
+      font: 700 11px/1 'Courier New', ui-monospace, monospace; letter-spacing: 0.16em; text-transform: uppercase; color: #e9e2d2;
+      background: rgba(20,18,14,0.82); border: 1px solid rgba(233,226,210,0.35); border-radius: 6px; padding: 9px 12px; cursor: pointer;
+    }
+    .zf-top button:focus-visible, .zf-ctl:focus-visible, .zf-reward .btn:focus-visible { outline: 2px solid #ffc27a; outline-offset: 2px; }
+
+    /* the case, zoomed in (it flies here from the menu button) */
+    .zf-case { position: relative; width: min(420px, 86vw); aspect-ratio: 420 / 300; perspective: 1100px; transform-origin: 50% 50%; }
+    .zf-case .zf-body, .zf-case .zf-lid { position: absolute; left: 0; right: 0; }
+    .zf-case .zf-body { top: 0; bottom: 0; border-radius: 14px; background: linear-gradient(180deg, #2b2a28, #171614 60%, #0e0d0c);
+      box-shadow: inset 0 0 0 2px #3a3833, inset 0 0 40px rgba(0,0,0,0.7), 0 30px 60px rgba(0,0,0,0.6); overflow: hidden; }
+    .zf-case .zf-lid { top: 0; height: 56%; transform-origin: 50% 0%; transition: transform 520ms cubic-bezier(.3,.7,.2,1), filter 520ms ease; z-index: 2; }
+    .zf-case.open .zf-lid { transform: rotateX(78deg); filter: brightness(0.55); }
+    .zf-case .zf-lid svg { width: 100%; height: 100%; display: block; }
+    .zf-panel { position: absolute; left: 7%; right: 7%; top: 10%; height: 46%; border-radius: 8px;
+      background: repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 2px, transparent 2px 4px), linear-gradient(180deg, #1a1d1a, #0d0f0d);
+      box-shadow: inset 0 0 0 1px rgba(233,226,210,0.18), inset 0 0 24px rgba(0,0,0,0.8);
+      display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr auto; align-items: center; justify-items: center; padding: 10px 8px 8px; gap: 4px 8px; }
+    .zf-light { display: flex; flex-direction: column; align-items: center; gap: 7px; font-size: 11px; letter-spacing: 0.22em; color: #cfc7b6; }
+    .zf-light i { width: 22px; height: 22px; border-radius: 50%; background: #3a0e0e; box-shadow: inset 0 -3px 6px rgba(0,0,0,0.6), 0 0 0 2px #2a2724; transition: background 300ms ease, box-shadow 300ms ease; }
+    .zf-light.red i { background: radial-gradient(circle at 40% 35%, #ff8a7a, #e01e1e 55%, #6a0a0a); box-shadow: 0 0 14px rgba(255,40,40,0.75), 0 0 0 2px #2a2724; animation: zfRed 1.6s ease-in-out infinite; }
+    .zf-light.green i { background: radial-gradient(circle at 40% 35%, #d8ffcf, #36e05a 55%, #0d5a1c); box-shadow: 0 0 16px rgba(60,255,110,0.8), 0 0 0 2px #2a2724; }
+    @keyframes zfRed { 50% { box-shadow: 0 0 6px rgba(255,40,40,0.4), 0 0 0 2px #2a2724; } }
+    .zf-status { grid-column: 1 / 3; font-size: 11px; letter-spacing: 0.2em; color: #ff8a7a; text-align: center; min-height: 14px; }
+    .zf-status.ok { color: #7dff9a; }
+    .zf-hint { margin-top: 14px; text-align: center; font-size: 11px; letter-spacing: 0.16em; color: rgba(233,226,210,0.6); }
+
+    /* the dossier */
+    .zf-paper { width: min(560px, 92vw); padding: clamp(18px, 4vw, 34px); border-radius: 4px; position: relative;
+      background: linear-gradient(180deg, #ece5d3, #ddd3bc); color: #1d1b17; box-shadow: 0 30px 70px rgba(0,0,0,0.65), inset 0 0 60px rgba(120,95,50,0.25);
+      transform: rotate(-0.6deg); }
+    .zf-paper .zf-ref { display: flex; justify-content: space-between; font-size: 10.5px; letter-spacing: 0.14em; color: #4a443a; border-bottom: 1px solid rgba(29,27,23,0.35); padding-bottom: 8px; margin-bottom: 18px; }
+    .zf-paper .zf-stamp { position: absolute; right: 6%; top: 34%; transform: rotate(-12deg); border: 3px solid rgba(170,28,28,0.75); color: rgba(170,28,28,0.8);
+      font-weight: 900; font-size: clamp(12px, 3vw, 16px); letter-spacing: 0.18em; padding: 4px 10px; border-radius: 3px; opacity: 0; transition: opacity 160ms ease, transform 160ms ease; }
+    .zf-paper .zf-stamp.on { opacity: 1; transform: rotate(-12deg) scale(1); }
+    .zf-t1 { margin: 0 0 6px; font-size: clamp(30px, 8.5vw, 52px); font-weight: 900; letter-spacing: 0.08em; min-height: 1.15em; }
+    .zf-t2 { font-size: clamp(14px, 3.6vw, 20px); letter-spacing: 0.32em; min-height: 1.3em; }
+    .zf-t3 { margin-top: 16px; font-size: clamp(15px, 3.8vw, 22px); letter-spacing: 0.26em; color: #7a1414; min-height: 1.3em; }
+    .zf-redact { margin-top: 22px; display: grid; gap: 7px; }
+    .zf-redact i { display: block; height: 10px; background: #15140f; border-radius: 1px; }
+    .zf-redact i:nth-child(1) { width: 82%; } .zf-redact i:nth-child(2) { width: 64%; } .zf-redact i:nth-child(3) { width: 74%; }
+    .zf-caret::after { content: '▌'; animation: zfCaret 0.8s steps(1) infinite; }
+    @keyframes zfCaret { 50% { opacity: 0; } }
+
+    /* the evidence viewer */
+    .zf-evidence { flex-direction: column; gap: 10px; }
+    .zf-ev-head, .zf-ev-foot { width: min(560px, 92vw); display: flex; justify-content: space-between; font-size: 10.5px; letter-spacing: 0.18em; color: rgba(233,226,210,0.75); }
+    .zf-ev-frame { position: relative; width: min(560px, 92vw); flex: 1 1 auto; max-height: calc(100vh - 210px); min-height: 160px; background: #050505;
+      border: 1px solid rgba(233,226,210,0.25); box-shadow: 0 0 0 6px rgba(0,0,0,0.5), 0 20px 50px rgba(0,0,0,0.6); }
+    @supports (height: 100dvh) { .zf-ev-frame { max-height: calc(100dvh - 210px); } }
+    .zf-ev-frame video, .zf-ev-frame img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #050505; }
+    .zf-ev-frame::before, .zf-ev-frame::after { content: ''; position: absolute; width: 18px; height: 18px; border: 2px solid rgba(255,190,110,0.8); z-index: 1; pointer-events: none; }
+    .zf-ev-frame::before { left: -9px; top: -9px; border-right: 0; border-bottom: 0; }
+    .zf-ev-frame::after { right: -9px; bottom: -9px; border-left: 0; border-top: 0; }
+    .zf-ev-msg { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; padding: 16px; font-size: 12px; letter-spacing: 0.16em; color: rgba(233,226,210,0.8); z-index: 2; }
+    .zf-ev-msg.hidden { display: none; }
+
+    /* the reward */
+    .zf-reward { flex-direction: column; text-align: center; gap: 6px; }
+    .zf-reward canvas { width: min(240px, 52vw); height: min(240px, 52vw); }
+    .zf-r1 { font-size: clamp(20px, 6vw, 32px); font-weight: 900; letter-spacing: 0.22em; color: #ffd9a8; text-shadow: 0 0 18px rgba(255,170,80,0.55); }
+    .zf-r2 { max-width: 460px; font-size: 12.5px; line-height: 1.5; letter-spacing: 0.06em; color: rgba(233,226,210,0.85); margin-bottom: 8px; }
+    .zf-reward .btn-stack { width: min(320px, 86vw); }
+    .zf-reward .btn { font-family: inherit; }
+    .zf-fade { animation: zfFade 600ms ease both; }
+    @keyframes zfFade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+    /* Second Life: a small amber pip at the start of the energy bar while it's still available */
+    .energy-wrap.second-life::before { content: ''; position: absolute; left: -14px; top: 50%; width: 9px; height: 9px; margin-top: -4.5px; border-radius: 50%;
+      background: radial-gradient(circle at 40% 35%, #fff1dc, #ffb25e 55%, #c2541c); box-shadow: 0 0 8px rgba(255,170,80,0.9); }
+
+    @media (prefers-reduced-motion: reduce) {
+      .zero-case .zc-led, .zf-light.red i, .zf-caret::after { animation: none; }
+      .zf-case .zf-lid { transition: opacity 300ms ease; }
+      .zf-case.open .zf-lid { transform: none; opacity: 0; }
+      .zf-fade { animation: none; }
+    }
+</style>
 </head>
 <body>
   <canvas id="space" aria-hidden="true"></canvas>
@@ -1301,7 +1403,83 @@
   <div class="energy-wrap"><div id="energyBar"></div></div>
 
   <!-- ================= MAIN MENU ================= -->
+
+  <!-- PROJECT ZERO: the classified briefcase (main menu, Level 100 / Stage 100) -->
+
+  <!-- PROJECT ZERO: the files (built in code; the media loads only when the case opens) -->
+  <div class="zf hidden" id="zeroFiles" role="dialog" aria-modal="true" aria-label="Project Zero, classified files">
+    <div class="zf-backdrop"></div>
+    <div class="zf-top">
+      <button id="zfSound" aria-label="Sound on or off">Sound: on</button>
+      <button id="zfSkip" aria-label="Skip the files">Skip</button>
+      <button id="zfClose" aria-label="Close the files">Close ✕</button>
+    </div>
+    <div class="zf-stage" id="zfCaseStage">
+      <div>
+        <div class="zf-case" id="zfCase">
+          <div class="zf-body">
+            <div class="zf-panel">
+              <div class="zf-light red" id="zfLightLvl"><i></i><span>LVL 100</span></div>
+              <div class="zf-light red" id="zfLightStage"><i></i><span>STAGE 100</span></div>
+              <div class="zf-status" id="zfStatus"></div>
+            </div>
+          </div>
+          <div class="zf-lid" aria-hidden="true">
+            <svg viewBox="0 0 420 168" preserveAspectRatio="none">
+              <defs><linearGradient id="zfLidG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34322e"/><stop offset="1" stop-color="#1b1a18"/></linearGradient></defs>
+              <rect x="0" y="0" width="420" height="168" rx="14" fill="url(#zfLidG)" stroke="#4d4a43" stroke-width="3"/>
+              <path d="M2 34 V16 A14 14 0 0 1 16 2 H40 M380 2 H404 A14 14 0 0 1 418 16 V34" fill="none" stroke="#b7ad98" stroke-width="6"/>
+              <rect x="92" y="140" width="44" height="24" rx="4" fill="#8d8471"/><rect x="284" y="140" width="44" height="24" rx="4" fill="#8d8471"/>
+              <text x="210" y="96" text-anchor="middle" font-family="Courier New, monospace" font-weight="700" font-size="30" letter-spacing="8" fill="#cfc4ac">CLASSIFIED</text>
+              <circle cx="210" cy="128" r="7" fill="#ffb25e"/>
+            </svg>
+          </div>
+        </div>
+        <div class="zf-hint" id="zfHint"></div>
+      </div>
+    </div>
+    <div class="zf-stage hidden" id="zfDoc">
+      <div class="zf-paper">
+        <div class="zf-ref"><span>FILE RV-0 / IL-16 / 0001</span><span>COPY 1 OF 1</span></div>
+        <div class="zf-stamp" id="zfStamp">RESTRICTED · EYES ONLY</div>
+        <h2 class="zf-t1" id="zfT1"></h2>
+        <div class="zf-t2" id="zfT2"></div>
+        <div class="zf-t3" id="zfT3"></div>
+        <div class="zf-redact" aria-hidden="true"><i></i><i></i><i></i></div>
+      </div>
+    </div>
+    <div class="zf-stage hidden zf-evidence" id="zfEvidence">
+      <div class="zf-ev-head"><span>EVIDENCE 0-A · FIELD RECORDING</span><span id="zfClock">00:00</span></div>
+      <div class="zf-ev-frame" id="zfFrame">
+        <video id="zfVideo" playsinline muted preload="none" disablepictureinpicture aria-label="Footage of a distant light"></video>
+        <div class="zf-ev-msg hidden" id="zfEvMsg"><span id="zfEvMsgText"></span><button class="zf-ctl" id="zfPlayFile">Play File</button></div>
+      </div>
+      <div class="zf-ev-foot"><span>SUBJECT: UNIDENTIFIED LIGHT</span><span>NO AUDIO RECOVERED</span></div>
+    </div>
+    <div class="zf-stage hidden zf-reward" id="zfReward">
+      <canvas id="zfOrb" width="480" height="480" aria-hidden="true"></canvas>
+      <div class="zf-r1">ZERO FORM UNLOCKED</div>
+      <div class="zf-r2">Your craft can now take the form of the light in the files.<br><b>Second Life:</b> once per run, when your energy hits zero, the orb collapses to a point instead of dying. It clears the screen, refills your energy and keeps your combo.</div>
+      <div class="btn-stack">
+        <button class="btn" id="zfEquip">Equip Zero Form</button>
+        <button class="btn ghost" id="zfReplay">Replay Files</button>
+        <button class="btn ghost" id="zfMenu">Return to Menu</button>
+      </div>
+    </div>
+  </div>
+
   <div class="overlay" id="menuScreen">
+  <button class="zero-case hidden" id="zeroCase" aria-label="A classified briefcase">
+    <svg viewBox="0 0 120 86" aria-hidden="true">
+      <rect x="44" y="4" width="32" height="12" rx="5" fill="none" stroke="#5a5650" stroke-width="5"/>
+      <rect x="4" y="14" width="112" height="68" rx="9" fill="#1d1c1a" stroke="#4a4740" stroke-width="2"/>
+      <rect x="4" y="14" width="112" height="30" rx="9" fill="#262523"/>
+      <path d="M4 26 V18 A4 4 0 0 1 8 14 H16 M104 14 H112 A4 4 0 0 1 116 18 V26 M4 70 V78 A4 4 0 0 0 8 82 H16 M104 82 H112 A4 4 0 0 0 116 78 V70" fill="none" stroke="#b7ad98" stroke-width="3"/>
+      <rect x="26" y="38" width="12" height="10" rx="2" fill="#8d8471"/><rect x="82" y="38" width="12" height="10" rx="2" fill="#8d8471"/>
+      <text x="60" y="66" text-anchor="middle" font-family="Courier New, monospace" font-weight="700" font-size="10" letter-spacing="1.5" fill="#cfc4ac">CLASSIFIED</text>
+      <circle class="zc-led" cx="60" cy="42" r="3.2" fill="#ffb25e"/>
+    </svg>
+  </button>
     <div class="card">
       <h1>Rhythm<br>Void</h1>
 
@@ -1686,6 +1864,12 @@
         <div class="setting-title">Ability Loadout <span id="abilityHint" style="text-transform:none;letter-spacing:0"></span></div>
         <div class="ability-grid" id="abilityGrid"></div>
         <div class="seg-desc" id="abilityDesc"></div>
+      </div>
+
+      <div class="setting-block hidden" id="craftBlock">
+        <div class="setting-title">Craft</div>
+        <div class="ability-grid" id="craftGrid"></div>
+        <div class="seg-desc" id="craftDesc"></div>
       </div>
 
       <div class="setting-block">
@@ -2551,6 +2735,9 @@
     daily: { date: '', score: 0 },
     bossUnlocks: { cubex: false, hexatron: false, triarch: false, vantaPrism: false, eclipseSovereign: false, metronox: false, nullstar: false, fleet: false },
     equippedAbility: 'none',
+    bestStage: 0,              // Project Zero: the highest stage ever reached in a normal run
+    zero: { opened: false },   // Project Zero: the files have been opened
+    craft: 'saucer',           // 'saucer' | 'zero' (Zero Form, once both clearances are met)
     overclock: false,          // Stage 70 reward: every core upgraded
     hyperTutDone: false,       // first Hyperdrive shows the controls card
     bossRecords: { defeated: 0, farthest: '' },
@@ -2639,6 +2826,17 @@
       s.records.daily  = Object.assign({ key: '', rec: null }, s.records.daily || {});
       s.records.byDiff = Object.assign({ chill: null, arcade: null, chaos: null }, s.records.byDiff || {});
       s.records.secret = Object.assign({ abyss: null, planet: null, architect: null }, s.records.secret || {});
+      // Project Zero: the highest stage reached. Older saves: the best stage their records show,
+      // or 100 if Nullstar (the end of the song) has fallen. Never lowers anything.
+      {
+        let bs = Number(parsed.bestStage) || 0;
+        const recs = [s.records.allTime, s.records.weekly && s.records.weekly.rec, s.records.daily && s.records.daily.rec].concat(Object.values(s.records.byDiff || {}));
+        for (const r of recs) if (r && typeof r.stage === 'number' && !r.secret) bs = Math.max(bs, r.stage);
+        if (s.bossUnlocks && s.bossUnlocks.nullstar) bs = Math.max(bs, 100);
+        s.bestStage = Math.max(0, Math.min(100000, Math.floor(bs)));
+      }
+      s.zero = Object.assign({ opened: false }, (parsed.zero && typeof parsed.zero === 'object') ? parsed.zero : {});
+      s.craft = parsed.craft === 'zero' ? 'zero' : 'saucer';
       s.vibeUnlocks = Object.assign({ voidMetal: false, cybermetal: false, ascension: false }, parsed.vibeUnlocks || {});
       // v3.3: the West Side realm became Contact; carry the unlock across.
       if (parsed.vibeUnlocks && parsed.vibeUnlocks.westside) s.vibeUnlocks.cybermetal = true;
@@ -5332,6 +5530,7 @@
     { const c = $('highScoreCard'); if (c) c.classList.remove('fractured'); }
     archRevealed = false; archTaps = 0; archSwallowClick = false; clearTimeout(archHoldTimer);
     $('menuLevel').textContent = save.level;
+    try { ZeroFiles.syncMenu(); syncSecondLifePip(); } catch (e) {}   // (before the module exists at boot; it syncs itself then)
     const need = xpToNext(save.level);
     $('menuXpFill').style.width = Math.min(100, (save.xp / need) * 100) + '%';
     $('menuXpText').textContent = `${save.xp}/${need} XP`;
@@ -5501,6 +5700,27 @@
         + (save.overclock ? ' ⚡ ' + OVERCLOCK_TEXT : '');
       const anyUnlocked = ABILITY_ORDER.some(id => save.bossUnlocks[ABILITY_UNLOCK_BOSS[id]]);
       $('abilityHint').textContent = anyUnlocked ? '' : '— defeat bosses to unlock';
+    }
+
+    // --- Craft (Project Zero) ---
+    {
+      const block = $('craftBlock'), grid = $('craftGrid');
+      const earned = zeroUnlocked();
+      block.classList.toggle('hidden', !earned);
+      if (earned) {
+        grid.innerHTML = '';
+        const cur = save.craft === 'zero' ? 'zero' : 'saucer';
+        for (const [id, name, sub] of [['saucer', 'Saucer', 'The original craft'], ['zero', 'Zero Form', 'Project Zero · Second Life']]) {
+          const btn = document.createElement('button');
+          btn.className = 'ability-swatch' + (cur === id ? ' equipped' : '');
+          btn.innerHTML = `<span class="ab-name">${name}</span><span class="ab-type">${sub}</span><span class="ab-lock">${cur === id ? 'Equipped' : 'Tap to equip'}</span>`;
+          btn.addEventListener('click', () => { save.craft = id; persist(); sfxSelect(); buzz(12); refreshSettings(); });
+          grid.appendChild(btn);
+        }
+        $('craftDesc').textContent = cur === 'zero'
+          ? 'Zero Form: the light from the files. Second Life: once per run, when your energy hits zero, the orb collapses to a point instead of dying, clears the screen, refills your energy and keeps your combo.'
+          : 'The saucer you started with.';
+      }
     }
 
     // --- Environment detail segment (v2.0) ---
@@ -6763,6 +6983,9 @@
     bossStatsRun = { defeated: 0, damage: 0, farthest: '' };
     bossHud.classList.remove('show'); bossDefeatBanner.classList.remove('show');
     stageChip.classList.remove('boss-hidden');
+    // Project Zero: Second Life is back for the new run
+    secondLifeUsed = false; comboSnap = null; zeroCollapse = null; zeroFlash = 0;
+    syncSecondLifePip();
     // resolve the equipped ability for this run and prime its counters
     abilityId = save.equippedAbility || 'none';
     {
@@ -6973,6 +7196,8 @@
   // ending (bests, XP, records), but quietly and straight to the title screen, no results card.
   function endGame(opts) {
     const toMenu = !!(opts && opts.toMenu);
+    if (!toMenu && energy <= 0 && secondLifeReady() && state !== 'gameover') { secondLife(); return; }
+    setTimeout(syncSecondLifePip, 0);
     // A death inside the secret gauntlet ends the run without touching normal
     // best scores, XP or records — then restores the player's real settings.
     if (doomMode) {
@@ -7247,6 +7472,7 @@
   function stageUp(newStage) {
     const soundtrackChanges = musicPhaseKey(newStage) !== musicPhaseKey(stage);
     stage = newStage;
+    if (!doomMode && !(DevMode && DevMode.runFlagged) && stage > (save.bestStage || 0)) { save.bestStage = stage; persist(); }
     const p = stageParams(stage);
     leadTime = Math.max(0.92, p.lead);
     if (p.move > 0 && nextMoveAt === Infinity) nextMoveAt = p.move + 1;
@@ -7340,6 +7566,7 @@
   function endLevelPause(nowT) {
     levelUpEl.classList.remove('show');
     state = 'playing';
+    syncSecondLifePip();
     // Resume the timeline just ahead of "now" so the first new note gets a
     // full approach and lands cleanly on the beat grid; realign the music.
     bpm = stageBpmTarget();   // RV-01: exact tempo before any note is planned
@@ -7348,6 +7575,7 @@
   }
 
   function registerHit() {
+    if (craftIsZero()) zeroFlash = 1;
     // STAR-WARRIOR: the allied squadron fires a volley on every ring you hit
     if (abActive && abilityId === 'starWarrior') Fleet.volley();
     // The Alien Fleet: every hit fires at the fleet instead (no stage progress in there)
@@ -7485,6 +7713,7 @@
   // Boss intro elapsed → begin the battle proper.
   function beginBossBattle(nowT) {
     state = 'bossBattle';
+    syncSecondLifePip();
     moveArmed = false;            // ensure note-spawning is never frozen
     hitsSinceMove = 0;
     bpm = stageBpmTarget();       // RV-01: exact tempo before any note is planned
@@ -9012,7 +9241,7 @@
       }
       ctx.save();
       ctx.translate(cx, cy); ctx.rotate(bank); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
-      CraftFX.draw(t, cx, cy, pulse + beatBreath());
+      drawCraft(t, cx, cy, pulse + beatBreath());
       ctx.restore();
       return [cx, cy];
     }
@@ -10070,6 +10299,390 @@
     };
   })();
 
+
+  // ================= PROJECT ZERO (the Level 100 secret) =================
+  // Dennel, Nov 12: a prize for the dedicated. A classified briefcase appears on the main menu
+  // once you reach player LVL 100 OR stage 100. Zoomed in, it has two clearance lights, LVL 100
+  // and STAGE 100, green when done and red when not: it only opens with both green. Opened: the
+  // PROJECT ZERO dossier (ILLINOIS // 2016), the creator's footage in an evidence viewer over its
+  // own original score, then ZERO FORM: a craft made to look like the light in the footage, with
+  // SECOND LIFE (once per run, when energy hits zero the orb collapses to a point instead of
+  // dying, clears the screen, refills energy and keeps the combo).
+  // The reward is derived from the two clearances and never depends on the media playing. The
+  // footage and score are separate files next to index.html, requested only when the case opens.
+  const ZERO = {
+    footage: 'assets/project-zero/footage.mp4', score: 'assets/project-zero/score.m4a', poster: 'assets/project-zero/poster.jpg',
+    caseEnd: 1.6, title: 4, foot: 27, total: 36,      // the native timeline (s), as in the approved reel
+    light: [0.5, 0.42]                                // where the light sits in the footage's last frame (0..1)
+  };
+  function zeroLights() { return { lvl: (save.level || 0) >= 100, stage: (save.bestStage || 0) >= 100 }; }
+  function zeroUnlocked() { const l = zeroLights(); return l.lvl && l.stage; }
+  function zeroVisible() { const l = zeroLights(); return l.lvl || l.stage; }
+  let zeroSessionForm = false;                        // dev preview only: wear Zero Form this session, nothing saved
+  function craftIsZero() { return zeroSessionForm || (save.craft === 'zero' && zeroUnlocked()); }
+  // the craft, wherever it's drawn (play field, Hyperdrive chase cam, menu backdrop)
+  function drawCraft(t, x, y, p) {
+    if (craftIsZero()) drawZeroOrb(ctx, t, x, y, targetR * 0.62, p, false);
+    else CraftFX.draw(t, x, y, p);
+  }
+
+  // ---- the orb ----
+  // Modelled on the footage: a soft, glowing halo with a brighter, slightly uneven rim round a
+  // warmer, dimmer heart, wrapped in amber-orange haze; it flickers and breathes and is never
+  // sharp. A larger glow never means a larger hitbox: the gameplay anchor and radii are the
+  // saucer's. Hits make it flare warm; the music makes it breathe. Cached sprite + one gradient
+  // per frame (Low graphics drops the outer haze layer and the drifting cells).
+  let zeroFlash = 0, zeroCollapse = null, _zeroHalo = null;
+  function zeroNoise(x) { return Math.sin(x * 1.7) * 0.5 + Math.sin(x * 3.1 + 1.3) * 0.3 + Math.sin(x * 7.3 + 0.4) * 0.2; }
+  function zeroHaloSprite() {
+    if (_zeroHalo) return _zeroHalo;
+    const c = document.createElement('canvas'); c.width = c.height = 256;
+    const g = c.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+    gr.addColorStop(0, 'rgba(255,216,170,0.9)'); gr.addColorStop(0.16, 'rgba(255,176,104,0.55)');
+    gr.addColorStop(0.42, 'rgba(226,92,46,0.16)'); gr.addColorStop(1, 'rgba(150,36,20,0)');
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+    return (_zeroHalo = c);
+  }
+  function zeroBlob(c, r, w, t, seed) {
+    c.beginPath();
+    for (let i = 0; i <= 48; i++) {
+      const a = i / 48 * Math.PI * 2;
+      const rr = r * (1 + w * (0.6 * zeroNoise(a * 2 + t * 0.9 + seed) + 0.4 * zeroNoise(a * 5 - t * 1.3 + seed * 2)));
+      if (i) c.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else c.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
+    }
+    c.closePath();
+  }
+  function drawZeroOrb(c, t, x, y, R, p, still) {
+    const low = !!(SpaceFX && SpaceFX.low);
+    const thump = still ? 0 : Math.pow(1 - musicBeatPhase(), 3);
+    zeroFlash = Math.max(0, zeroFlash - 0.035);
+    let s = 1;
+    if (zeroCollapse && !still) {                        // Second Life: collapse to a point, then re-form
+      const L = (clockNow() - startTime) - zeroCollapse.t0;
+      if (L > 1.7) zeroCollapse = null;
+      else s = L < 0.35 ? 1 - L / 0.35 : L < 0.6 ? 0 : (L - 0.6) / 1.1;
+      s = Math.max(0.03, Math.min(1, s));
+    }
+    const flick = 0.86 + 0.14 * zeroNoise(t * 7.1) * zeroNoise(t * 2.3 + 1.1);
+    const r = R * s * (1 + 0.04 * Math.sin(t * 1.7) + 0.06 * thump + 0.08 * Math.min(1, p || 0) + 0.12 * zeroFlash);
+    c.save(); c.translate(x, y);
+    c.globalCompositeOperation = 'lighter';
+    // the haze: amber-orange, wide and soft (two layers: the far one is skipped on Low)
+    const halo = zeroHaloSprite();
+    if (!low) { c.globalAlpha = (0.32 + 0.1 * flick + 0.2 * zeroFlash) * Math.min(1, s * 2); c.drawImage(halo, -r * 5.2, -r * 5.2, r * 10.4, r * 10.4); }
+    c.globalAlpha = (0.55 + 0.15 * flick + 0.3 * zeroFlash) * Math.min(1, s * 2);
+    c.drawImage(halo, -r * 2.7, -r * 2.7, r * 5.4, r * 5.4);
+    // the body: soft edge first (a wider, fainter copy reads as the camera's blur), then the orb
+    c.globalCompositeOperation = 'source-over';
+    c.globalAlpha = 0.35 * flick;
+    c.fillStyle = 'rgba(255,186,140,0.55)'; zeroBlob(c, r * 1.16, 0.05, t, 2.2); c.fill();
+    c.globalAlpha = flick;
+    const g = c.createRadialGradient(r * 0.05, r * 0.08, 0, 0, 0, r);
+    g.addColorStop(0, 'rgba(214,112,104,0.92)');       // the dimmer, warmer heart
+    g.addColorStop(0.42, 'rgba(240,160,140,0.95)');
+    g.addColorStop(0.7, 'rgba(255,232,214,1)');         // the bright rim
+    g.addColorStop(0.88, 'rgba(255,246,236,1)');
+    g.addColorStop(1, 'rgba(255,196,150,0.85)');
+    c.fillStyle = g; zeroBlob(c, r, 0.035, t, 0.7); c.fill();
+    // slow cells drifting in the heart
+    if (!low) {
+      c.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 3; i++) {
+        const a = t * (0.35 + i * 0.17) + i * 2.1, d = r * (0.18 + 0.1 * Math.sin(t * 0.7 + i));
+        const cx = Math.cos(a) * d, cy = Math.sin(a) * d, cr = r * (0.28 + 0.06 * Math.sin(t + i));
+        const cg = c.createRadialGradient(cx, cy, 0, cx, cy, cr);
+        cg.addColorStop(0, 'rgba(255,190,150,0.22)'); cg.addColorStop(1, 'rgba(255,150,120,0)');
+        c.fillStyle = cg; c.beginPath(); c.arc(cx, cy, cr, 0, Math.PI * 2); c.fill();
+      }
+    }
+    // a hit: a warm flare round the rim
+    if (zeroFlash > 0.02) {
+      c.globalCompositeOperation = 'lighter'; c.globalAlpha = zeroFlash * 0.8;
+      c.strokeStyle = 'rgba(255,214,160,0.9)'; c.lineWidth = r * 0.14; zeroBlob(c, r * 1.02, 0.03, t, 0.7); c.stroke();
+    }
+    c.restore();
+  }
+
+  // ---- Second Life ----
+  let secondLifeUsed = false, comboSnap = null;
+  function secondLifeReady() { return craftIsZero() && !secondLifeUsed; }
+  function syncSecondLifePip() {
+    const ew = document.querySelector('.energy-wrap');
+    if (ew) ew.classList.toggle('second-life', secondLifeReady() && (state === 'playing' || state === 'bossBattle' || state === 'levelup' || state === 'bossIntro' || state === 'bossDefeat' || state === 'paused'));
+  }
+  function secondLife() {
+    secondLifeUsed = true;
+    const t = clockNow() - startTime;
+    zeroCollapse = { t0: t };
+    energy = 100; energyBar.style.width = '100%';
+    // keep the combo the fatal miss just broke
+    if (comboSnap && t - comboSnap.t < 1.5 && comboSnap.combo > combo) {
+      combo = comboSnap.combo; comboTier = comboSnap.comboTier; bossPerfectStreak = comboSnap.bossPerfectStreak;
+      perfectRun = comboSnap.perfectRun; singLost = comboSnap.singLost;
+      if (comboSnap.fever) { fever = true; feverLevel = comboSnap.feverLevel; syncComboMode(false); }
+      comboEl.textContent = combo + 'x';
+    }
+    comboSnap = null;
+    // the collapse clears the screen
+    for (const n of notes) if (!n.hit && !n.missed) { n.hit = true; createBurst(n.tx, n.ty, '#ffcf8a', 6, 0.8); }
+    createBurst(tgt.x, tgt.y, '#fff1dc', 50, 1.6); createBurst(tgt.x, tgt.y, '#ff9a4d', 40, 1.3);
+    shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR * 0.2, alpha: 1, speed: 1400, width: 12, color: '#ffcf8a' });
+    shake = Math.max(shake, 12); bgPulse = 1;
+    buzz([80, 40, 120, 40, 200]);
+    showToast('SECOND LIFE', '#ffcf8a', 'THE ORB REFUSES TO DIE');
+    if (save.settings.sfx) { [880, 659, 440, 330, 220].forEach((f, i) => tone(f, 0.16, 'sine', 0.03, i * 0.05)); tone(41, 1.2, 'sine', 0.12, 0.3); [262, 392, 523, 784].forEach((f, i) => tone(f, 0.25, 'triangle', 0.03, 0.7 + i * 0.07)); }
+    syncSecondLifePip();
+    trackEvent('second_life', { stage });
+  }
+
+  // ---- the case and the files ----
+  const ZeroFiles = (() => {
+    const root = $('zeroFiles'), caseBtn = $('zeroCase'), caseEl = $('zfCase');
+    const stages = ['zfCaseStage', 'zfDoc', 'zfEvidence', 'zfReward'];
+    let open = false, preview = false, granted = false, phase = 'closed';
+    let clockAt = 0, clockFrom = 0, running = false, raf = 0, orbRaf = 0;
+    let video = null, audio = null, soundOn = true, menuWasOn = false, needResume = false, mediaFailed = false;
+    const RM = () => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } };
+    function lights() { return preview ? { lvl: true, stage: true } : zeroLights(); }
+    function show(id) { for (const s of stages) $(s).classList.toggle('hidden', s !== id); }
+    // the files' own clock: wall time, frozen while paused; the score and the footage follow it
+    function now() { return running ? clockFrom + (performance.now() - clockAt) / 1000 : clockFrom; }
+    function setClock(t, run) { clockFrom = t; clockAt = performance.now(); running = run; }
+
+    function syncMenu() {
+      const vis = zeroVisible();
+      caseBtn.classList.toggle('hidden', !vis);
+      caseBtn.classList.toggle('armed', zeroUnlocked() && !(save.zero && save.zero.opened));
+      caseBtn.setAttribute('aria-label', zeroUnlocked() ? 'Classified briefcase: open the files' : 'Classified briefcase: locked');
+    }
+
+    function openCase(opts) {
+      if (open) return;                                   // rapid double taps never stack a second overlay
+      open = true; preview = !!(opts && opts.preview);
+      const L = lights(); granted = L.lvl && L.stage;
+      $('zfLightLvl').className = 'zf-light ' + (L.lvl ? 'green' : 'red');
+      $('zfLightStage').className = 'zf-light ' + (L.stage ? 'green' : 'red');
+      const st = $('zfStatus'); st.textContent = ''; st.className = 'zf-status';
+      $('zfHint').textContent = '';
+      caseEl.classList.remove('open');
+      $('zfSkip').hidden = true; $('zfSound').hidden = !granted;
+      soundOn = !!save.settings.music; $('zfSound').textContent = 'Sound: ' + (soundOn ? 'on' : 'off');
+      show('zfCaseStage');
+      root.classList.remove('hidden'); void root.offsetWidth; root.classList.add('on');
+      phase = 'case';
+      document.addEventListener('keydown', onKey, true);
+      document.addEventListener('visibilitychange', onVis);
+      // the case flies from its spot on the menu to the middle of the screen
+      if (!RM()) {
+        const from = caseBtn.getBoundingClientRect(), to = caseEl.getBoundingClientRect();
+        if (from.width && to.width) {
+          const sx = from.width / to.width, dx = (from.left + from.width / 2) - (to.left + to.width / 2), dy = (from.top + from.height / 2) - (to.top + to.height / 2);
+          caseEl.animate([{ transform: `translate(${dx}px, ${dy}px) scale(${sx})`, opacity: 0.6 }, { transform: 'none', opacity: 1 }],
+            { duration: 620, easing: 'cubic-bezier(.2,.8,.2,1)' });
+        }
+      }
+      if (save.settings.sfx) { tone(140, 0.08, 'square', 0.03, RM() ? 0 : 0.62); tone(180, 0.08, 'square', 0.03, RM() ? 0.05 : 0.7); }
+      if (granted) {
+        menuWasOn = menuMusic.on; stopMenuMusic(0.5);
+        startMedia();                                     // inside the tap, so the score is allowed to start
+        setClock(0, true);
+        if (!preview) { save.zero = Object.assign({ opened: false }, save.zero || {}); if (!save.zero.opened) { save.zero.opened = true; save.zero.openedAt = Date.now(); persist(); } }
+        trackEvent('project_zero', { opened: true });
+      } else {
+        trackEvent('project_zero', { opened: false, lvl: L.lvl, stage: L.stage });
+      }
+      setTimeout(() => {                                  // latches, then the lid
+        if (!open) return;
+        caseEl.classList.add('open');
+        if (save.settings.sfx) tone(95, 0.18, 'sawtooth', 0.02);
+        setTimeout(() => {
+          if (!open || phase !== 'case') return;
+          st.textContent = granted ? 'CLEARANCE VERIFIED · OPENING FILES' : 'ACCESS DENIED · ' + ((L.lvl || L.stage) ? '1' : '0') + ' OF 2 CLEARANCES';
+          st.className = 'zf-status' + (granted ? ' ok' : '');
+          if (!granted) $('zfHint').textContent = 'Something else has to happen first.';
+          if (save.settings.sfx) granted ? [523, 659, 784].forEach((f, i) => tone(f, 0.08, 'triangle', 0.03, i * 0.06)) : tone(150, 0.25, 'square', 0.03);
+        }, RM() ? 0 : 480);
+      }, RM() ? 0 : 640);
+      $('zfClose').focus({ preventScroll: true });
+      cancelAnimationFrame(raf); raf = requestAnimationFrame(tick);
+    }
+
+    // ---- media: loaded only now, released on close ----
+    function startMedia() {
+      mediaFailed = false;
+      video = $('zfVideo');
+      video.muted = true; video.playsInline = true; video.preload = 'auto';
+      video.poster = ZERO.poster;
+      video.onerror = () => { mediaFailed = true; };
+      video.src = ZERO.footage;
+      try { video.load(); } catch (e) {}
+      audio = new Audio();
+      audio.preload = 'auto';
+      audio.src = ZERO.score;
+      audio.volume = Math.max(0, Math.min(1, (save.settings.musicVolume == null ? 68 : save.settings.musicVolume) / 100));
+      audio.muted = !soundOn;
+      const p = audio.play();                             // the score is the files' music: it starts with the tap
+      if (p && p.catch) p.catch(() => {});                 // blocked or missing: the files run silent
+    }
+    function stopMedia() {
+      if (video) { try { video.pause(); } catch (e) {} video.removeAttribute('src'); video.removeAttribute('poster'); video.onerror = null; try { video.load(); } catch (e) {} }
+      if (audio) { try { audio.pause(); } catch (e) {} audio.removeAttribute('src'); try { audio.load(); } catch (e) {} }
+      video = null; audio = null;
+    }
+    function follow(t) {                                  // keep the score and footage on the files' clock
+      if (audio && audio.readyState >= 1 && !audio.paused && running) {
+        if (t < ZERO.total && Math.abs(audio.currentTime - t) > 0.25) { try { audio.currentTime = t; } catch (e) {} }
+      }
+      if (video && phase === 'evidence' && running) {
+        const vt = t - ZERO.title;
+        if (video.readyState >= 1 && vt >= 0 && vt < ZERO.foot && Math.abs(video.currentTime - vt) > 0.25) { try { video.currentTime = vt; } catch (e) {} }
+      }
+    }
+
+    // ---- the timeline ----
+    const typer = (id, text, a, b, t) => { const k = Math.max(0, Math.min(1, (t - a) / (b - a))); const el = $(id); const n = Math.round(text.length * k); el.textContent = text.slice(0, n); el.classList.toggle('zf-caret', k > 0 && k < 1); };
+    function tick() {
+      raf = 0;
+      if (!open) return;
+      const t = now();
+      if (granted && phase === 'case' && t >= ZERO.caseEnd) { phase = 'doc'; show('zfDoc'); $('zfSkip').hidden = false; }
+      if (phase === 'doc') {
+        if (RM()) { $('zfT1').textContent = 'PROJECT ZERO'; $('zfT2').textContent = 'CLASSIFIED FILES'; $('zfT3').textContent = 'ILLINOIS // 2016'; $('zfStamp').classList.add('on'); }
+        else {
+          typer('zfT1', 'PROJECT ZERO', 1.75, 2.45, t); typer('zfT2', 'CLASSIFIED FILES', 2.5, 3.15, t); typer('zfT3', 'ILLINOIS // 2016', 3.2, 3.85, t);
+          $('zfStamp').classList.toggle('on', t >= 3.35);
+        }
+        if (t >= ZERO.title) beginEvidence();
+      }
+      if (phase === 'evidence') {
+        const vt = Math.max(0, t - ZERO.title);
+        $('zfClock').textContent = '00:' + String(Math.floor(vt)).padStart(2, '0');
+        if (t >= ZERO.title + ZERO.foot) toReward(false);
+      }
+      follow(t);
+      raf = requestAnimationFrame(tick);
+    }
+    function beginEvidence() {
+      phase = 'evidence'; show('zfEvidence');
+      $('zfEvMsg').classList.add('hidden');
+      if (mediaFailed || !video) return evidenceMissing();
+      try { video.currentTime = Math.max(0, now() - ZERO.title); } catch (e) {}
+      const p = video.play();
+      if (p && p.catch) p.catch(() => { if (open && phase === 'evidence') { if (mediaFailed) evidenceMissing(); else askToPlay('PLAYBACK BLOCKED'); } });
+    }
+    function evidenceMissing() {
+      $('zfEvMsgText').textContent = 'FILE DAMAGED · FOOTAGE COULD NOT BE LOADED';
+      $('zfPlayFile').hidden = true; $('zfEvMsg').classList.remove('hidden');
+    }
+    function askToPlay(why) {                             // a blocked play(): an explicit Play File, never a stalled screen
+      setClock(now(), false);
+      $('zfEvMsgText').textContent = why;
+      $('zfPlayFile').hidden = false; $('zfEvMsg').classList.remove('hidden');
+      $('zfPlayFile').focus({ preventScroll: true });
+    }
+    function playFile() {
+      $('zfEvMsg').classList.add('hidden');
+      setClock(now(), true);
+      if (audio) { const p = audio.play(); if (p && p.catch) p.catch(() => {}); }
+      if (video && phase === 'evidence') { const p = video.play(); if (p && p.catch) p.catch(() => evidenceMissing()); }
+      if (!raf) raf = requestAnimationFrame(tick);
+    }
+    function toReward(skipped) {
+      phase = 'reward';
+      if (video) try { video.pause(); } catch (e) {}
+      if (skipped && audio) { try { audio.currentTime = ZERO.title + ZERO.foot; } catch (e) {} }
+      setClock(ZERO.title + ZERO.foot, true);
+      show('zfReward'); $('zfSkip').hidden = true;
+      const eq = $('zfEquip');
+      eq.textContent = (preview ? zeroSessionForm : (save.craft === 'zero')) ? 'Zero Form equipped ✓' : (preview ? 'Wear Zero Form (preview, not saved)' : 'Equip Zero Form');
+      for (const b of ['zfEquip', 'zfReplay', 'zfMenu']) $(b).classList.add('zf-fade');
+      eq.focus({ preventScroll: true });
+      startOrb();
+    }
+    // the light becomes your orb: it grows out of a point
+    function startOrb() {
+      const cv = $('zfOrb'), c2 = cv.getContext('2d'), born = performance.now();
+      cancelAnimationFrame(orbRaf);
+      const draw = () => {
+        orbRaf = 0;
+        if (!open || phase !== 'reward') return;
+        const L = (performance.now() - born) / 1000, k = RM() ? 1 : Math.min(1, L / 1.2), e = 1 - Math.pow(1 - k, 3);
+        c2.setTransform(1, 0, 0, 1, 0, 0); c2.clearRect(0, 0, cv.width, cv.height);
+        drawZeroOrb(c2, performance.now() / 1000, cv.width / 2, cv.height / 2, cv.width * 0.17 * Math.max(0.04, e), 0, true);
+        orbRaf = requestAnimationFrame(draw);
+      };
+      orbRaf = requestAnimationFrame(draw);
+    }
+    function replay() {
+      if (!granted) return;
+      $('zfT1').textContent = ''; $('zfT2').textContent = ''; $('zfT3').textContent = ''; $('zfStamp').classList.remove('on');
+      if (!video || !audio) startMedia();
+      if (audio) { try { audio.currentTime = ZERO.caseEnd; } catch (e) {} const p = audio.play(); if (p && p.catch) p.catch(() => {}); }
+      phase = 'doc'; show('zfDoc'); $('zfSkip').hidden = false;
+      setClock(ZERO.caseEnd, true);
+      cancelAnimationFrame(orbRaf);
+      if (!raf) raf = requestAnimationFrame(tick);
+    }
+    function equip() {
+      if (preview) zeroSessionForm = !zeroSessionForm;
+      else { save.craft = save.craft === 'zero' ? 'saucer' : 'zero'; persist(); }
+      const on = preview ? zeroSessionForm : save.craft === 'zero';
+      $('zfEquip').textContent = on ? 'Zero Form equipped ✓' : (preview ? 'Wear Zero Form (preview, not saved)' : 'Equip Zero Form');
+      if (save.settings.sfx) tone(on ? 784 : 392, 0.1, 'triangle', 0.035);
+    }
+    function close() {
+      if (!open) return;
+      open = false; phase = 'closed'; needResume = false; mediaFailed = false;
+      cancelAnimationFrame(raf); raf = 0; cancelAnimationFrame(orbRaf); orbRaf = 0;
+      stopMedia(); setClock(0, false);
+      document.removeEventListener('keydown', onKey, true);
+      document.removeEventListener('visibilitychange', onVis);
+      root.classList.remove('on'); root.classList.add('hidden');
+      caseEl.classList.remove('open');
+      $('zfT1').textContent = ''; $('zfT2').textContent = ''; $('zfT3').textContent = ''; $('zfStamp').classList.remove('on');
+      if (granted && menuWasOn && state === 'menu') startMenuMusic();
+      menuWasOn = false;
+      syncMenu();
+      if (state === 'menu') caseBtn.focus({ preventScroll: true });
+    }
+    function skip() { if (open && granted && (phase === 'doc' || phase === 'evidence' || phase === 'case')) toReward(true); }
+    function onKey(e) {
+      if (!open) return;
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
+      // the menu's own keys (Space starts a run) must not reach the game behind the files
+      if (e.key !== 'Tab' && !(e.target && e.target.closest && e.target.closest('#zeroFiles button'))) { e.stopPropagation(); e.preventDefault(); }
+      else e.stopPropagation();
+    }
+    function onVis() {                                     // backgrounded: everything stops; back: an explicit resume
+      if (!open) return;
+      if (document.hidden) {
+        if (running) { setClock(now(), false); needResume = true; }
+        if (video) try { video.pause(); } catch (e) {}
+        if (audio) try { audio.pause(); } catch (e) {}
+      } else if (needResume) {
+        needResume = false;
+        if (phase === 'evidence') askToPlay('PAUSED');
+        else if (phase === 'reward') { setClock(now(), true); }
+        else { show('zfEvidence'); phase = 'evidence'; askToPlay('PAUSED'); }
+      }
+    }
+    caseBtn.addEventListener('click', (e) => { e.stopPropagation(); if (state !== 'menu') return; sfxClick(); openCase(); });
+    $('zfClose').addEventListener('click', () => { sfxBack(); close(); });
+    $('zfMenu').addEventListener('click', () => { sfxBack(); close(); });
+    $('zfSkip').addEventListener('click', () => { sfxClick(); skip(); });
+    $('zfReplay').addEventListener('click', () => { sfxClick(); replay(); });
+    $('zfEquip').addEventListener('click', () => equip());
+    $('zfPlayFile').addEventListener('click', () => playFile());
+    $('zfSound').addEventListener('click', () => { soundOn = !soundOn; if (audio) audio.muted = !soundOn; $('zfSound').textContent = 'Sound: ' + (soundOn ? 'on' : 'off'); });
+    syncMenu();
+    return {
+      syncMenu, openCase, close, skip,
+      get open() { return open; }, get phase() { return phase; }, get granted() { return granted; },
+      get media() { return { video: video ? video.currentSrc || video.src : null, audio: audio ? audio.src : null, failed: mediaFailed, playing: !!(audio && !audio.paused) }; },
+      _clock: () => now()
+    };
+  })();
+
   function bangDetonate(note, t) {
     note.hit = true;
     awardAbilityPerfect(note.tx, note.ty, '#ffe9a8', 'BIG BANG', true);
@@ -10866,6 +11479,8 @@
   }
 
   function breakCombo() {
+    // Second Life puts back the combo the fatal miss broke
+    if (combo > 0) comboSnap = { t: clockNow() - startTime, combo, comboTier, bossPerfectStreak, perfectRun, singLost, fever, feverLevel };
     combo = 0;
     comboTier = 0;   // re-arm milestone rewards for the next streak
     bossPerfectStreak = 0;
@@ -13534,7 +14149,7 @@
     const p = pulse + beatBreath();
     if (!SpaceFX.active && !WorldFX.kindFor(theme.id)) drawGravityWell2D(tgt.x, tgt.y, t, p);
     const po = phantomOffset(t);                     // Phantom Step: the craft is out to the side
-    CraftFX.draw(t, tgt.x + (po ? po[0] : 0), tgt.y + (po ? po[1] : 0), p);
+    drawCraft(t, tgt.x + (po ? po[0] : 0), tgt.y + (po ? po[1] : 0), p);
   }
 
   // Low graphics / no WebGL: warped space around the craft, cheaply: a cached glow,
@@ -17129,6 +17744,9 @@
       <label class="dev-row"><span>No energy loss (can't die)</span><input type="checkbox" id="devNoDrain"></label>
       <label class="dev-row"><span>Show FPS and frame time</span><input type="checkbox" id="devFpsT"></label>
       <label class="dev-row"><span>Overclock every core (Stage 70 reward)</span><input type="checkbox" id="devOc"></label>
+      <p class="dev-h">PROJECT ZERO</p>
+      <div class="dev-grid"><button class="btn ghost" id="devZero">Preview the files</button></div>
+      <p class="dev-note">Preview only: both lights show green and "Wear Zero Form" lasts this session. Nothing is saved; your real clearances and save are untouched.</p>
       <div class="btn-stack"><button class="btn ghost" id="devOff">Turn dev mode off</button><button class="btn" id="devBack">Back</button></div>
     </div>`;
     document.body.appendChild(scr);
@@ -17265,6 +17883,7 @@
     // ---------- wiring ----------
     menuBtn.addEventListener('click', () => { sfxClick(); show(); });
     $('devBack').addEventListener('click', () => { sfxBack(); hide(); });
+    $('devZero').addEventListener('click', () => { sfxClick(); hide(); if (state === 'menu') ZeroFiles.openCase({ preview: true }); });
     $('devOff').addEventListener('click', () => { sfxBack(); restore(); persist(); sync(); hide(); refreshMenu(); showToast('DEV MODE OFF', theme.c2, 'NORMAL PROGRESS RESTORED'); });
     $('devNoDrain').addEventListener('change', (e) => { D().noDrain = e.target.checked; persist(); });
     $('devFpsT').addEventListener('change', (e) => { D().fps = e.target.checked; persist(); sync(); });
