@@ -52,6 +52,9 @@ jobs:
       - name: HUD docks off the saucer at every size + pause Main Menu
         if: ${{ !cancelled() }}
         run: npx playwright test tests/hud-docks.spec.js --project=desktop-chrome
+      - name: One-card tutorial + Liquid Glass controls
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/glass-tutorial.spec.js --project=desktop-chrome
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: fast-results, path: qa/results, retention-days: 14 }

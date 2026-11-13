@@ -1,8 +1,9 @@
 // HUD docks + pause Main Menu (Dennel, Nov 12):
 //  1. The Combo Fever banner and the power chip must never sit where the saucer flies, on any
 //     screen: phones (portrait + landscape, touch), tablets, desktop and the 10 CrazyGames sizes.
-//     Wide screens dock both in the HUD band (Fever under Score, chip beside Pause); narrow portrait
-//     phones stack them under the HUD, below the boss bar in a boss fight.
+//     The chip sits in the upper-left: wide screens dock it under Score and Fever under Best beside
+//     Pause; narrow portrait phones put the chip at the left of the first row under the HUD and
+//     Fever in the second, both below the boss bar in a boss fight.
 //  2. Neither may cover another HUD element (panels, stage chip, boss name/bar, Pause + its halo,
 //     energy bar) or leave the screen, with the longest texts (Supernova, "HOLD TO EXIT", timer).
 //  3. The chip hides during Hyperdrive (its own FIRE / CORE buttons sit at the bottom).
@@ -51,6 +52,9 @@ function probe(label) {
     for (const [ok, ob] of Object.entries(others)) if (overlap(d, ob, ok === 'pause' ? 10 : 0)) bad.push(`${label}: ${k} overlaps ${ok}`);
   }
   if (overlap(docks.fever, docks.chip)) bad.push(`${label}: fever overlaps chip`);
+  // Dennel (Nov 12): the power chip lives in the upper-left corner
+  if (docks.chip && !((docks.chip.l + docks.chip.r) / 2 < innerWidth * 0.42 && docks.chip.b < Math.max(250, innerHeight * 0.3)))
+    bad.push(`${label}: chip not in the upper-left`);
   // text wider than the box's content area = cut off (scrollWidth can't be used: the banner's shine sweeps outside it)
   const cut = (el, textEl) => { const rg = document.createRange(); rg.selectNodeContents(textEl); const cs = getComputedStyle(el);
     return rg.getBoundingClientRect().width > el.getBoundingClientRect().width - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth) + 1; };

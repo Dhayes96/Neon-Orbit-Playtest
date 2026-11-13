@@ -228,24 +228,34 @@
     @keyframes abilityReady { 0%,100% { box-shadow: 0 0 18px var(--glow1), inset 0 0 8px var(--glow1); } 50% { box-shadow: 0 0 30px var(--glow1), inset 0 0 16px var(--glow1); } }
     #abilityBtnName { font-size: 11px; font-weight: 900; letter-spacing: 0.1em; }
     #abilityBtnState { font-size: 12px; font-weight: 800; color: var(--c1); margin-top: 2px; }
-    /* The power chip and the Combo Fever banner never sit where the saucer flies (see
-       layoutHudDocks). Default (narrow portrait phones): stacked in the middle under the HUD,
-       a strip the phone comfort zone keeps the saucer out of; below the boss bar in a boss
-       fight. Wide screens (body.hud-wide): docked inside the HUD band itself. */
+    /* POWER CHIP: upper-left, a small Liquid Glass capsule (clear glass, bright specular rim,
+       the scene showing through). It and the Combo Fever banner never sit where the saucer
+       flies (layoutHudDocks): wide screens (body.hud-wide) dock it in the HUD band under Score;
+       narrow portrait phones put it at the left of the first row under the HUD (below the boss
+       bar in a boss fight), a strip the phone comfort zone keeps the saucer out of. */
     #abilityStatus {
       position: fixed;
-      top: calc(env(safe-area-inset-top, 0px) + 171px);
-      left: 50%; translate: -50% 0;
+      top: calc(env(safe-area-inset-top, 0px) + 130px);
+      left: calc(env(safe-area-inset-left, 0px) + 16px);
       z-index: 8; display: none; pointer-events: none;
-      padding: 7px 12px; border-radius: 999px;
-      background: rgba(10,10,24,0.7); border: 1px solid rgba(255,255,255,0.22);
+      padding: 7px 14px; border-radius: 999px;
       font-size: 11px; font-weight: 800; letter-spacing: 0.1em; color: #fff;
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      background:
+        radial-gradient(120% 140% at 18% -20%, rgba(255,255,255,0.30), rgba(255,255,255,0) 52%),
+        linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+      border: 1px solid rgba(255,255,255,0.26);
+      box-shadow: inset 0 1px 0.5px rgba(255,255,255,0.55), inset 0 -1px 1px rgba(255,255,255,0.10),
+                  inset 1px 0 1px rgba(120,230,255,0.18), inset -1px 0 1px rgba(255,120,220,0.16),
+                  0 6px 18px rgba(0,0,0,0.28);
+      backdrop-filter: blur(10px) saturate(170%) brightness(1.08);
+      -webkit-backdrop-filter: blur(10px) saturate(170%) brightness(1.08);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.45);
     }
-    body:not(.hud-wide) #bossHud.show ~ #abilityStatus { top: calc(env(safe-area-inset-top, 0px) + 199px); }
+    body:not(.hud-wide) #bossHud.show ~ #abilityStatus { top: calc(env(safe-area-inset-top, 0px) + 158px); }
     body.hud-wide #abilityStatus {
-      left: auto; right: var(--dock-right, 76px); top: var(--dock-mid, 97px); translate: 0 -50%;
-      max-width: var(--dock-right-max, 220px);
+      left: var(--dock-left, 16px); top: var(--dock-mid, 97px); translate: 0 -50%;
+      max-width: var(--dock-left-max, 220px);
     }
     body.hud-wide #abilityStatus.on-air { font-size: 12px; }
     body.hud-wide #abilityStatus.tight { font-size: 10.5px; letter-spacing: 0.05em; padding-left: 10px; padding-right: 10px; }
@@ -253,15 +263,19 @@
     /* Hyperdrive has its own FIRE / CORE buttons, and powers can't be used in it */
     body.hyper-on #abilityStatus { display: none !important; }
     #abilityStatus.show { display: block; }
-    #abilityStatus.on-air { border-color: var(--c1); box-shadow: 0 0 16px var(--glow1); }
-    #abilityStatus .on { color: var(--c1); text-shadow: 0 0 8px var(--glow1); }
-    #abilityStatus .off { color: rgba(255,255,255,0.4); }
-    /* live power timer: seconds left + a draining bar (and cuts left for Saw / Laser) */
-    #abilityStatus.on-air { padding: 7px 14px 12px; font-size: 13px; }
+    /* charged: the glass picks up a soft breath of the theme colour */
+    #abilityStatus.ready { border-color: rgba(255,255,255,0.4); animation: glassReady 1.6s ease-in-out infinite; }
+    @keyframes glassReady { 50% { box-shadow: inset 0 1px 0.5px rgba(255,255,255,0.7), inset 0 -1px 1px rgba(255,255,255,0.14), inset 0 0 14px var(--glow1), 0 0 18px var(--glow1); } }
+    #abilityStatus.on-air { border-color: rgba(255,255,255,0.45);
+      box-shadow: inset 0 1px 0.5px rgba(255,255,255,0.7), inset 0 0 12px var(--glow1), 0 0 16px var(--glow1), 0 6px 18px rgba(0,0,0,0.28); }
+    #abilityStatus .on { color: #fff; text-shadow: 0 0 8px var(--glow1), 0 1px 2px rgba(0,0,0,0.5); }
+    #abilityStatus .off { color: rgba(255,255,255,0.55); }
+    /* live power timer: seconds left + a draining liquid line (and cuts left for Saw / Laser) */
+    #abilityStatus.on-air { padding: 7px 14px 11px; font-size: 13px; }
     #abilityStatus .uses { color: rgba(255,255,255,0.72); font-size: 10px; letter-spacing: 0.12em; margin-left: 4px; }
-    #abilityTimer { display: none; position: absolute; left: 12px; right: 12px; bottom: 5px; height: 3px; border-radius: 3px; background: rgba(255,255,255,0.14); overflow: hidden; }
+    #abilityTimer { display: none; position: absolute; left: 14px; right: 14px; bottom: 4px; height: 3px; border-radius: 3px; background: rgba(255,255,255,0.16); overflow: hidden; }
     #abilityStatus.on-air #abilityTimer { display: block; }
-    #abilityTimer i { display: block; height: 100%; width: 100%; background: var(--c1); box-shadow: 0 0 8px var(--glow1); transform-origin: 0 50%; }
+    #abilityTimer i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #fff, var(--c1)); box-shadow: 0 0 8px var(--glow1); transform-origin: 0 50%; border-radius: 3px; }
     #abilityStatus.ending { animation: abEnding 0.5s ease-in-out infinite alternate; }
     #abilityStatus.ending .on { color: #ff8aa5; text-shadow: 0 0 8px rgba(255,56,100,0.8); }
     #abilityStatus.ending #abilityTimer i { background: #ff5c7f; box-shadow: 0 0 8px rgba(255,56,100,0.9); }
@@ -269,6 +283,7 @@
     @media (prefers-reduced-motion: reduce) {
       #abilityBtn.ready { animation: none; }
       #abilityStatus.ending { animation: none; border-color: #ff5c7f; }
+      #abilityStatus.ready { animation: none; }
       #bossBar.danger #bossBarFill { animation: none; }
     }
     .stage-track {
@@ -302,7 +317,7 @@
     /* Combo Fever banner */
     #feverBanner {
       position: fixed;
-      top: calc(env(safe-area-inset-top, 0px) + 130px);
+      top: calc(env(safe-area-inset-top, 0px) + 171px);
       left: 50%;
       translate: -50% 0;
       z-index: 5; pointer-events: none;
@@ -325,13 +340,16 @@
     }
     #feverBanner.on { opacity: 1; transform: scale(1); }
     #feverBanner { white-space: nowrap; }   /* centered with left:50%, so it wrapped on phones */
-    body:not(.hud-wide) #bossHud.show ~ #feverBanner { top: calc(env(safe-area-inset-top, 0px) + 158px); }
-    /* wide screens: docked in the HUD band under Score (Fever multiplies the score) */
+    body:not(.hud-wide) #bossHud.show ~ #feverBanner { top: calc(env(safe-area-inset-top, 0px) + 199px); }
+    /* in Hyperdrive the chip is hidden, so Fever moves up to the first row (its HUD sits below) */
+    body.hyper-on:not(.hud-wide) #feverBanner { top: calc(env(safe-area-inset-top, 0px) + 130px); }
+    /* wide screens: docked in the HUD band under Best, beside Pause */
     body.hud-wide #feverBanner {
-      top: var(--dock-mid, 97px); left: var(--dock-left, 16px); translate: 0 -50%;
-      transform-origin: 0 50%; max-width: var(--dock-left-max, 260px); text-overflow: ellipsis;
+      top: var(--dock-mid, 97px); left: auto; right: var(--dock-right, 76px); translate: 0 -50%;
+      transform-origin: 100% 50%; max-width: var(--dock-right-max, 260px); text-overflow: ellipsis;
       font-size: 12px; padding: 7px 16px; letter-spacing: 0.16em;
     }
+    body.hud-wide #feverBanner.tight { font-size: 10.5px !important; padding: 6px 12px; letter-spacing: 0.08em; }
     /* v0.3.0 tiers: Supernova burns white-hot; Singularity is a black core with a glowing rim. */
     #feverBanner.lvl2 {
       color: #1a0700; font-size: 15px;
@@ -725,8 +743,31 @@
       letter-spacing: 0.28em; text-transform: uppercase; opacity: 0.32;
     }
 
-    /* --- first-time tutorial --- */
-    .tutorial-card { text-align: center; }
+    /* --- first-time tutorial: one card, one picture, Play --- */
+    .tutorial-card { text-align: center; width: min(400px, 92vw); }
+    .tut-demo { position: relative; width: 170px; height: 150px; margin: 2px auto 8px; display: grid; place-items: center; }
+    .tut-saucer { position: absolute; width: 96px; height: 56px; left: 50%; top: 50%; translate: -50% -50%;
+      filter: drop-shadow(0 0 10px rgba(157,107,255,0.8)); animation: tutHit 1.2s ease-out infinite; }
+    .tut-ring { position: absolute; left: 50%; top: 50%; width: 92px; height: 92px; translate: -50% -50%; border-radius: 50%;
+      border: 3px solid var(--c1); box-shadow: 0 0 14px var(--glow1), inset 0 0 10px var(--glow1);
+      animation: tutRing 1.2s cubic-bezier(.45,0,.9,.6) infinite; }
+    .tut-ring.r2 { border-color: var(--c2); box-shadow: 0 0 14px var(--glow2), inset 0 0 10px var(--glow2); animation-delay: 0.6s; opacity: 0; }
+    .tut-tap { position: absolute; left: 50%; top: 4px; translate: -50% 0; font-size: 15px; font-weight: 950; letter-spacing: 0.18em;
+      color: #fff; text-shadow: 0 0 12px var(--glow1); animation: tutTap 1.2s ease-out infinite; }
+    @keyframes tutRing { 0% { transform: scale(1.75); opacity: 0; } 15% { opacity: 1; } 72% { transform: scale(1); opacity: 1; } 80%, 100% { transform: scale(0.92); opacity: 0; } }
+    @keyframes tutHit { 0%, 70% { scale: 1; filter: drop-shadow(0 0 10px rgba(157,107,255,0.8)); } 76% { scale: 1.12; filter: drop-shadow(0 0 22px #fff) drop-shadow(0 0 30px var(--c1)); } 100% { scale: 1; } }
+    @keyframes tutTap { 0%, 68% { opacity: 0; transform: translateY(6px) scale(0.8); } 76% { opacity: 1; transform: translateY(0) scale(1.1); } 100% { opacity: 0; transform: translateY(-4px) scale(1); } }
+    .tutorial-card h2 { font-size: 22px; margin: 2px 0 6px; }
+    .tut-line { margin: 0 auto 14px; font-size: 15px; line-height: 1.4; opacity: 0.88; max-width: 300px; }
+    .tut-keys { display: flex; justify-content: center; gap: 8px; margin: 0 0 18px; }
+    .tut-keys span { padding: 6px 12px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+      background: var(--lg-sheen, none), linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,255,255,0.035)); border: 1px solid rgba(255,255,255,0.22);
+      box-shadow: inset 0 1px 0.5px rgba(255,255,255,0.55); }
+    @media (prefers-reduced-motion: reduce) {
+      .tut-ring, .tut-saucer, .tut-tap { animation: none; }
+      .tut-ring.r2 { display: none; }
+      .tut-tap { opacity: 1; }
+    }
     .tut-glyph {
       width: 76px; height: 76px; margin: 6px auto 14px;
       border-radius: 50%; display: grid; place-items: center;
@@ -1061,6 +1102,135 @@
       #menuScreen .hint { grid-area: hint; margin-top: 10px; }
       #menuScreen .version-tag { grid-area: ver; margin-top: 6px; }
     }
+
+    /* =====================================================================
+       LIQUID GLASS (Nov 12): Apple-inspired clear glass for the menus.
+       Translucent fills with the scene showing through, a bright specular
+       rim (light catching the top edge), a faint chromatic edge (cyan left,
+       pink right) like refraction, and a soft inner glow. Big surfaces
+       (cards, menu buttons) blur what's behind them; small tiles don't,
+       since they already sit on a blurred card (cheap on phones).
+       ===================================================================== */
+    :root {
+      --lg-fill: linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,255,255,0.035));
+      --lg-sheen: radial-gradient(130% 120% at 20% -30%, rgba(255,255,255,0.30), rgba(255,255,255,0) 55%);
+      --lg-rim: inset 0 1px 0.5px rgba(255,255,255,0.55), inset 0 -1px 1px rgba(255,255,255,0.10),
+                inset 1px 0 1px rgba(120,230,255,0.16), inset -1px 0 1px rgba(255,120,220,0.14);
+      --lg-lift: 0 8px 24px rgba(0,0,0,0.32);
+    }
+    .card {
+      background: var(--lg-sheen), linear-gradient(160deg, rgba(255,255,255,0.12), rgba(255,255,255,0.03) 60%, rgba(255,255,255,0.06));
+      border: 1px solid rgba(255,255,255,0.20);
+      box-shadow: var(--lg-rim), 0 0 60px var(--glow2), 0 24px 60px rgba(0,0,0,0.45);
+      backdrop-filter: blur(22px) saturate(165%);
+      -webkit-backdrop-filter: blur(22px) saturate(165%);
+    }
+    /* buttons: ghost = clear glass capsule; primary keeps its colour under a glass sheen */
+    .btn.ghost {
+      background: var(--lg-sheen), var(--lg-fill);
+      border: 1px solid rgba(255,255,255,0.24);
+      box-shadow: var(--lg-rim), var(--lg-lift);
+      backdrop-filter: blur(12px) saturate(170%);
+      -webkit-backdrop-filter: blur(12px) saturate(170%);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+      transition: transform 160ms cubic-bezier(.3,1.6,.5,1), background-color 160ms ease, box-shadow 160ms ease;
+    }
+    .btn.ghost:hover { box-shadow: var(--lg-rim), inset 0 0 18px rgba(255,255,255,0.08), var(--lg-lift); }
+    .btn.ghost:active { transform: scale(0.96); box-shadow: var(--lg-rim), inset 0 0 22px var(--glow1), var(--lg-lift); }
+    .btn:not(.ghost) {
+      background-image: linear-gradient(180deg, rgba(255,255,255,0.42), rgba(255,255,255,0.06) 48%, rgba(255,255,255,0) 52%),
+                        linear-gradient(90deg, var(--c1), var(--c2));
+      box-shadow: inset 0 1px 0.5px rgba(255,255,255,0.8), inset 0 -2px 6px rgba(0,0,0,0.18),
+                  0 0 26px var(--glow1), 0 0 44px var(--glow2);
+      transition: transform 160ms cubic-bezier(.3,1.6,.5,1);
+    }
+    .btn:not(.ghost):active { transform: scale(0.96); }
+    .level-pill, .daily-ticket {
+      background: var(--lg-sheen), var(--lg-fill);
+      border: 1px solid rgba(255,255,255,0.2);
+      box-shadow: var(--lg-rim);
+    }
+    /* segmented controls: a glass tray with a clear lens on the chosen option */
+    .seg {
+      background: linear-gradient(180deg, rgba(0,0,0,0.30), rgba(0,0,0,0.16));
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.45), inset 0 -1px 0.5px rgba(255,255,255,0.12);
+    }
+    .seg button { transition: background 220ms ease, box-shadow 220ms ease, color 220ms ease, transform 200ms cubic-bezier(.3,1.6,.5,1); }
+    .seg button:active { transform: scale(0.94); }
+    .seg button.on {
+      color: #fff; text-shadow: 0 0 10px var(--glow1), 0 1px 2px rgba(0,0,0,0.45);
+      background: var(--lg-sheen), linear-gradient(180deg, rgba(255,255,255,0.26), rgba(255,255,255,0.07)),
+                  linear-gradient(90deg, color-mix(in srgb, var(--c1) 34%, transparent), color-mix(in srgb, var(--c2) 34%, transparent));
+      box-shadow: var(--lg-rim), inset 0 0 12px var(--glow1), 0 0 16px var(--glow1), 0 4px 12px rgba(0,0,0,0.3);
+    }
+    /* tiles: abilities, themes, vibes */
+    .ability-swatch, .theme-swatch {
+      background: var(--lg-sheen), var(--lg-fill);
+      border: 1px solid rgba(255,255,255,0.18);
+      box-shadow: var(--lg-rim), 0 4px 14px rgba(0,0,0,0.22);
+      transition: transform 180ms cubic-bezier(.3,1.6,.5,1), box-shadow 180ms ease, border-color 180ms ease;
+    }
+    .ability-swatch:active, .theme-swatch:active { transform: scale(0.96); }
+    .ability-swatch.equipped, .theme-swatch.equipped {
+      border-color: rgba(255,255,255,0.5);
+      background: var(--lg-sheen), linear-gradient(180deg, rgba(255,255,255,0.20), rgba(255,255,255,0.05)),
+                  linear-gradient(135deg, color-mix(in srgb, var(--c1) 22%, transparent), color-mix(in srgb, var(--c2) 18%, transparent));
+      box-shadow: var(--lg-rim), inset 0 0 14px var(--glow1), 0 0 18px var(--glow1);
+    }
+    /* SWITCHES: iOS-26-style. A glass track (tinted when on) and a capsule thumb that turns
+       into a clear, magnifying glass lens while you press it, then springs across. */
+    .toggle {
+      width: 58px; height: 30px;
+      background: linear-gradient(180deg, rgba(0,0,0,0.34), rgba(255,255,255,0.06));
+      border: 1px solid rgba(255,255,255,0.20);
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), inset 0 -1px 0.5px rgba(255,255,255,0.18);
+      transition: background 260ms ease, box-shadow 260ms ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .toggle::after {
+      top: 2px; left: 2px; width: 34px; height: 24px; border-radius: 999px;
+      background: linear-gradient(180deg, #ffffff, #e9ecf5);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.35), inset 0 -1px 1px rgba(0,0,0,0.08), inset 0 1px 0.5px rgba(255,255,255,1);
+      transition: left 340ms cubic-bezier(.3,1.45,.45,1), transform 200ms cubic-bezier(.3,1.6,.5,1),
+                  background 200ms ease, box-shadow 200ms ease;
+    }
+    .toggle:checked {
+      background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0)),
+                  linear-gradient(90deg, var(--c1), var(--c2));
+      box-shadow: inset 0 1px 0.5px rgba(255,255,255,0.6), inset 0 -1px 3px rgba(0,0,0,0.25), 0 0 14px var(--glow1);
+    }
+    .toggle:checked::after { left: 20px; }
+    /* pressed: the thumb swells into a clear lens; the track shows through it, tinted and bent */
+    .toggle:active::after {
+      transform: scale(1.28, 1.22);
+      background: radial-gradient(120% 100% at 30% 20%, rgba(255,255,255,0.75), rgba(255,255,255,0.12) 45%, rgba(255,255,255,0.22));
+      box-shadow: inset 0 1px 1px rgba(255,255,255,0.95), inset 0 -2px 4px rgba(255,255,255,0.35),
+                  inset 2px 0 2px rgba(120,230,255,0.45), inset -2px 0 2px rgba(255,120,220,0.4), 0 4px 14px rgba(0,0,0,0.35);
+      backdrop-filter: blur(1.5px) saturate(190%) brightness(1.2);
+      -webkit-backdrop-filter: blur(1.5px) saturate(190%) brightness(1.2);
+    }
+    /* sliders: the thumb is a little glass bead */
+    .neon-slider::-webkit-slider-thumb {
+      width: 30px; height: 22px; border-radius: 999px;
+      background: linear-gradient(180deg, #ffffff, #e6eaf4); border: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 1px 0.5px #fff, 0 0 10px var(--glow1);
+      transition: transform 180ms cubic-bezier(.3,1.6,.5,1);
+    }
+    .neon-slider:active::-webkit-slider-thumb { transform: scale(1.25); background: radial-gradient(120% 100% at 30% 20%, rgba(255,255,255,0.85), rgba(255,255,255,0.25)); }
+    .neon-slider::-moz-range-thumb {
+      width: 30px; height: 22px; border-radius: 999px;
+      background: linear-gradient(180deg, #ffffff, #e6eaf4); border: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4), 0 0 10px var(--glow1);
+    }
+    .neon-slider { box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.14); }
+    .tut-dots i.on { background: #fff; box-shadow: 0 0 10px var(--glow1); }
+    @media (prefers-reduced-motion: reduce) {
+      .toggle::after, .btn, .seg button, .ability-swatch, .theme-swatch { transition: none; }
+    }
+    @supports not (backdrop-filter: blur(1px)) {
+      @supports not (-webkit-backdrop-filter: blur(1px)) { .card { background: rgba(14,10,30,0.92); } }
+    }
   </style>
 </head>
 <body>
@@ -1169,18 +1339,29 @@
   </div>
 
   <!-- ================= FIRST-TIME TUTORIAL ================= -->
-  <!-- Shown only when save.tutorialDone is false. Short, skippable, and marks
-       completion in localStorage so returning players never see it again. -->
+  <!-- Shown only when save.tutorialDone is false: ONE card, a looping picture of the only thing
+       you need to know, and Play. Everything else (powers, bosses, secrets) is taught in the moment
+       or left to discover. Marks completion in localStorage so returning players never see it. -->
   <div class="overlay hidden" id="tutorialScreen">
     <div class="card tutorial-card">
-      <div class="tut-dots" id="tutDots"></div>
-      <div class="tut-glyph" id="tutGlyph">◎</div>
-      <h2 id="tutTitle">Tap in Time</h2>
-      <p class="subtitle" id="tutBody">Neon rings shrink toward the center circle. Tap the moment a ring lands on it — timing is everything.</p>
-      <div class="btn-stack">
-        <button class="btn" id="tutNext">Next</button>
-        <button class="btn ghost" id="tutSkip">Skip</button>
+      <div class="tut-demo" aria-hidden="true">
+        <span class="tut-ring"></span><span class="tut-ring r2"></span>
+        <svg class="tut-saucer" viewBox="0 0 120 70">
+          <defs>
+            <radialGradient id="tutDome" cx="45%" cy="35%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".95"/><stop offset=".45" stop-color="#c9b8ff" stop-opacity=".55"/><stop offset="1" stop-color="#6a3cff" stop-opacity=".25"/></radialGradient>
+            <linearGradient id="tutDisc" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f3ecff"/><stop offset=".5" stop-color="#9d6bff"/><stop offset="1" stop-color="#3a1680"/></linearGradient>
+          </defs>
+          <ellipse cx="60" cy="52" rx="34" ry="8" fill="#00f5ff" opacity=".35"/>
+          <path d="M40 38 Q42 14 60 14 Q78 14 80 38 Z" fill="url(#tutDome)" stroke="#fff" stroke-opacity=".6"/>
+          <ellipse cx="60" cy="40" rx="50" ry="11" fill="url(#tutDisc)" stroke="#fff" stroke-opacity=".7"/>
+          <g fill="#00f5ff"><circle cx="30" cy="41" r="2.4"/><circle cx="47" cy="44" r="2.4"/><circle cx="73" cy="44" r="2.4"/><circle cx="90" cy="41" r="2.4"/></g>
+        </svg>
+        <span class="tut-tap">TAP!</span>
       </div>
+      <h2 id="tutTitle">Tap on the beat</h2>
+      <p class="tut-line" id="tutBody">Tap when a ring hits the saucer.</p>
+      <div class="tut-keys" aria-label="Controls"><span>Tap</span><span>Click</span><span>Space</span></div>
+      <button class="btn" id="tutNext">Play</button>
     </div>
   </div>
 
@@ -1189,18 +1370,12 @@
     <div class="card">
       <h2>How to Play</h2>
       <div class="howto-list">
-        <div class="howto-item"><span class="glyph">◎</span><span>Neon rings shrink toward the glowing target circle. <b>Tap in time</b> the moment a ring lands on it. On <b>Stage 1</b> you can tap anywhere — just learn the rhythm.</span></div>
-        <div class="howto-item"><span class="glyph">◉</span><span><b>Tap Mode</b> (in Settings): <b>Target</b> (recommended) requires tapping inside the dashed zone in time. <b>Anywhere</b> is timing-only for casual/accessible play. Space/Enter are always timing-only.</span></div>
-        <div class="howto-item"><span class="glyph">➤</span><span>From <b>Stage 2</b> the <b>target moves</b> — kept in a thumb-friendly zone on phones. A ghost circle shows where it's headed; follow it with your eyes, not your thumb.</span></div>
-        <div class="howto-item"><span class="glyph">♫</span><span>The soundtrack <b>evolves every five stages</b> and the background shifts with it. Pick a <b>Music Vibe</b> in Settings — six distinct songs (Cyber Bounce, Blue Pulse, Toxic Breaks, and more). Visual theme and vibe can be set separately.</span></div>
-        <div class="howto-item"><span class="glyph">✦</span><span><b>Perfect</b> = 300 pts &amp; refills energy. <b>Good</b> = 150. <b>OK</b> = 75. Late or early taps drain energy.</span></div>
-        <div class="howto-item"><span class="glyph">⚡</span><span>Build combo to chase milestones: <b>25× Combo Fever</b> gives ×1.5 score, <b>100× Supernova</b> ×2 (a star blows up and leaves a black hole in the sky for as long as you hold it; its light clears the rings), <b>150× Hyperdrive</b> (Goods count too): 60 seconds behind the saucer through a spacetime tunnel, tap left or right to dodge, FIRE to shoot rocks, CORE for your Boss Core's hyperdrive power, and <b>250× Singularity</b> ×3 (PERFECT hits only: a GOOD or OK drops you back to ×2 until 25 PERFECTs in a row), with <b>Overdrive</b> and <b>Perfect Orbit</b> bonuses along the way. One miss resets the climb. <b>Long rhythm runs</b> show up more from Stage 5.</span></div>
-        <div class="howto-item"><span class="glyph">▲</span><span>Each new level gives a brief <b>breather</b>: gameplay pauses, the level and track are announced, then a fresh pattern begins.</span></div>
-        <div class="howto-item"><span class="glyph">♥</span><span>Your <b>energy bar</b> drains over time and on misses. When it empties, the run ends.</span></div>
-        <div class="howto-item"><span class="glyph">☣</span><span><b>Boss Battles</b> at Stages 10, 20, 30, 40 & 50, and maybe beyond… Damage the boss by hitting rings — <b>Perfect</b> hits hurt most, <b>Good</b> chips in, <b>OK</b> doesn't. Survive its phases to win energy. Progression pauses until the boss falls.</span></div>
-        <div class="howto-item"><span class="glyph">✦</span><span>Defeat a boss to <b>capture its core</b> — Quantize, Hex Saw, Tri-Laser, Prism Guard, Event Horizon, and two secret ones further out. Equip one in Settings, then <b>hold the target</b> (or hold Space) for half a second to unleash it. Rings your core destroys count as <b>PERFECT</b>, and energy drain pauses while it's running.</span></div>
-        <div class="howto-item"><span class="glyph">★</span><span>Runs earn <b>XP</b>. Level up to unlock neon <b>themes</b> and <b>Music Vibes</b> in Settings.</span></div>
-        <div class="howto-item"><span class="glyph">🏆</span><span>Your <b>Highest Score</b> across all runs is shown on the home screen. Chase your personal best — a leaderboard is coming later.</span></div>
+        <div class="howto-item"><span class="glyph">◎</span><span><b>Tap when a ring hits the saucer.</b> Perfect taps score the most and refill energy. Tap, click, Space or Enter.</span></div>
+        <div class="howto-item"><span class="glyph">♥</span><span>Misses drain your <b>energy bar</b>. When it runs out, the run ends.</span></div>
+        <div class="howto-item"><span class="glyph">⚡</span><span>Keep the hits coming to build your <b>combo</b> and climb to bigger score multipliers.</span></div>
+        <div class="howto-item"><span class="glyph">✊</span><span>Power charged? <b>Hold the saucer</b> (or hold Space) to unleash it.</span></div>
+        <div class="howto-item"><span class="glyph">☣</span><span><b>Bosses</b> show up as you climb. Hit rings on the beat to break them and take their power.</span></div>
+        <div class="howto-item"><span class="glyph">⚙</span><span>Tap mode, music and visuals are in <b>Settings</b>. Pause any time, top right.</span></div>
       </div>
       <div class="back-row"><button class="btn ghost" data-back>Back</button></div>
     </div>
@@ -5867,28 +6042,12 @@
   // ---- First-time tutorial ----
   // Short, skippable card sequence. Shown once (save.tutorialDone), then never
   // again. Both "Skip" and finishing the last card mark it complete and start.
-  const TUTORIAL_STEPS = [
-    { glyph: '◎', title: 'Tap in Time',        body: 'Neon rings shrink toward the glowing circle. Tap the instant a ring lands on it — perfect timing scores the most and refills energy. On phones the circle stays in a comfy thumb zone.' },
-    { glyph: '➤', title: 'The Target Moves',   body: 'From Level 2 the target moves around the lower screen. A ghost circle shows where it\'s headed — follow it with your eyes, not your thumb.' },
-    { glyph: '◉', title: 'Tap Modes',          body: 'Default Target: tap inside the dashed zone in time with the beat. Prefer casual? Switch to Anywhere in Settings. Space / Enter are always timing-only.' },
-    { glyph: '♥', title: 'Energy & Combo',     body: 'Energy drains over time and on misses, refills on clean hits. Chain hits for Combo Fever at 25× (×1.5 score), Supernova at 100× (×2) and Singularity at 250× (×3). Singularity needs PERFECT hits: a GOOD or OK drops you to ×2 until 25 PERFECTs in a row. A miss resets the climb.' },
-    { glyph: '♫', title: 'Vibe It Your Way',   body: 'Pick a Music Vibe in Settings — six distinct songs, from Cyber Bounce to Crimson Drive. Choose your theme and vibe separately; the soundtrack evolves every five stages.' },
-    { glyph: '☣', title: 'Boss Battles',       body: 'Bosses appear at Stages 20, 30, 40 and 50. Keep hitting rings to damage it — Perfects hurt most. Survive its phases to win energy, and defeat each boss once to unlock a powerful Ability you equip in Settings.' }
-  ];
-  let tutStep = 0, tutPendingDaily = false;
-
-  function renderTutorial() {
-    const s = TUTORIAL_STEPS[tutStep];
-    $('tutGlyph').textContent = s.glyph;
-    $('tutTitle').textContent = s.title;
-    $('tutBody').textContent = s.body;
-    $('tutNext').textContent = (tutStep === TUTORIAL_STEPS.length - 1) ? 'Play' : 'Next';
-    const dots = TUTORIAL_STEPS.map((_, i) => `<i class="${i === tutStep ? 'on' : ''}"></i>`).join('');
-    $('tutDots').innerHTML = dots;
-  }
+  // One card (CrazyGames: into play fast, no wall of text). The only rule a new player needs is
+  // the timing; the rest is taught in the moment (the moving target shows a ghost circle, a
+  // charged power says HOLD THE SAUCER, Hyperdrive has its own first-flight card) or discovered.
+  let tutPendingDaily = false;
   function openTutorial(isDaily) {
-    tutStep = 0; tutPendingDaily = isDaily;
-    renderTutorial();
+    tutPendingDaily = isDaily;
     showScreen('tutorial');
   }
   function finishTutorial() {
@@ -5897,15 +6056,7 @@
     trackEvent('tutorial_complete', {});
     startGame(tutPendingDaily);
   }
-  $('tutNext').addEventListener('click', () => {
-    const last = tutStep >= TUTORIAL_STEPS.length - 1;
-    if (last) { sfxConfirm(); } else { sfxClick(); }
-    buzz(10);
-    if (last) { finishTutorial(); return; }
-    tutStep++;
-    renderTutorial();
-  });
-  $('tutSkip').addEventListener('click', () => { sfxBack(); buzz(10); finishTutorial(); });
+  $('tutNext').addEventListener('click', () => { sfxConfirm(); buzz(10); finishTutorial(); });
 
   // First-ever Start shows the tutorial; afterwards it plays immediately.
   function beginRun(isDaily) {
@@ -6327,7 +6478,7 @@
   // Narrow portrait phones have no room beside the stage chip, so both stack in the middle under
   // the HUD (below the boss bar in a boss fight): a strip the phone comfort zone already keeps the
   // saucer out of, and computeAnchors() guarantees it via hudDockReserve.
-  const DOCK_NARROW = { feverTop: 130, chipTop: 171, bossShift: 28, chipH: 38 };   // mirrors the CSS
+  const DOCK_NARROW = { chipTop: 130, feverTop: 171, bossShift: 28, rowH: 38 };   // mirrors the CSS
   let hudDockReserve = 0;      // viewport px the saucer's top row must stay clear of
   function layoutHudDocks() {
     const si = safeInsets();
@@ -6356,11 +6507,26 @@
       rs.setProperty('--dock-left-max', Math.max(90, availL).toFixed(0) + 'px');
       rs.setProperty('--dock-right', (W - rightEdge).toFixed(1) + 'px');
       rs.setProperty('--dock-right-max', Math.max(90, availR).toFixed(0) + 'px');
-      hudDockReserve = Math.max(hudBand, mid + DOCK_NARROW.chipH / 2 + 4);
+      hudDockReserve = Math.max(hudBand, mid + DOCK_NARROW.rowH / 2 + 4);
     } else {
-      hudDockReserve = si.top + DOCK_NARROW.chipTop + DOCK_NARROW.bossShift + DOCK_NARROW.chipH + 4;
+      hudDockReserve = si.top + DOCK_NARROW.feverTop + DOCK_NARROW.bossShift + DOCK_NARROW.rowH + 4;
     }
     fitAbilityChip();
+    fitFeverBanner();
+  }
+  // Wider than its box? (Text width vs content box: scrollWidth can't be used on the Fever banner,
+  // whose shine sweeps outside it.)
+  function textOverflows(el, textEl) {
+    const r = document.createRange(); r.selectNodeContents(textEl || el);
+    const cs = getComputedStyle(el), w = el.getBoundingClientRect().width;
+    return r.getBoundingClientRect().width > w - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - parseFloat(cs.borderLeftWidth) - parseFloat(cs.borderRightWidth) + 1;
+  }
+  // The docked Fever banner goes compact when its tier name doesn't fit beside Pause.
+  function fitFeverBanner() {
+    if (typeof feverBanner === 'undefined' || !feverBanner) return;
+    feverBanner.classList.remove('tight');
+    if (!document.body.classList.contains('hud-wide') || !feverBanner.classList.contains('on')) return;
+    if (textOverflows(feverBanner)) feverBanner.classList.add('tight');
   }
   // A docked chip that doesn't fit (fonts differ per device, so this is measured, not guessed)
   // goes compact: smaller type and no "· 5 CUTS" count; the timer always stays.
@@ -7621,7 +7787,7 @@
       if (abStagesLeft <= 0) {
         abReady = true;
         if (state === 'playing' || state === 'bossBattle') {
-          showToast(ABILITIES[abilityId].name.toUpperCase(), theme.c1, 'CORE READY');
+          showToast(ABILITIES[abilityId].name.toUpperCase(), theme.c1, 'READY · HOLD THE SAUCER');
           tone(660, 0.07, 'triangle', 0.035);
           tone(990, 0.07, 'sine', 0.025, 0.05);
         }
@@ -7643,6 +7809,7 @@
     const tune = abTuning();
     abilityBtn.classList.remove('show', 'ready');
     abilityStatus.classList.add('show');
+    abilityStatus.classList.toggle('ready', !!abReady && !abActive);
     const label = (save.overclock ? '⚡' : '') + meta.short;
     if (abActive) {
       abilityStatus.classList.add('on-air');
@@ -9772,6 +9939,7 @@
     fever = on;
     if (on && feverLevel < 1) feverLevel = 1;
     feverBanner.classList.toggle('on', on);
+    fitFeverBanner();
     comboLabel.textContent = on ? FEVER_TIERS[feverLevel].label : 'Combo';
     if (on) {
       tone(880, 0.08, 'square', 0.035);
@@ -9797,6 +9965,7 @@
     feverBanner.textContent = tier.banner;
     feverBanner.classList.toggle('lvl2', n === 2);
     feverBanner.classList.toggle('lvl3', n === 3);
+    fitFeverBanner();
     feverBanner.classList.remove('pop'); void feverBanner.offsetWidth; feverBanner.classList.add('pop');
     clearTimeout(_feverPopTimer);
     _feverPopTimer = setTimeout(() => feverBanner.classList.remove('pop'), 600);
@@ -9843,6 +10012,7 @@
     feverBanner.textContent = tier.banner;
     feverBanner.classList.add('lvl2');
     feverBanner.classList.remove('lvl3');
+    fitFeverBanner();
     comboLabel.textContent = tier.label;
     tone(330, 0.12, 'sawtooth', 0.03);
     tone(247, 0.18, 'sawtooth', 0.026, 0.09);
