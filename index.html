@@ -228,15 +228,29 @@
     @keyframes abilityReady { 0%,100% { box-shadow: 0 0 18px var(--glow1), inset 0 0 8px var(--glow1); } 50% { box-shadow: 0 0 30px var(--glow1), inset 0 0 16px var(--glow1); } }
     #abilityBtnName { font-size: 11px; font-weight: 900; letter-spacing: 0.1em; }
     #abilityBtnState { font-size: 12px; font-weight: 800; color: var(--c1); margin-top: 2px; }
+    /* The power chip and the Combo Fever banner never sit where the saucer flies (see
+       layoutHudDocks). Default (narrow portrait phones): stacked in the middle under the HUD,
+       a strip the phone comfort zone keeps the saucer out of; below the boss bar in a boss
+       fight. Wide screens (body.hud-wide): docked inside the HUD band itself. */
     #abilityStatus {
       position: fixed;
-      right: calc(env(safe-area-inset-right, 0px) + 16px);
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 74px);
-      z-index: 8; display: none;
+      top: calc(env(safe-area-inset-top, 0px) + 171px);
+      left: 50%; translate: -50% 0;
+      z-index: 8; display: none; pointer-events: none;
       padding: 7px 12px; border-radius: 999px;
       background: rgba(10,10,24,0.7); border: 1px solid rgba(255,255,255,0.22);
       font-size: 11px; font-weight: 800; letter-spacing: 0.1em; color: #fff;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
+    body:not(.hud-wide) #bossHud.show ~ #abilityStatus { top: calc(env(safe-area-inset-top, 0px) + 199px); }
+    body.hud-wide #abilityStatus {
+      left: auto; right: var(--dock-right, 76px); top: var(--dock-mid, 97px); translate: 0 -50%;
+      max-width: var(--dock-right-max, 220px);
+    }
+    body.dock-tight #abilityStatus .uses { display: none; }
+    body.hud-wide #abilityStatus.on-air { font-size: 12px; }
+    /* Hyperdrive has its own FIRE / CORE buttons, and powers can't be used in it */
+    body.hyper-on #abilityStatus { display: none !important; }
     #abilityStatus.show { display: block; }
     #abilityStatus.on-air { border-color: var(--c1); box-shadow: 0 0 16px var(--glow1); }
     #abilityStatus .on { color: var(--c1); text-shadow: 0 0 8px var(--glow1); }
@@ -287,7 +301,7 @@
     /* Combo Fever banner */
     #feverBanner {
       position: fixed;
-      top: calc(env(safe-area-inset-top, 0px) + 126px);
+      top: calc(env(safe-area-inset-top, 0px) + 130px);
       left: 50%;
       translate: -50% 0;
       z-index: 5; pointer-events: none;
@@ -297,7 +311,7 @@
       background: linear-gradient(90deg, var(--c1), var(--c2), var(--c3), var(--c1));
       background-size: 300% 100%;
       box-shadow: 0 0 34px var(--glow1), 0 0 60px var(--glow2), inset 0 0 12px rgba(255,255,255,0.5);
-      opacity: 0; transform: translateY(-10px) scale(0.9);
+      opacity: 0; transform: scale(0.88);
       transition: opacity 180ms ease, transform 180ms ease;
       animation: feverShift 1.2s linear infinite;
       overflow: hidden;
@@ -308,8 +322,15 @@
       transform: skewX(-18deg);
       animation: pcShine 2.4s ease-in-out infinite;
     }
-    #feverBanner.on { opacity: 1; transform: translateY(0) scale(1); }
+    #feverBanner.on { opacity: 1; transform: scale(1); }
     #feverBanner { white-space: nowrap; }   /* centered with left:50%, so it wrapped on phones */
+    body:not(.hud-wide) #bossHud.show ~ #feverBanner { top: calc(env(safe-area-inset-top, 0px) + 158px); }
+    /* wide screens: docked in the HUD band under Score (Fever multiplies the score) */
+    body.hud-wide #feverBanner {
+      top: var(--dock-mid, 97px); left: var(--dock-left, 16px); translate: 0 -50%;
+      transform-origin: 0 50%; max-width: var(--dock-left-max, 260px); text-overflow: ellipsis;
+      font-size: 12px; padding: 7px 16px; letter-spacing: 0.16em;
+    }
     /* v0.3.0 tiers: Supernova burns white-hot; Singularity is a black core with a glowing rim. */
     #feverBanner.lvl2 {
       color: #1a0700; font-size: 15px;
@@ -329,6 +350,7 @@
       animation: feverShift 0.9s linear infinite, singBreathe 1.1s ease-in-out infinite;
     }
     #feverBanner.pop { animation: feverPop 520ms cubic-bezier(.2,1.6,.4,1) 1, feverShift 0.8s linear infinite; }
+    body.hud-wide #feverBanner.lvl2, body.hud-wide #feverBanner.lvl3 { font-size: 13px; }
     @keyframes feverPop { 0% { scale: 1.45; } 100% { scale: 1; } }
     @keyframes singBreathe { 50% { box-shadow: 0 0 52px var(--glow2), 0 0 120px var(--glow1), inset 0 0 22px rgba(0,0,0,0.9); } }
     #comboLabel.tier-long { letter-spacing: 0.06em; white-space: nowrap; }
@@ -361,6 +383,11 @@
     #pauseCount { display: none; font-size: 84px; font-weight: 950; line-height: 1; color: var(--c3); text-shadow: 0 0 28px var(--c3); }
     #pauseOverlay.counting #pauseCount { display: block; }
     #pauseOverlay.counting #pauseResumeBtn, #pauseOverlay.counting #pauseTitle { display: none; }
+    #pauseOverlay.counting .pause-actions { display: none; }
+    .pause-actions { display: flex; flex-direction: column; gap: 10px; width: min(300px, 100%); }
+    /* Main Menu ends the run, so it asks for a second tap (armed for 3 s) */
+    #pauseMenuBtn.armed { border-color: #ff5c7f; color: #ffd3dc; box-shadow: 0 0 18px rgba(255,56,100,0.55); }
+    @media (max-height: 420px) { .pause-actions { flex-direction: row; width: min(460px, 100%); } }
 
     /* Non-blocking audio unlock hint */
     #audioHint {
@@ -1094,7 +1121,10 @@
     <div id="pauseTitle">PAUSED</div>
     <div id="pauseMsg"></div>
     <div id="pauseCount">3</div>
-    <button class="btn" id="pauseResumeBtn">Resume</button>
+    <div class="pause-actions">
+      <button class="btn" id="pauseResumeBtn">Resume</button>
+      <button class="btn ghost" id="pauseMenuBtn">Main Menu</button>
+    </div>
   </div>
 
   <!-- Level-up announcement: a brief centered banner during the levelup pause -->
@@ -5885,7 +5915,11 @@
   $('startBtn').addEventListener('click', () => { sfxConfirm(); beginRun(false); });
   $('retryBtn').addEventListener('click', () => { sfxConfirm(); startGame(runWasDaily); });
   $('copyResultBtn').addEventListener('click', () => copyResult('copyResultBtn', 'Copy Result'));
-  $('overMenuBtn').addEventListener('click', () => { sfxBack(); state = 'menu'; stopMusic(0.4); stageChip.classList.remove('show', 'boss-hidden'); bossHud.classList.remove('show'); bossDefeatBanner.classList.remove('show'); abilityBtn.classList.remove('show','ready'); abilityStatus.classList.remove('show'); bossActive = false; bossMusicMod = null; bossMusicMix = 0; clearAbilityState(); exitDoomMode(); trackNameEl.classList.remove('show'); levelUpEl.classList.remove('show'); showScreen('menu'); startMenuMusic(); });
+  // Back to the title screen from the results screen, or straight from Pause (Main Menu).
+  function returnToMenu() {
+    state = 'menu'; stopMusic(0.4); stageChip.classList.remove('show', 'boss-hidden'); bossHud.classList.remove('show'); bossDefeatBanner.classList.remove('show'); abilityBtn.classList.remove('show','ready'); abilityStatus.classList.remove('show'); bossActive = false; bossMusicMod = null; bossMusicMix = 0; clearAbilityState(); exitDoomMode(); trackNameEl.classList.remove('show'); levelUpEl.classList.remove('show'); showScreen('menu'); startMenuMusic();
+  }
+  $('overMenuBtn').addEventListener('click', () => { sfxBack(); returnToMenu(); });
   $('howtoBtn').addEventListener('click', () => { sfxClick(); showScreen('howto'); });
 
   // ---- SECRET: The Architect. Press and hold the Highest Score card until it
@@ -6285,6 +6319,55 @@
   let tgtAnim = null;          // {fromX,fromY,toX,toY,start,dur}
   let ghost = null;            // {x,y,born,until} — warning marker at the next spot
 
+  // ---- HUD docks: where the Combo Fever banner and the power chip live ----
+  // Neither may sit where the saucer flies. Wide screens (landscape phones, tablets, desktop and
+  // every CrazyGames frame) dock both inside the HUD band: Fever under Score on the left, the
+  // power chip under Best beside Pause, each clear of the middle (stage chip / boss name).
+  // Narrow portrait phones have no room beside the stage chip, so both stack in the middle under
+  // the HUD (below the boss bar in a boss fight): a strip the phone comfort zone already keeps the
+  // saucer out of, and computeAnchors() guarantees it via hudDockReserve.
+  const DOCK_NARROW = { feverTop: 130, chipTop: 171, bossShift: 28, chipH: 38 };   // mirrors the CSS
+  let hudDockReserve = 0;      // viewport px the saucer's top row must stay clear of
+  function layoutHudDocks() {
+    const si = safeInsets();
+    const panels = document.querySelectorAll('.hud .panel');
+    const hudBand = si.top + 118;
+    if (panels.length < 3 || typeof stageChip === 'undefined') { hudDockReserve = hudBand; return; }
+    const sc = panels[0].getBoundingClientRect(), be = panels[2].getBoundingClientRect();
+    const st = stageChip.getBoundingClientRect();
+    const midX = (st.left + st.right) / 2 || W / 2;
+    const leftEdge = sc.left;
+    const rightEdge = W - si.right - 16 - 44 - 16;            // Pause (44 px + its 10 px halo) at the right edge
+    const bandTop = Math.max(sc.bottom, be.bottom) + 4;
+    // wide or narrow is decided by the stage chip alone, so a boss arriving never moves the docks
+    const chipHalf = st.width / 2 + 10;
+    const wide = (W >= H || ((midX - chipHalf) - leftEdge >= 200 && rightEdge - (midX + chipHalf) >= 180)) && hudBand - bandTop >= 30;
+    // how far each dock may reach toward the middle: the stage chip, or in a boss fight the boss's name
+    const boss = typeof bossHud !== 'undefined' && bossHud.classList.contains('show');
+    const half = boss ? Math.max(chipHalf, bossNameEl.getBoundingClientRect().width / 2 + 10) : chipHalf;
+    const availL = (midX - half) - leftEdge, availR = rightEdge - (midX + half);
+    document.body.classList.toggle('hud-wide', wide);
+    document.body.classList.toggle('dock-tight', wide && availR < 175);   // drop the "· 5 CUTS" count, keep the timer
+    const rs = document.documentElement.style;
+    if (wide) {
+      const mid = (bandTop + hudBand) / 2;
+      rs.setProperty('--dock-mid', mid.toFixed(1) + 'px');
+      rs.setProperty('--dock-left', leftEdge.toFixed(1) + 'px');
+      rs.setProperty('--dock-left-max', Math.max(90, availL).toFixed(0) + 'px');
+      rs.setProperty('--dock-right', (W - rightEdge).toFixed(1) + 'px');
+      rs.setProperty('--dock-right-max', Math.max(90, availR).toFixed(0) + 'px');
+      hudDockReserve = Math.max(hudBand, mid + DOCK_NARROW.chipH / 2 + 4);
+    } else {
+      hudDockReserve = si.top + DOCK_NARROW.chipTop + DOCK_NARROW.bossShift + DOCK_NARROW.chipH + 4;
+    }
+  }
+
+  if (typeof MutationObserver === 'function') {
+    const mo = new MutationObserver(() => layoutHudDocks());
+    mo.observe(bossHud, { attributes: true, attributeFilter: ['class'] });
+    mo.observe(bossNameEl, { childList: true, characterData: true, subtree: true });
+  }
+
   // Compute anchor points that keep the target clear of the HUD (top),
   // the energy bar (bottom), the safe areas, and the screen edges.
   //
@@ -6311,7 +6394,12 @@
 
     // On phones, push the top of the allowed band down to ~30% into the play
     // area so nothing spawns up high. On wider screens, use the full band.
-    const y0 = isPhone ? usableTop + fullSpan * 0.34 : usableTop;
+    let y0 = isPhone ? usableTop + fullSpan * 0.34 : usableTop;
+    // The saucer's top row (the middle row on phones) stays clear of the docked Fever / power
+    // chip (layoutHudDocks). Usually already true; this guarantees it on unusual sizes.
+    const clearTop = Math.max(hudBottom, hudDockReserve || 0) + targetR * 1.35;
+    if (isPhone) { if ((y0 + y1) / 2 < clearTop) y0 = Math.min(y1, 2 * clearTop - y1); }
+    else if (y0 < clearTop) y0 = Math.min(y1, clearTop);
     const hSpan = y1 - y0;
     const midY = (y0 + y1) / 2;
 
@@ -6408,6 +6496,7 @@
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
     targetR = Math.max(56, Math.min(W, H) * 0.105);
     spawnR = Math.max(W, H) * 0.56;
+    layoutHudDocks();
     computeAnchors();
     // snap the drawn target to its anchor after rotation/resize
     tgtAnim = null;
@@ -6711,7 +6800,10 @@
     trackEvent('doom_cleared', {});
   }
 
-  function endGame() {
+  // opts.toMenu: the player quit from Pause (Main Menu). The run is scored exactly like any
+  // ending (bests, XP, records), but quietly and straight to the title screen, no results card.
+  function endGame(opts) {
+    const toMenu = !!(opts && opts.toMenu);
     // A death inside the secret gauntlet ends the run without touching normal
     // best scores, XP or records — then restores the player's real settings.
     if (doomMode) {
@@ -6724,10 +6816,12 @@
       bossHud.classList.remove('show'); bossDefeatBanner.classList.remove('show');
       stageChip.classList.remove('boss-hidden');
       abilityBtn.classList.remove('show', 'ready'); abilityStatus.classList.remove('show');
-      createBurst(tgt.x, tgt.y, '#ff2b12', 70, 1.25);
-      tone(180, 0.12, 'sawtooth', 0.05);
-      tone(120, 0.18, 'sawtooth', 0.04, 0.11);
-      buzz([60, 40, 60]);
+      if (!toMenu) {
+        createBurst(tgt.x, tgt.y, '#ff2b12', 70, 1.25);
+        tone(180, 0.12, 'sawtooth', 0.05);
+        tone(120, 0.18, 'sawtooth', 0.04, 0.11);
+        buzz([60, 40, 60]);
+      }
       const _fc = doomCfg || SECRET_GAUNTLETS.abyss;
       $('overTitle').textContent = _fc.failTitle;
       $('overSub').textContent = _fc.failSub;
@@ -6742,9 +6836,10 @@
       lastShareText = buildShareTextFrom(lastRunRecord, null);
       renderBoardBadges(_br2);
       exitDoomMode();
+      trackEvent('secret_gauntlet_failed', { gauntlet: _fc.id, stage: doomStage, quit: toMenu });
+      if (toMenu) { sfxBack(); returnToMenu(); return; }
       refreshMenu();
       showScreen('over');
-      trackEvent('secret_gauntlet_failed', { gauntlet: _fc.id, stage: doomStage });
       return;
     }
 
@@ -6758,10 +6853,12 @@
     bossHud.classList.remove('show'); bossDefeatBanner.classList.remove('show');
     stageChip.classList.remove('boss-hidden');
     abilityBtn.classList.remove('show', 'ready'); abilityStatus.classList.remove('show');
-    createBurst(tgt.x, tgt.y, '#ff3864', 70, 1.25);
-    tone(180, 0.12, 'sawtooth', 0.05);
-    tone(120, 0.18, 'sawtooth', 0.04, 0.11);
-    buzz([60, 40, 60]);
+    if (!toMenu) {
+      createBurst(tgt.x, tgt.y, '#ff3864', 70, 1.25);
+      tone(180, 0.12, 'sawtooth', 0.05);
+      tone(120, 0.18, 'sawtooth', 0.04, 0.11);
+      buzz([60, 40, 60]);
+    }
 
     // --- persist best scores ---
     let newBest = false;
@@ -6844,10 +6941,11 @@
       mode: runWasDaily ? 'daily' : save.difficulty,
       tapMode: save.settings.tapMode, musicVibe: save.settings.musicVibe,
       score, stage, maxCombo, grade, accuracy: acc,
-      perfects: runStats.perfects, misses: runStats.misses, offTarget: runStats.offTarget
+      perfects: runStats.perfects, misses: runStats.misses, offTarget: runStats.offTarget, quit: toMenu
     });
     if (newBest) trackEvent('new_best', { mode: runWasDaily ? 'daily' : save.difficulty, score });
     if (newUnlocks.length) trackEvent('theme_unlocked', { themes: newUnlocks.map(t => t.id) });
+    if (toMenu) { sfxBack(); returnToMenu(); return; }
 
     setTimeout(() => {
       showScreen('over');
@@ -8405,7 +8503,9 @@
       for (const b of [btnFire, btnCore]) b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); });
     }
     let lastSync = '';
+    let _bodyHyper = false;
     function syncButtons() {
+      if (_bodyHyper !== active) { _bodyHyper = active; document.body.classList.toggle('hyper-on', active); }
       ensureButtons();
       const show = active && state === 'playing' && phase(nowT()).main;
       const cfg = HYPER_CORES[abilityId];
@@ -10264,6 +10364,7 @@
   }
   function pauseGame(reason) {
     if (!inRunState()) return false;    // idempotent: not in a run, or already paused
+    disarmQuit();
     pauseInfo = { from: state, at: clockNow(), reason: reason || 'button', countdownStart: 0 };
     state = 'paused';
     _t6PauseCount++;
@@ -10277,6 +10378,7 @@
   }
   function requestResume() {
     if (state !== 'paused' || !pauseInfo || pauseInfo.countdownStart) return;
+    disarmQuit();
     ensureAudio();
     kickAudio();                        // inside the tap: iOS needs a user gesture
     tryResumeAudio(true);
@@ -10356,6 +10458,47 @@
   // click. requestResume() ignores repeats once the countdown has started.
   pauseResumeBtnEl.addEventListener('touchend', (e) => { e.stopPropagation(); requestResume(); }, { passive: true });
   pauseResumeBtnEl.addEventListener('click', (e) => { e.stopPropagation(); requestResume(); });
+
+  // Main Menu (pause screen): ends the run and goes straight to the title screen. It needs a second
+  // tap within 3 s, so a slip beside Resume can't throw a run away. The run still counts like any
+  // ending (bests, XP, records); see endGame({ toMenu }). touchend + click as for Resume (iOS can
+  // drop the click); the pair from one tap counts once.
+  const pauseMenuBtnEl = document.getElementById('pauseMenuBtn');
+  let _quitArmed = false, _quitLastPress = 0, _quitTimer = 0;
+  function disarmQuit() {
+    clearTimeout(_quitTimer);
+    if (!_quitArmed) return;
+    _quitArmed = false;
+    pauseMenuBtnEl.classList.remove('armed');
+    pauseMenuBtnEl.textContent = 'Main Menu';
+    if (state === 'paused' && pauseInfo && !pauseInfo.countdownStart) pauseMsgEl.textContent = PAUSE_REASON[pauseInfo.reason] || '';
+  }
+  function pressPauseMenu() {
+    const now = performance.now();
+    if (now - _quitLastPress < 450) return;
+    _quitLastPress = now;
+    if (state !== 'paused' || !pauseInfo || pauseInfo.countdownStart > 0) return;   // allowed while audio is still restarting
+    if (!_quitArmed) {
+      _quitArmed = true;
+      pauseMenuBtnEl.classList.add('armed');
+      pauseMenuBtnEl.textContent = 'Tap again to quit';
+      pauseMsgEl.textContent = 'This ends the run. Your score and XP still count.';
+      _quitTimer = setTimeout(disarmQuit, 3000);
+      return;
+    }
+    disarmQuit();
+    quitRunToMenu();
+  }
+  function quitRunToMenu() {
+    if (state !== 'paused' || !pauseInfo) return;
+    ensureAudio(); kickAudio(); tryResumeAudio(true);   // inside the tap: the title music needs a running context (iOS)
+    state = pauseInfo.from;
+    pauseInfo = null;
+    pauseOverlayEl.classList.remove('show', 'counting');
+    endGame({ toMenu: true });
+  }
+  pauseMenuBtnEl.addEventListener('touchend', (e) => { e.stopPropagation(); pressPauseMenu(); }, { passive: true });
+  pauseMenuBtnEl.addEventListener('click', (e) => { e.stopPropagation(); pressPauseMenu(); });
 
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { pauseGame('hidden'); onPageHidden(); } else onPageVisible();
