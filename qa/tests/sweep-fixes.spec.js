@@ -51,3 +51,17 @@ for (const [W, H, short] of [[844, 390, true], [800, 450, true], [907, 510, true
     expect(errors).toEqual([]);
   });
 }
+
+// Low graphics (chosen, or detected) turns off the frosted-glass blur: it is redone every frame
+// over the moving scene, and on a device without a GPU the menu fell to 18-40 fps with it.
+test('Low graphics: no frosted-glass blur (solid panels instead); with it off, the blur is back', async ({ page }) => {
+  const errors = await boot(page, { save: { level: 20, settings: { lowGraphics: true } } });
+  await page.waitForTimeout(1300);
+  const blur = () => page.evaluate(() => ({ cls: document.body.classList.contains('gfx-low'), overlay: getComputedStyle(document.getElementById('menuScreen')).backdropFilter, panel: getComputedStyle(document.querySelector('.panel')).backdropFilter }));
+  expect(await blur()).toEqual({ cls: true, overlay: 'none', panel: 'none' });
+  await page.evaluate(() => { save.settings.lowGraphics = false; refreshSpaceSettings(); });
+  const on = await blur();
+  expect(on.cls).toBe(false);
+  expect(on.overlay).toMatch(/blur/);
+  expect(errors).toEqual([]);
+});
