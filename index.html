@@ -2524,8 +2524,8 @@
     starWarrior: {
       name: 'Star-Warrior', short: 'STAR', type: 'hold', bossName: 'The Alien Fleet', secret: true,
       unlockText: 'Find what waits beyond the Big Bang',
-      flavor: 'The light people film in the night sky. Now it flies for you.',
-      desc: 'Your saucer becomes a living fireball. Hold it to tear open a portal for 9 seconds that drags in every ring in the sky: each one a PERFECT, and drain stops. When the portal closes the orb is charged with everything it ate. Hold again to release it all as a blast wave across the whole screen that clears the field (and hammers a boss). Recharges every 6 stages.'
+      flavor: 'You beat the fleet. Now it answers your call.',
+      desc: 'Boss fights only. Hold the target to summon the Alien Fleet to your side for 12 seconds: wave after wave of their fighters warp in all over the screen, take station round the boss and pour plasma into it on every beat. Every ring you hit calls a volley from every ship, and the mothership joins the last wave to beam the boss. You still play every note. Recharges every 5 stages.'
     }
   };
   const ABILITY_ORDER = ['quantize', 'hexSaw', 'triLaser', 'prismGuard', 'eventHorizon', 'phantomStep', 'bigBang', 'starWarrior'];
@@ -6337,9 +6337,9 @@
     bigBang:      { dur: 14, uses: 999, stages: 6, bossCap: 120 },
     // Phantom Step: 18 s of dodges. Counters (on-time taps) score double.
     phantomStep:  { dur: 18, uses: 999, stages: 6, bossCap: 70 },
-    // Star-Warrior (the Alien Fleet's reward): a 9 s portal that swallows every ring, then a
-    // stored blast wave released on a second hold (see starRelease).
-    starWarrior:  { dur: 9, uses: 999, stages: 6, bossCap: 80 }
+    // Star-Warrior (the Alien Fleet's reward): boss fights only. 12 s of the fleet fighting on
+    // your side (see Fleet.summon); bossCap is everything the squadron can do to the boss.
+    starWarrior:  { dur: 12, uses: 999, stages: 5, bossCap: 150, bossOnly: true }
   };
   // OVERCLOCK: the same table, upgraded. Cached per core.
   const _ocTuning = {};
@@ -6771,7 +6771,6 @@
       bangBolts = []; bangBlast = null; bangPulse = 0;
       abHoldStart = 0; abHoldProgress = 0; abFlash = 0; abUsedThisRun = false;
       horizonDevouredRun = 0; devours = [];
-      starHeld = []; starPulls = []; starCharged = false; starBlast = null;
       if (abilityId === 'bigBang') Fleet.prewarm();
       abStagesLeft = tune ? tune.stages : 0;
       // Cores start uncharged so the first activation is earned.
@@ -7349,6 +7348,8 @@
   }
 
   function registerHit() {
+    // STAR-WARRIOR: the allied squadron fires a volley on every ring you hit
+    if (abActive && abilityId === 'starWarrior') Fleet.volley();
     // The Alien Fleet: every hit fires at the fleet instead (no stage progress in there)
     if (Fleet.inFight) { Fleet.onHit(); return; }
     // During a boss battle, hits damage the boss and do NOT advance the normal
@@ -7490,6 +7491,12 @@
     nextBeatTime = nowT + leadTime + 0.2;
     bossFightStart = nowT;       // for the debug duration log
     // note: music clock runs free; do not realign (keeps it seamless)
+    // a boss-only core (Star-Warrior) that was waiting is now live: say so on the chip
+    const tb = abTuning();
+    if (tb && tb.bossOnly && abReady && !abActive) {
+      updateAbilityHud();
+      showToast(ABILITIES[abilityId].name.toUpperCase(), '#7dff3b', 'READY · HOLD TO SUMMON THE FLEET');
+    }
   }
   let bossFightStart = 0;
 
@@ -7784,7 +7791,7 @@
       if (abStagesLeft <= 0) {
         abReady = true;
         if (state === 'playing' || state === 'bossBattle') {
-          showToast(ABILITIES[abilityId].name.toUpperCase(), theme.c1, 'READY · HOLD THE SAUCER');
+          showToast(ABILITIES[abilityId].name.toUpperCase(), theme.c1, tune.bossOnly && !(bossActive && state === 'bossBattle') ? 'READY · FOR THE NEXT BOSS' : 'READY · HOLD THE SAUCER');
           tone(660, 0.07, 'triangle', 0.035);
           tone(990, 0.07, 'sine', 0.025, 0.05);
         }
@@ -7816,10 +7823,9 @@
         abHudKey = '';
         tickAbilityHud(clockNow() - startTime);
       }
-    } else if (abilityId === 'starWarrior' && starCharged) {
-      abilityStatus.classList.remove('on-air', 'ending');
-      abilityStatus.classList.add('ready');
-      abilityStatusText.innerHTML = label + ' <span class="on">RELEASE</span><span class="uses">· ' + starHeld.length + '</span>';
+    } else if (abReady && tune && tune.bossOnly && !(bossActive && state === 'bossBattle')) {
+      abilityStatus.classList.remove('on-air', 'ending', 'ready');          // charged, waiting for the next boss
+      abilityStatusText.innerHTML = label + ' <span class="on">BOSS</span>';
     } else if (abReady) {
       abilityStatus.classList.remove('on-air', 'ending');
       abilityStatusText.innerHTML = label + ' <span class="on">HOLD</span>';
@@ -7922,8 +7928,8 @@
 
   // ---- Activation / teardown ----
   function canActivateAbility() {
-    if (abilityId === 'none' || abActive) return false;
-    if (!abReady && !(abilityId === 'starWarrior' && starCharged)) return false;   // a charged orb can always be released
+    if (abilityId === 'none' || abActive || !abReady) return false;
+    if (abTuning() && abTuning().bossOnly && !(bossActive && state === 'bossBattle')) return false;   // Star-Warrior waits for a boss
     if (Hyper.active) return false;
     if (!(state === 'playing' || state === 'bossBattle')) return false;
     const tune = abTuning();
@@ -7932,8 +7938,6 @@
 
   function activateAbility() {
     if (!canActivateAbility()) return;
-    // STAR-WARRIOR, charged: this hold releases the blast wave (it does not spend the core)
-    if (abilityId === 'starWarrior' && starCharged) { abHoldStart = 0; abHoldProgress = 0; starRelease(); return; }
     // Until the fleet has been beaten, Big Bang is a ticket to the Milky Way
     if (abilityId === 'bigBang' && Fleet.shouldWarp()) { Fleet.begin(clockNow() - startTime); return; }
     const tune = abTuning();
@@ -7957,7 +7961,7 @@
     if (abilityId === 'eventHorizon') horizonCollapse(nowT);
     if (abilityId === 'bigBang') bigBangIgnite(nowT);
     if (abilityId === 'phantomStep') phantomStart(nowT);
-    if (abilityId === 'starWarrior') starOpen(nowT);
+    if (abilityId === 'starWarrior') Fleet.summon(nowT);
     startAssault();
     updateAbilityHud();
     trackEvent('ability_used', { ability: abilityId, stage });
@@ -7978,7 +7982,7 @@
     if (wasId === 'eventHorizon' && reason !== 'travel') hawkingFlare();
     if (wasId === 'bigBang' && reason !== 'travel') bigBangFinale();
     if (wasId === 'phantomStep') phantomEnd(clockNow() - startTime);
-    if (wasId === 'starWarrior') starClose(clockNow() - startTime);
+    if (wasId === 'starWarrior') Fleet.dismiss(clockNow() - startTime);
     abilitySound(wasId, 'end');
     updateAbilityHud();
   }
@@ -9008,8 +9012,7 @@
       }
       ctx.save();
       ctx.translate(cx, cy); ctx.rotate(bank); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
-      if (starOrbOn()) drawStarOrb(t, cx, cy, pulse + beatBreath());
-      else CraftFX.draw(t, cx, cy, pulse + beatBreath());
+      CraftFX.draw(t, cx, cy, pulse + beatBreath());
       ctx.restore();
       return [cx, cy];
     }
@@ -9589,6 +9592,7 @@
       updateAbilityHud();
     }
     function cancel() {
+      allies = null;
       if (phase === 'off') return;
       if (prevAb) { abilityId = prevAb.id; abStagesLeft = prevAb.stages; abReady = prevAb.ready; }
       if (phase === 'fight' || phase === 'victory') bossHud.classList.remove('show');
@@ -9608,6 +9612,7 @@
       else if (flybys.length && fxRand() < 0.35) { const f = flybys[(fxRand() * flybys.length) | 0]; if (!f.dead) shots.push({ t0: t, fly: f, x: tgt.x, y: tgt.y }); }
     }
     function update(dt, t) {
+      if (allies) updateAllies(dt, t);
       if (phase === 'off') return;
       lastT = t;
       hitFlash = Math.max(0, hitFlash - dt * 2.5); shieldFlash = Math.max(0, shieldFlash - dt * 3);
@@ -9884,8 +9889,179 @@
       if (hitFlash > 0) { ctx.save(); ctx.fillStyle = `rgba(255,40,80,${0.28 * hitFlash})`; full(); ctx.restore(); }
     }
 
+    // ---- STAR-WARRIOR: the fleet you beat now fights for you (boss fights only) ----
+    // Hold in a boss fight: for 12 s the Alien Fleet warps in, in three waves 4 s apart, all over
+    // the screen. Each ship takes a station round the boss and the squadron fires plasma at it on
+    // every beat; every ring you hit calls a volley from every ship on station; the mothership
+    // joins the last wave and beams the boss on the downbeat. Damage draws on the activation's
+    // boss cap. The rings are untouched: you still play every note.
+    const ALLY_GAP = 4;
+    let allies = null;
+    function allyStation(i, n, wave) {
+      const bx = bossX(), by = bossY(), br = bossR();
+      // an arc over and beside the boss (never down by the saucer, never up in the HUD)
+      const a = -Math.PI * 1.08 + (i + 0.5) / n * Math.PI * 1.16 + (wave - 1) * 0.12;
+      const rr = br * (1.3 + 0.35 * ((i + wave) % 2));
+      const wide = W > H * 1.1, kx = wide ? 2.1 : 1.3, ky = wide ? 0.6 : 0.85;   // a wider, flatter arc on landscape screens
+      let x = Math.max(targetR * 0.8, Math.min(W - targetR * 0.8, bx + Math.cos(a) * rr * kx));
+      let y = Math.max(Math.max(H * 0.2, 150), Math.min(by + br * 0.35, by + Math.sin(a) * rr * ky));
+      const dx = x - tgt.x, dy = y - tgt.y, d = Math.hypot(dx, dy), keep = targetR * 2.4;
+      if (d < keep) { x = tgt.x + dx / (d || 1) * keep; y = Math.min(y, tgt.y - keep * 0.6); }
+      return [x, y];
+    }
+    function allyWave(t, w) {
+      const n = w === 0 ? 4 : 6;
+      for (let i = 0; i < n; i++) {
+        const to = allyStation(i, n, w);
+        // they warp in out of nowhere, all over the screen, then dive to their stations
+        const from = [W * (0.08 + 0.84 * fxRand()), H * (0.12 + 0.5 * fxRand())];
+        allies.ships.push({ kind: (i + w) % 3 === 2 ? 'disc' : 'dart', from, to, t0: t + i * 0.09, arrive: t + i * 0.09 + 0.75,
+          ph: fxRand() * 6.28, wave: w, out: 0, hurt: -9 });
+      }
+      if (w === 2) allies.mother = { t0: t, nextBeam: nextBeat(t + 1.2) };
+      if (save.settings.sfx) { tone(523, 0.12, 'square', 0.02); tone(784, 0.16, 'square', 0.018, 0.08); tone(1046, 0.2, 'triangle', 0.016, 0.16); }
+    }
+    function allyPos(s, t) {
+      if (t < s.t0) return null;
+      if (s.out) { const k = Math.min(1, (t - s.out) / 0.6); return [s.to[0], s.to[1] - k * k * H * 0.9]; }
+      const k = Math.min(1, (t - s.t0) / (s.arrive - s.t0)), e = 1 - Math.pow(1 - k, 3);
+      const x = s.from[0] + (s.to[0] - s.from[0]) * e, y = s.from[1] + (s.to[1] - s.from[1]) * e;
+      return [x + Math.sin(t * 2.1 + s.ph) * 5, y + Math.cos(t * 1.7 + s.ph) * 4];
+    }
+    const docked = (t) => allies.ships.filter(s => !s.out && t >= s.arrive);
+    function allyShot(t, s, dmg, big) {
+      const p = allyPos(s, t); if (!p) return;
+      allies.bolts.push({ x0: p[0], y0: p[1], t0: t, land: t + (big ? 0.28 : 0.36), dmg, big, ox: (fxRand() - 0.5) * 0.5, oy: (fxRand() - 0.5) * 0.4 });
+    }
+    function allyHit(dmg, x, y, big) {
+      const d = Math.min(dmg, Math.max(0, abBossDmgLeft));
+      if (d > 0 && bossActive && state === 'bossBattle') { abBossDmgLeft -= d; damageBoss(d, true, true); }
+      createBurst(x, y, ACID, big ? 14 : 6, big ? 1.1 : 0.8);
+      if (big) shake = Math.max(shake, 3);
+    }
+    function summon(t) {
+      allies = { t0: t, ships: [], bolts: [], booms: [], wave: -1, nextFire: nextBeat(t + 0.8), mother: null, beams: [], volleyAt: -9, leaving: 0, rr: 0 };
+      if (save.settings.sfx) { [110, 138.6, 164.8, 220].forEach((f, i) => tone(f, 1.0, 'sawtooth', 0.026, i * 0.06)); tone(55, 0.9, 'sine', 0.08); }
+      shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR * 0.6, alpha: 0.9, speed: 900, width: 6, color: ACID });
+    }
+    function dismiss(t) {
+      if (!allies || allies.leaving) return;
+      allies.leaving = t;
+      for (const s of allies.ships) if (!s.out) s.out = t + fxRand() * 0.25;
+      if (save.settings.sfx) [784, 659, 523].forEach((f, i) => tone(f, 0.12, 'triangle', 0.02, i * 0.07));
+    }
+    // a ring hit while the fleet is on station: every ship fires
+    function volley() {
+      if (!allies || allies.leaving) return;
+      const t = clockNow() - startTime;
+      if (t - allies.volleyAt < 0.12) return;
+      allies.volleyAt = t;
+      const ds = docked(t);
+      ds.forEach((s, i) => allyShot(t + i * 0.02, s, 3 / Math.max(1, ds.length), true));
+      if (ds.length && save.settings.sfx) tone(1568, 0.05, 'square', 0.01);
+    }
+    function updateAllies(dt, t) {
+      const A = allies;
+      if (A.leaving) {
+        if (t - A.leaving > 1.0 && !A.bolts.length) allies = null;
+      } else if (!bossActive || !(state === 'bossBattle' || state === 'paused')) {
+        dismiss(t);                                                      // the boss fell (or the fight ended): they leave
+      } else {
+        const w = Math.min(2, Math.floor((t - A.t0) / ALLY_GAP));
+        while (A.wave < w) { A.wave++; allyWave(t, A.wave); }
+        // the squadron's steady fire, on the beat: two ships at a time, round-robin
+        if (t >= A.nextFire) {
+          const ds = docked(t);
+          for (let k = 0; k < Math.min(2, ds.length); k++) { const s = ds[(A.rr++) % ds.length]; allyShot(t, s, 2, false); }
+          A.nextFire = nextBeat(A.nextFire + beatLen() * 0.5);
+          if (ds.length && save.settings.sfx) tone(880, 0.05, 'square', 0.008);
+        }
+        if (A.mother && t >= A.mother.nextBeam) {
+          A.beams.push({ t0: t, land: t + beatLen() * 0.5 });
+          A.mother.nextBeam = nextBeat(t + beatLen() * 3.5);
+          if (save.settings.sfx) tone(98, beatLen() * 0.5, 'sawtooth', 0.02);
+        }
+      }
+      for (const b of A.bolts) if (!b.done && t >= b.land) {
+        b.done = true;
+        const br = bossR();
+        allyHit(b.dmg, bossX() + b.ox * br, bossY() + b.oy * br, b.big);
+      }
+      A.bolts = A.bolts.filter(b => !b.done || t - b.land < 0.15);
+      for (const bm of A.beams) if (!bm.done && t >= bm.land) { bm.done = true; allyHit(8, bossX(), bossY(), true); shake = Math.max(shake, 7); }
+      A.beams = A.beams.filter(bm => !bm.done || t - bm.land < 0.4);
+    }
+    const allyMotherXY = (t) => [W * 0.5 + Math.sin(t * 0.4) * W * 0.05, Math.max(H * 0.17, 125)];
+    // behind the boss: the mothership hangs high over the arena
+    function drawAlliesBack(t) {
+      const A = allies; if (!A || !A.mother) return;
+      const lv = A.leaving ? Math.min(1, (t - A.leaving) / 0.9) : 0, k = Math.min(1, (t - A.mother.t0) / 1.2);
+      const e = (1 - Math.pow(1 - k, 3)) * (1 - lv);
+      if (e <= 0) return;
+      const [mx, my0] = allyMotherXY(t), ms = Math.max(W, H) * 0.3, my = my0 - (1 - e) * ms * 0.4;
+      ctx.save(); ctx.translate(mx, my); ctx.globalAlpha = 0.9 * e;
+      const mg = ctx.createLinearGradient(0, -ms * 0.2, 0, ms * 0.12);
+      mg.addColorStop(0, '#05070a'); mg.addColorStop(1, '#232c33');
+      ctx.fillStyle = mg;
+      ctx.beginPath(); ctx.moveTo(-ms, -ms * 0.05); ctx.lineTo(-ms * 0.6, ms * 0.04); ctx.lineTo(-ms * 0.3, ms * 0.1); ctx.lineTo(ms * 0.3, ms * 0.1); ctx.lineTo(ms * 0.6, ms * 0.04); ctx.lineTo(ms, -ms * 0.05);
+      ctx.lineTo(ms, -ms * 0.4); ctx.lineTo(-ms, -ms * 0.4); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = ACID; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.55 * e; ctx.stroke();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = -10; i <= 10; i++) { ctx.globalAlpha = e * (0.35 + 0.65 * Math.max(0, Math.sin(t * 5 - Math.abs(i) * 0.5))); ctx.fillStyle = i % 4 ? ACID : '#7df9ff'; ctx.beginPath(); ctx.arc(i * ms * 0.075, ms * (0.085 - Math.abs(i) * 0.0055), 2, 0, Math.PI * 2); ctx.fill(); }
+      ctx.restore();
+    }
+    // in front of the boss, behind the rings: the squadron and its fire
+    function drawAllies(t) {
+      const A = allies; if (!A) return;
+      ctx.save();
+      const bx = bossX(), by = bossY(), br = bossR();
+      // the mothership's beam
+      if (A.mother) for (const bm of A.beams) {
+        const [mx, my] = allyMotherXY(t), ey = my + Math.max(W, H) * 0.3 * 0.1;
+        const k = bm.done ? Math.max(0, 1 - (t - bm.land) / 0.4) : Math.min(1, (t - bm.t0) / (bm.land - bm.t0)) * 0.35;
+        ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+        ctx.strokeStyle = `rgba(125,255,59,${0.6 * k})`; ctx.lineWidth = (bm.done ? 26 : 4) * k + 2; ctx.beginPath(); ctx.moveTo(mx, ey); ctx.lineTo(bx, by); ctx.stroke();
+        if (bm.done) { ctx.strokeStyle = `rgba(255,255,255,${0.9 * k})`; ctx.lineWidth = 6 * k + 1; ctx.stroke(); }
+        ctx.restore();
+      }
+      // the ships: a warp flash where they appear, then they take station facing the boss
+      for (const s of A.ships) {
+        const p = allyPos(s, t); if (!p) continue;
+        const [x, y] = p;
+        if (t - s.t0 < 0.25) {
+          const k = (t - s.t0) / 0.25, fr = targetR * (0.9 - 0.6 * k);
+          const g = ctx.createRadialGradient(s.from[0], s.from[1], 0, s.from[0], s.from[1], fr);
+          g.addColorStop(0, `rgba(240,255,230,${1 - k})`); g.addColorStop(1, 'rgba(125,255,59,0)');
+          ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s.from[0], s.from[1], fr, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        }
+        const ang = s.out ? -Math.PI / 2 : Math.atan2(by - y, bx - x);
+        const alpha = s.out ? Math.max(0, 1 - (t - s.out) / 0.6) : Math.min(1, (t - s.t0) / 0.15);
+        hull(x, y, targetR * (s.kind === 'disc' ? 0.62 : 0.56), s.kind === 'disc' ? Math.sin(t * 2 + s.ph) * 0.1 : ang, alpha, 0, s.kind);
+      }
+      // plasma, ship to boss
+      ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+      for (const b of A.bolts) {
+        if (b.done) {
+          const k = 1 - (t - b.land) / 0.15, hx = bx + b.ox * br, hy = by + b.oy * br;
+          ctx.fillStyle = `rgba(200,255,150,${0.7 * k})`; ctx.beginPath(); ctx.arc(hx, hy, (b.big ? 18 : 10) * (1.4 - k), 0, Math.PI * 2); ctx.fill();
+          continue;
+        }
+        const k = Math.max(0, Math.min(1, (t - b.t0) / (b.land - b.t0)));
+        const tx = bx + b.ox * br, ty = by + b.oy * br;
+        const x = b.x0 + (tx - b.x0) * k, y = b.y0 + (ty - b.y0) * k;
+        const dx = tx - b.x0, dy = ty - b.y0, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, len = b.big ? 30 : 22;
+        ctx.strokeStyle = 'rgba(125,255,59,0.75)'; ctx.lineWidth = b.big ? 8 : 5;
+        ctx.beginPath(); ctx.moveTo(x - ux * len, y - uy * len); ctx.lineTo(x, y); ctx.stroke();
+        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = b.big ? 3 : 2;
+        ctx.beginPath(); ctx.moveTo(x - ux * len * 0.6, y - uy * len * 0.6); ctx.lineTo(x, y); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     return {
       get active() { return active(); }, get inFight() { return inFight(); }, get phase() { return phase; },
+      get alliesOn() { return !!allies; }, get allyCount() { return allies ? allies.ships.filter(s => !s.out).length : 0; },
+      summon, dismiss, volley, drawAllies, drawAlliesBack,
       get downed() { return downed; }, get wave() { return wave; },
       get stats() { return { fired: nFired, reflected: nReflected, through: nThrough, downed }; },
       shouldWarp, begin, update, drawBack, drawFront, onHit, fault, cancel,
@@ -9893,208 +10069,6 @@
       _ships: () => ships, _bolts: () => bolts, _galaxy: () => [gx, gy]
     };
   })();
-
-  // ================= STAR-WARRIOR (the fleet's reward) =================
-  // Equipped, the saucer IS a living fireball, like the orange orbs people film in the night sky:
-  // a white-hot ring of plasma round a deep red heart, licking flames, flickering and breathing
-  // with the beat. HOLD it and the orb tears open into a PORTAL that drags in every ring in the
-  // field (each a PERFECT) and keeps swallowing for 9 seconds. Then it closes, charged, the rings
-  // it ate circling it; HOLD again (or wait 8 s) to RELEASE them as a full-screen blast wave.
-  let starHeld = [], starPulls = [], starCharged = false, starChargeAt = 0, starBlast = null, starFlare = 0;
-  const STAR_REACH = 3.4, STAR_AUTO_RELEASE = 8;
-  // the portal opens: everything already in flight is dragged in, one after another
-  function starOpen(t) {
-    let i = 0;
-    for (const note of notes) if (!note.hit && !note.missed) starSwallow(note, t, (i++) * 0.05);
-    starFlare = 1; shake = Math.max(shake, 8);
-    createBurst(tgt.x, tgt.y, '#ff8a4d', 40, 1.4); createBurst(tgt.x, tgt.y, '#fff2e0', 16, 1.0);
-    shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR * 0.6, alpha: 0.9, speed: 520, width: 6, color: '#ff6a3d' });
-  }
-  // the portal seals: the orb keeps what it ate until you let it go
-  function starClose(t) {
-    starPulls = [];
-    if (!starHeld.length) return;
-    starCharged = true; starChargeAt = t; starFlare = 1;
-    showToast('ORB CHARGED', '#ff8a4d', 'HOLD TO RELEASE · ' + starHeld.length + ' RINGS');
-    buzz([20, 30, 20]);
-  }
-  function starOrbOn() {
-    const id = (state === 'playing' || state === 'bossBattle' || state === 'levelup' || state === 'bossIntro' || state === 'bossDefeat' || state === 'paused') ? abilityId : save.equippedAbility;
-    return id === 'starWarrior';
-  }
-  function starSwallow(note, t, delay) {
-    if (note.hit || note.missed) return;
-    note.hit = true;
-    const r = Math.max(targetR, noteRadius(note, t));
-    starHeld.push(note.color || '#ff8a4d');
-    starPulls.push({ col: note.color || '#ff8a4d', t0: t + (delay || 0), a: (note.angle || 0) + t, r });
-    awardAbilityPerfect(tgt.x, tgt.y, '#ff8a4d', 'STAR-WARRIOR');
-    if (save.settings.sfx) tone(200 + starHeld.length * 18, 0.12, 'sine', 0.02);
-  }
-  function starRelease() {
-    const t = clockNow() - startTime, n = starHeld.length;
-    starBlast = { t0: t, x: tgt.x, y: tgt.y, cols: starHeld.slice(0, 40) };
-    starCharged = false; starHeld = [];
-    // the wave clears the field: every ring in flight is blown apart (as PERFECTs)
-    for (const note of notes) if (!note.hit && !note.missed) { note.hit = true; awardAbilityPerfect(note.tx, note.ty, '#ffd27a', 'BLAST WAVE', true); }
-    const mult = FEVER_MULTS[fever ? Math.max(1, feverLevel) : 0];
-    score += Math.round(150 * n * mult); scoreEl.textContent = score;
-    if (bossActive && state === 'bossBattle') fireBossShot('bang', Math.round(Math.min(80, 4 * n) * (save.overclock ? 1.5 : 1)), true, true);
-    shake = Math.max(shake, 20); starFlare = 1;
-    buzz([60, 30, 120, 40, 200]);
-    showToast('BLAST WAVE', '#ffd27a', n + ' RINGS RELEASED');
-    if (save.settings.sfx) { tone(32, 1.6, 'sine', 0.15); [1320, 990, 660, 440, 330, 220, 110].forEach((f, i) => tone(f, 0.2, 'sawtooth', 0.03, i * 0.03)); }
-    updateAbilityHud();
-  }
-  function starNoise(x) { return Math.sin(x * 1.7) * 0.5 + Math.sin(x * 3.1 + 1.3) * 0.3 + Math.sin(x * 7.3 + 0.4) * 0.2; }
-  // the living orb (replaces the saucer while Star-Warrior is equipped)
-  // a noisy closed blob: radius r, wobble w, drifting with time
-  function starBlob(r, w, t, sp, seed) {
-    ctx.beginPath();
-    for (let i = 0; i <= 64; i++) {
-      const a = i / 64 * Math.PI * 2;
-      const rr = r * (1 + w * (0.55 * starNoise(a * 3 + t * sp + seed) + 0.3 * starNoise(a * 7 - t * sp * 1.7 + seed * 2) + 0.15 * starNoise(a * 13 + t * sp * 2.3)));
-      if (i) ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr);
-    }
-    ctx.closePath();
-  }
-  function drawStarOrb(t, x, y, p) {
-    const R = targetR * 0.7;
-    const thump = Math.pow(1 - musicBeatPhase(), 3);
-    const flick = 0.85 + 0.15 * starNoise(t * 9.3);
-    starFlare = Math.max(0, starFlare - 0.025);
-    const breathe = 1 + 0.05 * Math.sin(t * 2.1) + 0.08 * thump + 0.1 * Math.min(1, p) + 0.22 * starFlare;
-    const r = R * breathe, hot = starCharged ? 1 : 0;
-    ctx.save(); ctx.translate(x, y); ctx.globalCompositeOperation = 'lighter';
-    // heat haze: the big soft glow
-    const halo = ctx.createRadialGradient(0, 0, r * 0.3, 0, 0, r * 4.6);
-    halo.addColorStop(0, `rgba(255,${110 + hot * 80},60,${0.45 * flick})`); halo.addColorStop(0.3, `rgba(255,60,40,${0.17 * flick})`); halo.addColorStop(1, 'rgba(255,40,20,0)');
-    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(0, 0, r * 4.6, 0, Math.PI * 2); ctx.fill();
-    // the corona: three layers of living flame, each a noisy blob, outer ones redder and wilder
-    const layers = [[1.75 + 0.25 * thump, 0.34, 1.1, 'rgba(255,60,30,0.30)', 'rgba(255,40,20,0)'],
-                    [1.42 + 0.15 * thump, 0.24, 1.7, 'rgba(255,120,50,0.45)', 'rgba(255,80,30,0)'],
-                    [1.18, 0.14, 2.6, `rgba(255,${200 + hot * 40},140,0.6)`, 'rgba(255,150,80,0)']];
-    layers.forEach(([k, w, sp, c0, c1], i) => {
-      const g = ctx.createRadialGradient(0, 0, r * 0.7, 0, 0, r * k * 1.25);
-      g.addColorStop(0, c0); g.addColorStop(1, c1);
-      ctx.fillStyle = g; starBlob(r * k, w, t, sp, i * 3.7); ctx.fill();
-    });
-    ctx.globalCompositeOperation = 'source-over';
-    // the body: a white-hot shell round a deep red heart (as on film), its edge boiling
-    const bg = ctx.createRadialGradient(r * 0.08, r * 0.1, 0, 0, 0, r * 1.05);
-    bg.addColorStop(0, hot ? '#ff8a4a' : '#7a0f26'); bg.addColorStop(0.3, hot ? '#ffc890' : '#c22a45');
-    bg.addColorStop(0.58, '#fff3ec'); bg.addColorStop(0.8, '#ffd8c6'); bg.addColorStop(1, '#ff6a3d');
-    ctx.fillStyle = bg; ctx.globalAlpha = flick; starBlob(r, 0.06, t, 4, 1.3); ctx.fill();
-    // plasma cells turning inside the heart
-    ctx.globalCompositeOperation = 'lighter';
-    for (let k = 0; k < 5; k++) {
-      const a = t * (0.9 + k * 0.37) + k * 1.9, d = r * (0.18 + 0.12 * Math.sin(t * 1.3 + k));
-      const cx = Math.cos(a) * d, cy = Math.sin(a) * d, cr = r * (0.16 + 0.06 * Math.sin(t * 2 + k * 2));
-      const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr);
-      cg.addColorStop(0, `rgba(255,${150 + hot * 80},120,0.35)`); cg.addColorStop(1, 'rgba(255,90,80,0)');
-      ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, cr, 0, Math.PI * 2); ctx.fill();
-    }
-    // charged: the rings it ate, circling it
-    if (starCharged) {
-      const n = Math.min(14, starHeld.length);
-      for (let i = 0; i < n; i++) {
-        const a = t * 2.2 + i / n * Math.PI * 2, rr = r * (2.0 + 0.15 * Math.sin(t * 3 + i));
-        ctx.strokeStyle = starHeld[i]; ctx.lineWidth = 2.4; ctx.globalAlpha = 0.9;
-        ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr * 0.6, r * 0.18, 0, Math.PI * 2); ctx.stroke();
-      }
-      const pr = r * (2.6 + 0.2 * Math.sin(t * 5));
-      ctx.strokeStyle = `rgba(255,220,150,${0.35 + 0.25 * Math.sin(t * 6)})`; ctx.lineWidth = 2; ctx.setLineDash([6, 8]);
-      ctx.beginPath(); ctx.arc(0, 0, pr, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-    }
-    // embers drifting up off it
-    for (let i = 0; i < 9; i++) {
-      const k = ((t * (0.5 + (i % 3) * 0.2) + i / 9) % 1), ex = Math.sin(i * 7.1 + t * 0.8) * r * (0.6 + 0.6 * k), ey = -r * 0.9 - k * r * 2.6;
-      ctx.globalAlpha = (1 - k) * 0.85; ctx.fillStyle = i % 2 ? '#ffd27a' : '#ff6a3d';
-      ctx.beginPath(); ctx.arc(ex, ey, 1.4 + (1 - k) * 1.6, 0, Math.PI * 2); ctx.fill();
-    }
-    ctx.restore();
-  }
-  // the portal (while the power runs) and the blast wave (after a release)
-  function drawStarWarriorFX(t, x, y) {
-    if (abActive && abilityId === 'starWarrior') {
-      const tune = tuningFor('starWarrior'), age = Math.max(0, t - (abUntil - tune.dur)), left = abUntil - t;
-      const open = easeOut3(Math.min(1, age / 0.5)) * Math.min(1, left / 0.45);
-      const PR = targetR * 1.4 * open;
-      if (PR > 1) {
-        ctx.save(); ctx.translate(x, y);
-        // the pull: wide fiery arms winding into the mouth, fading out with distance
-        ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
-        for (let i = 0; i < 9; i++) {
-          for (let k = 0; k < 18; k++) {
-            const u0 = k / 18, u1 = (k + 1) / 18, a0 = -t * 2.6 + i / 9 * Math.PI * 2;
-            const ang = (u) => a0 + (1 - u) * 3.1, rad = (u) => PR * (1 + 1.9 * (1 - u));
-            ctx.strokeStyle = i % 3 === 0 ? '#ffd0a0' : i % 3 === 1 ? '#ff7a3d' : '#ff3b3b';
-            ctx.globalAlpha = open * 0.55 * u1 * u1; ctx.lineWidth = 1 + 5 * u1;
-            ctx.beginPath(); ctx.moveTo(Math.cos(ang(u0)) * rad(u0), Math.sin(ang(u0)) * rad(u0)); ctx.lineTo(Math.cos(ang(u1)) * rad(u1), Math.sin(ang(u1)) * rad(u1)); ctx.stroke();
-          }
-        }
-        // sparks falling in
-        for (let i = 0; i < 28; i++) {
-          const k = (t * (0.7 + (i % 5) * 0.12) + i * 0.137) % 1, a = i * 2.4 - k * 4 - t;
-          const rr = PR * (1 + 2.6 * (1 - k) * (1 - k));
-          ctx.globalAlpha = open * k; ctx.fillStyle = i % 2 ? '#ffe2b0' : '#ff8a4d';
-          ctx.beginPath(); ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, 1 + 1.6 * k, 0, Math.PI * 2); ctx.fill();
-        }
-        // the mouth: a void with a swirl of embers turning inside it
-        ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
-        const vg = ctx.createRadialGradient(0, 0, 0, 0, 0, PR);
-        vg.addColorStop(0, '#000000'); vg.addColorStop(0.6, '#0e0006'); vg.addColorStop(1, '#3a0614');
-        ctx.fillStyle = vg; starBlob(PR, 0.05, t, 5, 0.7); ctx.fill();
-        ctx.save(); ctx.clip();
-        ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < 5; i++) {
-          ctx.strokeStyle = i % 2 ? 'rgba(255,90,50,0.5)' : 'rgba(255,170,90,0.35)'; ctx.lineWidth = 2.5;
-          ctx.beginPath();
-          for (let k = 0; k <= 30; k++) { const u = k / 30, a = -t * 4.2 + i / 5 * Math.PI * 2 + u * 4.2, rr = PR * (0.95 - 0.9 * u); if (k) ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else ctx.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); }
-          ctx.stroke();
-        }
-        ctx.restore();
-        // the lip: white-hot, boiling, inside an orange fire ring
-        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = open;
-        ctx.strokeStyle = 'rgba(255,90,40,0.55)'; ctx.lineWidth = 14; starBlob(PR * 1.05, 0.06, t, 6, 2.1); ctx.stroke();
-        ctx.strokeStyle = 'rgba(255,170,90,0.8)'; ctx.lineWidth = 6; starBlob(PR * 1.01, 0.05, t, 7, 4.2); ctx.stroke();
-        ctx.strokeStyle = '#fff4e6'; ctx.lineWidth = 2.5; starBlob(PR, 0.04, t, 8, 0.7); ctx.stroke();
-        ctx.restore();
-      }
-    }
-    // rings being dragged in: they spiral down into the portal
-    if (starPulls.length) {
-      ctx.save(); ctx.globalCompositeOperation = 'lighter';
-      for (const pl of starPulls) {
-        const k = (t - pl.t0) / 0.45; if (k < 0 || k > 1) continue;
-        const e = k * k, rr = pl.r * (1 - e) * 0.6 + targetR * 0.2, a = pl.a + e * 6;
-        ctx.strokeStyle = pl.col; ctx.lineWidth = 4 * (1 - k) + 1; ctx.globalAlpha = 1 - k * 0.6;
-        ctx.beginPath(); ctx.ellipse(x + Math.cos(a) * (pl.r * (1 - e) * 0.45), y + Math.sin(a) * (pl.r * (1 - e) * 0.45), rr, rr * (1 - 0.6 * e), a, 0, Math.PI * 2); ctx.stroke();
-      }
-      ctx.restore();
-      starPulls = starPulls.filter(pl => t - pl.t0 < 0.5);
-    }
-    // the blast wave: every stored ring flung out to the edges of the screen
-    if (starBlast) {
-      const L = t - starBlast.t0, M = Math.hypot(W, H);
-      if (L > 1.6) starBlast = null;
-      else {
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        if (L < 0.25) { ctx.fillStyle = `rgba(255,226,190,${0.32 * (1 - L / 0.25)})`; ctx.fillRect(-80, -80, W + 160, H + 160); }
-        const n = Math.max(1, starBlast.cols.length);
-        for (let i = 0; i < n; i++) {
-          const k = (L - i * 0.025) / 0.9; if (k <= 0 || k > 1.2) continue;
-          const rr = targetR + M * Math.pow(k, 0.7);
-          ctx.strokeStyle = starBlast.cols[i]; ctx.lineWidth = 12 * (1 - Math.min(1, k)) + 2; ctx.globalAlpha = Math.max(0, 1 - k * 0.85);
-          ctx.beginPath(); ctx.arc(starBlast.x, starBlast.y, rr, 0, Math.PI * 2); ctx.stroke();
-        }
-        const k = Math.min(1, L / 0.7);                                  // the white shock leading it
-        ctx.strokeStyle = `rgba(255,255,255,${0.9 * (1 - k)})`; ctx.lineWidth = 18 * (1 - k) + 2; ctx.globalAlpha = 1;
-        ctx.beginPath(); ctx.arc(starBlast.x, starBlast.y, targetR + M * Math.pow(k, 0.6), 0, Math.PI * 2); ctx.stroke();
-        ctx.restore();
-      }
-    }
-  }
 
   function bangDetonate(note, t) {
     note.hit = true;
@@ -10169,13 +10143,7 @@
         [1760, 1320, 880, 660, 440, 330, 220].forEach((f, i) => tone(f, 0.2, 'triangle', 0.04, i * 0.04));
       }
     } else if (id === 'starWarrior') {
-      if (phase === 'start') {             // the orb tears open: a falling roar into the dark
-        [1320, 990, 740, 554, 415, 311, 233, 175, 131].forEach((f, i) => tone(f, 0.14, 'sawtooth', 0.026, i * 0.04));
-        tone(44, 1.0, 'sine', 0.11, 0.2);
-      } else {                              // it seals shut, humming with what it ate
-        [131, 196, 262, 392].forEach((f, i) => tone(f, 0.16, 'triangle', 0.035, i * 0.05));
-        tone(98, 0.8, 'sine', 0.06, 0.2);
-      }
+      // its horns and warp-ins are in Fleet.summon / allyWave / dismiss
     } else if (id === 'phantomStep') {
       // its own entrance and exit are in phantomStart / phantomEnd
     } else if (id === 'eventHorizon') {
@@ -10512,8 +10480,6 @@
     if (realmSnap > 0) realmSnap = Math.max(0, realmSnap - dt * 1.8);
     for (const s of prismShards) { s.r += dt * 420; s.life -= dt * 1.2; }
     if (prismShards.length) prismShards = prismShards.filter(s => s.life > 0);
-    // a charged orb lets go on its own if you keep it waiting
-    if (starCharged && abilityId === 'starWarrior' && !abActive && t - starChargeAt > STAR_AUTO_RELEASE) starRelease();
 
     if (!abActive) return;
     abilityLoopSound(dt);
@@ -10573,13 +10539,6 @@
           if (abUsesLeft <= 0) break;
         }
       }
-    } else if (abilityId === 'starWarrior') {
-      // The portal: every ring that closes within reach is dragged in (a PERFECT each)
-      const reach = targetR * STAR_REACH;
-      for (const note of notes) {
-        if (note.hit || note.missed) continue;
-        if (noteRadius(note, t) <= reach || t >= note.hitTime - 0.01) starSwallow(note, t, 0);
-      }
     } else if (abilityId === 'triLaser') {
       // Beams span the screen, so they cut rings well before impact — roughly
       // halfway through the approach. Tuned so rings still visibly travel
@@ -10630,7 +10589,6 @@
     bangBolts = []; bangBlast = null; bangPulse = 0; quantSnap = 0; ocFlash = 0;
     phDodges = []; phEndAt = -9; phantomMusicOn = false; phantomMusicMix = 0;
     novaWave = null; novaShards = []; skyNova = null;
-    starHeld = []; starPulls = []; starCharged = false; starBlast = null; starFlare = 0;
     clearBossCombat();
     Hyper.cancel();
     Fleet.cancel();
@@ -11810,7 +11768,7 @@
     let sl = null;                                     // Supernova tier: the star that blows up right behind the hole
     let snPal = [[1, 1, 1], [1, 1, 1]], slPal = [[1, 1, 1], [1, 1, 1]], lastPal = -1;
     let wasActive = false, wasAbility = 'none';
-    const POWER_COL = { hexSaw: '#00f5ff', triLaser: '#ff2e4d', prismGuard: '#b06bff', eventHorizon: '#ffd76b', quantize: '#a6ff3d', bigBang: '#fff1c2', phantomStep: '#e6f6ff', starWarrior: '#ff6a3d' };
+    const POWER_COL = { hexSaw: '#00f5ff', triLaser: '#ff2e4d', prismGuard: '#b06bff', eventHorizon: '#ffd76b', quantize: '#a6ff3d', bigBang: '#fff1c2', phantomStep: '#e6f6ff', starWarrior: '#7dff3b' };
 
     // Own PRNG: gameplay draws from Math.random, so the renderer must not.
     let seed = (Date.now() ^ 0x9e3779b9) >>> 0;
@@ -13576,8 +13534,7 @@
     const p = pulse + beatBreath();
     if (!SpaceFX.active && !WorldFX.kindFor(theme.id)) drawGravityWell2D(tgt.x, tgt.y, t, p);
     const po = phantomOffset(t);                     // Phantom Step: the craft is out to the side
-    if (starOrbOn()) drawStarOrb(t, tgt.x + (po ? po[0] : 0), tgt.y + (po ? po[1] : 0), p);
-    else CraftFX.draw(t, tgt.x + (po ? po[0] : 0), tgt.y + (po ? po[1] : 0), p);
+    CraftFX.draw(t, tgt.x + (po ? po[0] : 0), tgt.y + (po ? po[1] : 0), p);
   }
 
   // Low graphics / no WebGL: warped space around the craft, cheaply: a cached glow,
@@ -14185,7 +14142,6 @@
       else if (abilityId === 'bigBang') drawBigBangFX(t, x, y);
     }
     drawSawSparks(t);
-    fxSafe(() => drawStarWarriorFX(t, x, y));
     drawDevours(t);
     drawBangBolts(t);
     drawBangBlast(t);
@@ -15791,7 +15747,7 @@
   let bossShots = [], dmgPops = [], bossChunks = [], bossShotSeq = 0;
   let assaultLeft = 0, assaultBeat = -1;
   const SHOT_TIME = { pulse: 0.16, saw: 0.3, laser: 0.07, prism: 0.14, orb: 0.32, cube: 0.18, star: 0.22, bang: 0.3, slash: 0.12 };
-  const ABILITY_SHOT = { hexSaw: 'saw', triLaser: 'laser', prismGuard: 'prism', eventHorizon: 'orb', quantize: 'cube', bigBang: 'star', phantomStep: 'slash', starWarrior: 'orb' };
+  const ABILITY_SHOT = { hexSaw: 'saw', triLaser: 'laser', prismGuard: 'prism', eventHorizon: 'orb', quantize: 'cube', bigBang: 'star', phantomStep: 'slash' };   // (Star-Warrior: the fleet does the attacking, no craft assault)
   const SHOT_COL = { saw: '#00f5ff', laser: '#ff2e4d', prism: '#b06bff', orb: '#ffd23d', cube: '#a6ff3d', star: '#ffe9a8', bang: '#ffffff', slash: '#e6f6ff' };
   const ASSAULT_BUDGET = { bigBang: 30, quantize: 18 };   // others: 24 per activation
   function fireBossShot(kind, dmg, isPerfect, fromAbility, color, fromX, fromY) {
@@ -17009,7 +16965,9 @@
     fxSafe(() => drawSkyNova(t));
     if (!WorldFX.kindFor(theme.id)) fxSafe(() => Warp.draw(tgt.x, tgt.y, 1));
     if (realmPlanet) drawVisitorCraft(t);
+    if (Fleet.alliesOn) fxSafe(() => Fleet.drawAlliesBack(t));   // Star-Warrior's mothership, behind the boss
     if (bossActive) drawBoss(t);      // boss sits behind the notes/target
+    if (Fleet.alliesOn) fxSafe(() => Fleet.drawAllies(t));       // the squadron, in front of the boss and behind the rings
     drawGhost(t);
     if (SPACE_MODE) drawCraftStage(t);
     drawNotes(t);
