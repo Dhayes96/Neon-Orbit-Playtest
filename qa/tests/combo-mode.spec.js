@@ -50,7 +50,8 @@ for (const [name, w, h, dpr, touch] of SIZES) {
       await page.waitForFunction(() => state === 'playing');
       await page.evaluate(() => { window.breakCombo = function () {}; setInterval(() => { energy = 100; }, 100); perfectRun = 300; });
       if (boss) {
-        await page.evaluate(() => { hitsTotal = stageHitsNeeded(20, diff); stageUp(20); });
+        // (this test stands still to look at the HUD; a boss hit would take a score mode, which boss-dodge.spec.js covers)
+        await page.evaluate(() => { window.dodgeHit = function () {}; hitsTotal = stageHitsNeeded(20, diff); stageUp(20); });
         await page.waitForFunction(() => state === 'bossBattle', null, { timeout: 20000 });
       }
       await page.waitForTimeout(600);

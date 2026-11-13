@@ -20,7 +20,7 @@ jobs:
   fast:
     name: static + smoke (PR gate, ~2 min)
     runs-on: ubuntu-latest
-    timeout-minutes: 25      # the gate has grown with each feature
+    timeout-minutes: 30      # the gate has grown with each feature (about 20 min with Hyperdrive and the boss-dodge suites)
     defaults: { run: { working-directory: qa } }
     steps:
       - uses: actions/checkout@v4
@@ -67,9 +67,18 @@ jobs:
       - name: Project Zero (LVL 100 + stage 100 briefcase, files, Zero Form, Second Life)
         if: ${{ !cancelled() }}
         run: npx playwright test tests/project-zero.spec.js --project=desktop-chrome
+      - name: Boss dodging + the Eclipse Sovereign (arrival, three spots, telegraphs, counter ring, hits)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/eclipse-dodge.spec.js --project=desktop-chrome
+      - name: Every boss's own dodge attack (crush, signal, feint, split, Metronox's clock, Nullstar's pull)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/boss-dodge.spec.js --project=desktop-chrome
       - name: Hyperdrive (the flight draws, steers, fires, ends; a broken effect can't blank the field)
         if: ${{ !cancelled() }}
         run: npx playwright test tests/hyperdrive.spec.js --project=desktop-chrome
+      - name: Bug sweep fixes (Hit Rate, Hyperdrive HUD and landscape layout)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/sweep-fixes.spec.js --project=desktop-chrome
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: fast-results, path: qa/results, retention-days: 14 }
