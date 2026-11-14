@@ -1,4 +1,5 @@
-// Hyperdrive (combo 150): a 60-second chase-camera flight between rocks and rings.
+// Hyperdrive (combo 150): a 30-second chase-camera flight between rocks and rings (the first-flight
+// controls card is covered by hyperdrive-v3.spec.js; these flights are seeded as already seen).
 // Nov 13 regression: with Project Zero's craft switch, Hyperdrive's own local drawCraft called
 // itself until the stack overflowed. Every frame of the flight threw, left thousands of canvas
 // save()s unrestored, and the play field stayed black for the rest of the run.
@@ -14,7 +15,7 @@ const lit = (page) => page.evaluate(() => {
   return on / n;
 });
 async function fly(page, save) {
-  const errors = await boot(page, { save: Object.assign({ level: 60 }, save || {}) });
+  const errors = await boot(page, { save: Object.assign({ level: 60, hyperTutDone: true }, save || {}) });
   await page.evaluate(() => startGame(false));
   await page.waitForFunction(() => state === 'playing');
   await page.evaluate(() => {
@@ -47,7 +48,7 @@ test('Hyperdrive: the flight draws (tunnel, craft, HUD), steers, fires, ends, an
   expect(await page.evaluate(() => Hyper.ammo)).toBe(a0 - 1);
   expect(await page.evaluate(() => document.querySelector('#hyperBtns.show') !== null), 'FIRE button').toBe(true);
   expect(fxErrors(errors), 'no drawing error during the flight').toEqual([]);
-  await page.waitForFunction(() => !Hyper.active, null, { timeout: 75000 });
+  await page.waitForFunction(() => !Hyper.active, null, { timeout: 45000 });
   await page.waitForTimeout(3000);
   const after = await page.evaluate(() => ({ state, rings: notes.filter((n) => !n.hit && !n.missed).length, btns: document.querySelector('#hyperBtns.show') !== null, body: document.body.classList.contains('hyper-on'),
     tf: (() => { const m = ctx.getTransform(); return [m.a, m.d, m.e, m.f]; })(), dpr: DPR }));

@@ -762,6 +762,42 @@
       .tut-ring.r2 { display: none; }
       .tut-tap { opacity: 1; }
     }
+    /* --- Hyperdrive first-flight card (time frozen behind it) --- */
+    #hyperCard { z-index: 42; background: radial-gradient(circle at 50% 40%, rgba(120,60,255,0.18), rgba(0,0,0,0.55) 62%, rgba(0,0,0,0.78)); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .hc-card { width: min(380px, 92vw); padding: 18px 20px 20px; }
+    .hc-kicker { font-size: 11px; font-weight: 950; letter-spacing: 0.32em; color: #d6b8ff; margin: 4px 0 2px; }
+    .hc-title { font-size: 21px; margin: 0 0 12px; }
+    .hc-rows { display: flex; flex-direction: column; gap: 8px; margin: 0 auto 12px; max-width: 320px; text-align: left; }
+    .hc-row { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+    .hc-key { flex: none; min-width: 52px; padding: 5px 10px; border-radius: 999px; text-align: center; font-size: 11px; font-weight: 950; letter-spacing: 0.12em;
+      background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04)); border: 1px solid rgba(255,255,255,0.3); box-shadow: inset 0 1px 0.5px rgba(255,255,255,0.55); }
+    .hc-key.alt { min-width: 0; opacity: 0.8; }
+    .hc-txt { opacity: 0.92; line-height: 1.3; }
+    .hc-foot { margin: 0 0 14px; font-size: 12px; opacity: 0.7; }
+    .hc-demo { position: relative; width: 220px; height: 128px; margin: 0 auto 6px; overflow: hidden; border-radius: 18px;
+      background: radial-gradient(circle at 50% 30%, #000 0 9%, rgba(255,190,120,0.55) 10%, rgba(120,60,255,0.25) 22%, rgba(10,4,30,0.9) 60%); }
+    .hc-tunnel i { position: absolute; left: 50%; top: 30%; width: 30px; height: 30px; translate: -50% -50%; border-radius: 50%; border: 1.5px solid rgba(214,184,255,0.7);
+      animation: hcRing 1.6s linear infinite; }
+    .hc-tunnel i:nth-child(2) { animation-delay: -0.53s; } .hc-tunnel i:nth-child(3) { animation-delay: -1.06s; }
+    @keyframes hcRing { 0% { width: 18px; height: 18px; opacity: 0.9; } 100% { width: 300px; height: 300px; opacity: 0; } }
+    .hc-lanes { position: absolute; left: 0; right: 0; bottom: 30px; display: flex; justify-content: center; gap: 46px; }
+    .hc-lanes b { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.35); box-shadow: 0 0 6px rgba(255,255,255,0.4); }
+    .hc-craft { position: absolute; bottom: 24px; left: 50%; width: 40px; height: 14px; margin-left: -20px; border-radius: 50%;
+      background: radial-gradient(ellipse at 50% 30%, #fff, #b48cff 45%, #4a1fa8 80%); box-shadow: 0 0 14px #b48cff; animation: hcSteer 3.2s ease-in-out infinite; }
+    .hc-finger { position: absolute; bottom: 2px; left: 50%; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%;
+      background: rgba(255,255,255,0.85); box-shadow: 0 0 0 6px rgba(255,255,255,0.18); animation: hcSteer 3.2s ease-in-out infinite, hcTap 3.2s ease-in-out infinite; }
+    .hc-bolt { position: absolute; bottom: 40px; left: 50%; width: 3px; height: 16px; margin-left: -1.5px; border-radius: 2px; background: #ffb070;
+      box-shadow: 0 0 8px #ffb070; opacity: 0; animation: hcBolt 3.2s ease-out infinite; }
+    @keyframes hcSteer { 0%, 12% { translate: 0 0; } 24%, 44% { translate: -54px 0; } 58%, 74% { translate: 54px 0; } 88%, 100% { translate: 0 0; } }
+    @keyframes hcTap { 0%, 88%, 100% { scale: 1; } 93% { scale: 0.78; } }
+    @keyframes hcBolt { 0%, 90% { opacity: 0; translate: 0 0; } 91% { opacity: 1; translate: 0 0; } 100% { opacity: 0; translate: 0 -60px; } }
+    .hc-keycaps { display: none; position: absolute; bottom: 4px; left: 0; right: 0; justify-content: center; gap: 6px; }
+    .hc-keycaps span { min-width: 22px; padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 900; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.35); }
+    #hyperCard.keys .hc-finger { display: none; }
+    #hyperCard.keys .hc-keycaps { display: flex; }
+    #hyperCard.keys .hc-craft { bottom: 32px; } #hyperCard.keys .hc-lanes { bottom: 38px; } #hyperCard.keys .hc-bolt { bottom: 48px; }
+    @media (prefers-reduced-motion: reduce) { .hc-tunnel i, .hc-craft, .hc-finger, .hc-bolt { animation: none; } }
+    @media (max-height: 520px) { .hc-demo { height: 84px; } .hc-title { font-size: 18px; margin-bottom: 8px; } .hc-rows { gap: 5px; margin-bottom: 8px; } .hc-foot { margin-bottom: 8px; } }
     .tut-glyph {
       width: 76px; height: 76px; margin: 6px auto 14px;
       border-radius: 50%; display: grid; place-items: center;
@@ -1431,6 +1467,25 @@
     <div class="pause-actions">
       <button class="btn" id="pauseResumeBtn">Resume</button>
       <button class="btn ghost" id="pauseMenuBtn">Main Menu</button>
+    </div>
+  </div>
+
+  <!-- Hyperdrive, first flight ever: the controls, with time frozen until Continue -->
+  <div class="overlay hidden" id="hyperCard" role="dialog" aria-label="Hyperdrive controls">
+    <div class="card hc-card">
+      <div class="hc-demo" aria-hidden="true">
+        <div class="hc-tunnel"><i></i><i></i><i></i></div>
+        <div class="hc-lanes"><b></b><b></b><b></b></div>
+        <div class="hc-craft"></div>
+        <div class="hc-finger"></div>
+        <div class="hc-bolt"></div>
+        <div class="hc-keycaps"><span>A</span><span>D</span><span class="wide">SPACE</span></div>
+      </div>
+      <div class="hc-kicker">H Y P E R D R I V E</div>
+      <h2 class="hc-title">Fall through space-time</h2>
+      <div class="hc-rows"></div>
+      <p class="hc-foot"></p>
+      <button class="btn" id="hyperCardGo">Continue</button>
     </div>
   </div>
 
@@ -6295,6 +6350,7 @@
   // intro. Handy for onboarding fresh playtesters on a shared device.
   $('resetTutorialBtn').addEventListener('click', () => {
     save.tutorialDone = false;
+    save.hyperTutDone = false;          // the Hyperdrive controls card shows again on the next flight
     persist();
     sfxClick();
     buzz(15);
@@ -8749,15 +8805,24 @@
     }
   }
 
-  // ---- HYPERDRIVE v2: a 150 streak (Goods count, a miss resets it) drops the
-  // camera behind the craft for 60 seconds, tunnelling through spacetime toward
-  // a black hole. Rocks and signal rings arrive on the beat in three lanes. Tap
-  // the left or right half (or arrows / A, D) to slide a lane. FIRE shoots the
-  // rock ahead in your lane (3 shots, they recharge). If a Boss Core is equipped,
-  // CORE fires its Hyperdrive version (charges every 20 s). Rocks cost energy but
-  // never end the run. Then the craft dives into the hole and the rings return.
-  const HYPER_DUR = 60, HYPER_IN = 1.8, HYPER_OUT = 1.8, HYPER_APPROACH = 1.45, HYPER_COOLDOWN = 90;
-  const HYPER_AMMO = 3, HYPER_RELOAD = 1.4, HYPER_CORE_EVERY = 20;
+  // ---- HYPERDRIVE v3 (Nov 13): a 150 streak (Goods count, a miss resets it) drops the
+  // camera behind the craft for 30 seconds, falling through space-time toward a black hole.
+  // Rocks and signal rings arrive on the beat in three lanes.
+  //  - Touch: SLIDE left/right anywhere to change lanes (one slide can cross two lanes), TAP
+  //    anywhere to fire. One thumb is enough. FIRE and CORE buttons stay for those who like them.
+  //  - Keyboard: A/D or arrows steer, Space/W fire, E/S core (as before). Mouse: click a half.
+  // FIRE shoots the rock ahead in your lane (3 shots, they recharge). If a Boss Core is equipped,
+  // CORE fires its Hyperdrive version (charges every 12 s). Rocks cost energy but never end the
+  // run. Then the craft dives into the hole and the rings return. The first flight ever opens on
+  // a controls card with time frozen until Continue (once; Reset Tutorial brings it back).
+  // What the player is steering with, for the hints and the controls card: 'touch' (or pen), 'mouse'
+  // or 'key'. A phone starts as touch; a key press switches to keyboard hints, a touch back again.
+  let inputKind = (() => { try { return matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 && !matchMedia('(hover: hover)').matches ? 'touch' : 'key'; } catch (e) { return 'touch'; } })();
+  window.addEventListener('pointerdown', (e) => { inputKind = e.pointerType === 'mouse' ? 'mouse' : 'touch'; }, { passive: true, capture: true });
+  window.addEventListener('keydown', () => { inputKind = 'key'; }, { passive: true, capture: true });
+  const usesTouch = () => inputKind === 'touch';
+  const HYPER_DUR = 30, HYPER_IN = 1.8, HYPER_OUT = 1.8, HYPER_APPROACH = 1.45, HYPER_COOLDOWN = 90;
+  const HYPER_AMMO = 3, HYPER_RELOAD = 1.4, HYPER_CORE_EVERY = 12;
   const HYPER_CORES = {
     quantize: { name: 'LOCK GRID', dur: 5, col: '#a6ff3d' },
     hexSaw: { name: 'SAW VOLLEY', dur: 1.7, col: '#00f5ff' },
@@ -8776,6 +8841,8 @@
     let ammo = HYPER_AMMO, reloadAt = 0, coreCharges = 0, coreNextAt = 0, core = null;   // core: {kind, t0, until}
     // guidance: edge arrows (always), and the controls card on the first flight ever
     let tut = false, firstFlight = false, tutFrom = 0, tutUntil = 0, pressL = -9, pressR = -9, steers = 0;
+    let card = 'none';                    // the first-flight controls card: 'none' -> 'open' -> 'done'
+    const slides = {};                    // touch: one entry per finger on the glass (slide = steer, tap = fire)
     const hash = (n) => {
       n = (n ^ 61) ^ (n >>> 16); n = (n + (n << 3)) | 0; n = n ^ (n >>> 4);
       n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15); return (n >>> 0) / 4294967296;
@@ -8801,7 +8868,9 @@
       crashFlash = 0; ringFlash = 0;
       ammo = HYPER_AMMO; reloadAt = 0;
       tut = firstFlight = !save.hyperTutDone; steers = 0; pressL = pressR = -9;
-      tutFrom = t + HYPER_IN - 0.3; tutUntil = t + HYPER_IN + 6.5;
+      card = tut ? 'pending' : 'none';
+      for (const k in slides) delete slides[k];
+      tutFrom = t + HYPER_IN; tutUntil = t + HYPER_IN + 5;
       const hasCore = abilityId !== 'none' && HYPER_CORES[abilityId];
       coreCharges = hasCore ? 1 : 0; coreNextAt = t + HYPER_CORE_EVERY; core = null;
       seed = (Math.floor(startTime * 977) ^ Math.floor(t * 131)) | 0;
@@ -8810,7 +8879,7 @@
       novaBlast('sing');
       plan(t);
       shown++;
-      showToast('HYPERDRIVE', '#d6b8ff', shown === 1 ? 'TAP LEFT / RIGHT · FIRE TO SHOOT' : '60 SECONDS');
+      showToast('HYPERDRIVE', '#d6b8ff', shown === 1 ? controlsLine() : HYPER_DUR + ' SECONDS');
       if (save.settings.sfx) {
         [220, 330, 440, 660, 880, 1320, 1760].forEach((f, i) => tone(f, 0.14, 'sawtooth', 0.024, i * 0.07));
         tone(41, 1.6, 'sine', 0.11, 0.1);
@@ -8820,6 +8889,43 @@
       trackEvent('hyperdrive_start', { stage });
     }
     function learned() { if (tut) { tut = false; save.hyperTutDone = true; persist(); } }
+    function controlsLine() {
+      return usesTouch() ? 'SLIDE TO STEER · TAP TO FIRE' : inputKind === 'mouse' ? 'CLICK LEFT / RIGHT · SPACE TO FIRE' : 'A / D TO STEER · SPACE TO FIRE';
+    }
+    // ---------- the first-flight controls card: time stands still until Continue ----------
+    // It rides the pause machinery (game time frozen, music paused, the scene drawn still behind
+    // it); Continue resumes through the normal 3-2-1 so the thumb is down before anything moves.
+    function cardFill() {
+      const el = document.getElementById('hyperCard'); if (!el) return null;
+      const cfg = HYPER_CORES[abilityId], touch = usesTouch();
+      el.classList.toggle('touch', touch); el.classList.toggle('keys', !touch);
+      const rows = touch
+        ? [['SLIDE', '← →', 'anywhere to change lanes'], ['TAP', '', 'anywhere to fire at the rock ahead']]
+        : [['A / D', '← →', 'change lanes' + (inputKind === 'mouse' ? ' (or click a side)' : '')], ['SPACE', 'W', 'fire at the rock ahead']];
+      if (cfg) rows.push([touch ? 'CORE' : 'E', touch ? '' : 'S', cfg.name.toLowerCase() + ', your Boss Core']);
+      el.querySelector('.hc-rows').innerHTML = rows.map(([a, b, txt]) =>
+        `<div class="hc-row"><span class="hc-key">${a}</span>${b ? `<span class="hc-key alt">${b}</span>` : ''}<span class="hc-txt">${txt}</span></div>`).join('');
+      el.querySelector('.hc-foot').textContent = 'Grab the rings · dodge or blast the rocks · ' + HYPER_DUR + ' seconds';
+      return el;
+    }
+    function openCard() {
+      const el = cardFill();
+      if (!el || !pauseGame('hypertut')) { card = 'done'; learned(); return; }
+      card = 'open';
+      pauseOverlayEl.classList.remove('show');            // the card stands in for the pause screen
+      el.classList.remove('hidden');
+      setTimeout(() => { const b = document.getElementById('hyperCardGo'); if (b && card === 'open') try { b.focus({ preventScroll: true }); } catch (e) {} }, 60);
+      trackEvent('hyperdrive_card', {});
+    }
+    function closeCard() {                                 // Continue (or any resume while it's up)
+      if (card !== 'open') return false;
+      card = 'done';
+      const el = document.getElementById('hyperCard'); if (el) el.classList.add('hidden');
+      learned();
+      pauseOverlayEl.classList.add('show');               // the 3-2-1 shows there
+      return true;
+    }
+    function cardGo() { if (card !== 'open') return; sfxConfirm(); buzz(10); closeCard(); requestResume(); }
     function finish(t) {
       active = false; lastEnd = t; core = null;
       learned();
@@ -8836,7 +8942,12 @@
       firePulse(); bgPulse = 1;
       trackEvent('hyperdrive_end', { rings: stats.rings, crashes: stats.crashes, blasted: stats.blasted });
     }
-    function cancel() { active = false; pending = false; objs = []; pops = []; shots = []; frags = []; core = null; lastEnd = -1e9; syncButtons(); }
+    function cancel() {
+      active = false; pending = false; objs = []; pops = []; shots = []; frags = []; core = null; lastEnd = -1e9;
+      if (card === 'open') { card = 'none'; const el = document.getElementById('hyperCard'); if (el) el.classList.add('hidden'); }
+      for (const k in slides) delete slides[k];
+      syncButtons();
+    }
 
     // ---------- the course: events on the beat grid ----------
     function plan(t) {
@@ -8916,8 +9027,40 @@
     }
     function tap(e) {
       if (!active || !e || typeof e.clientX !== 'number') return;
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') return;     // a finger slides and taps: see below
       steer(canvasPoint(e).x < W / 2 ? -1 : 1);
     }
+    // Touch: a finger that slides sideways steers, one lane per step of travel, so one long slide
+    // can cross two lanes; a finger that lifts without sliding was a tap, and fires.
+    function slideStep() { const G = geo(); return Math.max(24, Math.min(48, G.lanePx * 0.33)); }
+    function slideDown(e) {
+      if (!active || (e.pointerType !== 'touch' && e.pointerType !== 'pen')) return;
+      if (e.target && e.target.closest && e.target.closest('.overlay, button, input, label, .hyper-btns, #hyperCard')) return;
+      slides[e.pointerId] = { x: e.clientX, y: e.clientY, ax: e.clientX, at: performance.now(), steps: 0 };
+    }
+    function slideMove(e) {
+      const sl = slides[e.pointerId];
+      if (!sl || !active) return;
+      const step = slideStep();
+      let dx = e.clientX - sl.ax;
+      if (sl.steps === 0 && Math.abs(dx) < Math.abs(e.clientY - sl.y) * 0.8) return;   // mostly vertical: not a slide (yet)
+      while (Math.abs(dx) >= step) {
+        const dir = dx > 0 ? 1 : -1;
+        steer(dir); sl.ax += dir * step; sl.steps++;
+        dx = e.clientX - sl.ax;
+      }
+    }
+    function slideUp(e) {
+      const sl = slides[e.pointerId];
+      delete slides[e.pointerId];
+      if (!sl || !active || e.type === 'pointercancel') return;
+      const travel = Math.hypot(e.clientX - sl.x, e.clientY - sl.y);
+      if (!sl.steps && travel < Math.min(20, slideStep() * 0.6) && performance.now() - sl.at < 450) fire();
+    }
+    window.addEventListener('pointerdown', slideDown, { passive: true });
+    window.addEventListener('pointermove', slideMove, { passive: true });
+    window.addEventListener('pointerup', slideUp, { passive: true });
+    window.addEventListener('pointercancel', slideUp, { passive: true });
     function blast(o, t, how) {
       if (o.dead || o.done) return;
       o.dead = true; o.deadAt = t; o.how = how || 'shot';
@@ -9008,6 +9151,7 @@
     function update(dt, t) {
       if (!active) return;
       const age = t - t0;
+      if (card === 'pending' && age >= HYPER_IN) { openCard(); return; }   // first flight: the card, time frozen
       const G = geo();
       laneVis += (lane - laneVis) * Math.min(1, dt / 0.085);
       if (reloadAt && t >= reloadAt) { ammo = Math.min(HYPER_AMMO, ammo + 1); reloadAt = ammo < HYPER_AMMO ? t + HYPER_RELOAD : 0; }
@@ -9134,95 +9278,364 @@
     // Rings of light stream past the camera, twisting as they come; spokes of the
     // space-time grid spiral out from the throat; each beat a brighter ripple runs
     // down the tunnel. No road, no rails: just the tunnel and the hole at its end.
+    // ---------- art: the fall through space-time (Nov 13 v3) ----------
+    // The tunnel is the fabric of space-time falling away toward the hole. Rings of it stream at the
+    // camera, and spokes run down into the throat, twisted into a slow spiral the deeper they go (a
+    // spinning hole drags space round with it). Light ahead is blue-shifted and light streaming
+    // past is red-shifted. Clock rings set in the walls tick slower the deeper they are, and stop
+    // at the hole (time dilation). Every beat a gravitational wave runs up the tunnel and swells it.
+    const rgbOf = (hex) => { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+    const mixRgb = (a, b, u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u];
+    const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a.toFixed(3)})`;
+    const BLUESHIFT = [168, 220, 255], VIOLET = [176, 92, 255], REDSHIFT = [255, 70, 120];
     function drawTunnel(G, t, k, dive) {
-      const v = (G.zFar - G.zU) / HYPER_APPROACH, gap = 1.25;
+      const v = (G.zFar - G.zU) / HYPER_APPROACH, gap = 1.1;
       const Rt = Math.max(G.L * 2.6, G.hW * 2.1);
-      const maxR = Math.hypot(W, H) * 0.7;
-      const bf = musicBeatFloat();
+      const maxR = Math.hypot(W, H) * 0.72;
       const q = ultra() ? 1 : hd() ? 0.75 : 0.5;
+      const fade = k * (1 - dive);
+      if (fade < 0.01) return;
+      const prog = Math.min(1, Math.max(0, (t - t0) / HYPER_DUR));
+      const near0 = rgbOf(theme.c1);
+      // depth colour: blue-shifted at the throat, violet in the middle, the theme's colour (red-
+      // shifted toward pink) as it streams past
+      const colAt = (dz) => dz > 0.5 ? mixRgb(VIOLET, BLUESHIFT, (dz - 0.5) * 2) : mixRgb(mixRgb(near0, REDSHIFT, 0.35), VIOLET, dz * 2);
+      // the gravitational wave of this beat: its front runs from the throat to the camera
+      const bf = musicBeatFloat(), wf = ((bf % 1) + 1) % 1;
+      const zw = G.zFar * Math.pow(G.zNear / G.zFar, wf), lzw = Math.log(zw);
+      const waveAmp = (0.05 + 0.04 * prog) * (1 - wf * 0.6);
+      const swell = (z) => 1 + waveAmp * Math.exp(-Math.pow((Math.log(z) - lzw) / 0.16, 2));
+      const R = (z) => Rt * G.F / z * swell(z);
+      const curl = 1.7 + 1.1 * prog;                               // frame dragging grows as we close in
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.lineCap = 'round';
       // the walls: a faint glow that brightens toward the edges of the screen
-      const wg = ctx.createRadialGradient(G.vx, G.vy, Math.min(W, H) * 0.12, G.vx, G.vy, maxR);
-      wg.addColorStop(0, 'rgba(0,0,0,0)'); wg.addColorStop(0.6, hexToRgba(theme.c1, 0.06 * k)); wg.addColorStop(1, `rgba(176,92,255,${0.16 * k})`);
+      const wg = ctx.createRadialGradient(G.vx, G.vy, Math.min(W, H) * 0.1, G.vx, G.vy, maxR);
+      wg.addColorStop(0, 'rgba(0,0,0,0)'); wg.addColorStop(0.55, rgba(VIOLET, 0.05 * fade)); wg.addColorStop(1, rgba(mixRgb(near0, REDSHIFT, 0.3), 0.15 * fade));
       ctx.fillStyle = wg; ctx.fillRect(0, 0, W, H);
-      // spacetime spokes, spiralling out of the throat
-      const spokes = Math.round(18 * q);
-      ctx.lineWidth = 1.2;
-      for (let i = 0; i < spokes; i++) {
-        const base = i / spokes * Math.PI * 2;
-        ctx.strokeStyle = hexToRgba(i % 3 ? theme.c1 : '#b05cff', 0.26 * k * (1 - dive));
-        ctx.beginPath();
-        let first = true;
-        for (let z = G.zFar; z > G.zNear; z *= 0.82) {
-          const a = base + z * 0.22 + t * 0.55, rr = Rt * G.F / z;
-          if (rr > maxR * 1.2) break;
+      // the spokes (meridians): one path per depth band, so the colour can shift along them
+      const M = Math.round(30 * q), BANDS = 5;
+      const paths = []; for (let b = 0; b < BANDS; b++) paths.push(new Path2D());
+      for (let i = 0; i < M; i++) {
+        const base = i / M * Math.PI * 2 + t * 0.12;
+        let px = 0, py = 0, pb = -1, have = false;
+        for (let z = G.zFar; z > G.zNear * 0.9; z *= 0.87) {
+          const rr = R(z);
+          if (rr > maxR * 1.25) break;
+          const a = base + curl * Math.pow(z / G.zFar, 2);
           const x = G.vx + Math.cos(a) * rr, y = G.vy + Math.sin(a) * rr;
-          if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y);
+          const dz = (z - G.zNear) / (G.zFar - G.zNear), b = Math.min(BANDS - 1, Math.max(0, Math.floor((1 - dz) * BANDS)));
+          if (have) { paths[b].moveTo(px, py); paths[b].lineTo(x, y); }
+          px = x; py = y; pb = b; have = true;
         }
-        ctx.stroke();
       }
-      // streaming rings, each a broken, twisting band
-      const ph = ((t * v) % gap + gap) % gap;
+      for (let b = 0; b < BANDS; b++) {
+        const nearB = (b + 0.5) / BANDS;                             // 0 = at the throat, 1 = at the camera
+        ctx.strokeStyle = rgba(colAt(1 - nearB), (0.07 + 0.2 * nearB) * fade);
+        ctx.lineWidth = 0.7 + 1.6 * nearB * nearB;
+        ctx.stroke(paths[b]);
+      }
+      // the rings, world-anchored so each keeps its identity as it streams at us (every fourth is
+      // a major line of the grid; every seventh carries a clock)
+      const travel = t * v, ph = ((travel % gap) + gap) % gap;
       for (let z = G.zFar - ph; z > G.zNear; z -= gap) {
-        const rr = Rt * G.F / z;
+        const id = Math.round((travel + G.zFar - z) / gap);
+        const rr = R(z);
         if (rr > maxR * 1.3) continue;
-        const near = 1 - (z - G.zNear) / (G.zFar - G.zNear);
-        const fadeEdge = Math.max(0, 1 - rr / (maxR * 1.3));
-        const a = (0.1 + 0.6 * near * near) * fadeEdge * k * (1 - dive);
-        if (a < 0.01) continue;
-        const twist = z * 0.35 + t * 0.8;
-        const seg = 6, gapA = 0.32;
-        ctx.lineWidth = 1 + 4.5 * near * near;
-        for (let s = 0; s < seg; s++) {
-          const a0 = twist + s / seg * Math.PI * 2, a1 = a0 + Math.PI * 2 / seg - gapA;
-          ctx.strokeStyle = hexToRgba(s % 2 ? theme.c3 : '#b05cff', a);
-          ctx.beginPath(); ctx.arc(G.vx, G.vy, rr, a0, a1); ctx.stroke();
+        const dz = (z - G.zNear) / (G.zFar - G.zNear), near = 1 - dz;
+        const edge = Math.max(0, 1 - rr / (maxR * 1.3));
+        const major = id % 4 === 0;
+        const boost = 1 + 2.2 * (swell(z) - 1) / Math.max(0.01, waveAmp);
+        const a = (0.05 + 0.42 * near * near) * edge * fade * (major ? 1.55 : 0.8) * Math.min(2.2, boost);
+        if (a < 0.008) continue;
+        const col = colAt(dz);
+        ctx.lineWidth = (major ? 1.4 : 0.7) + 3.4 * near * near;
+        ctx.strokeStyle = rgba(col, Math.min(1, a));
+        ctx.beginPath(); ctx.arc(G.vx, G.vy, rr, 0, Math.PI * 2); ctx.stroke();
+        if (q >= 1 && near > 0.55) {                                // a whisper of chromatic fringe near the lens
+          ctx.lineWidth = 1 + 1.5 * near;
+          ctx.strokeStyle = rgba([255, 60, 90], a * 0.3); ctx.beginPath(); ctx.arc(G.vx + 1.2, G.vy, rr * 1.012, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = rgba([60, 220, 255], a * 0.3); ctx.beginPath(); ctx.arc(G.vx - 1.2, G.vy, rr * 0.988, 0, Math.PI * 2); ctx.stroke();
         }
-        // a counter-twisting inner ribbon, so the walls read as woven spacetime
-        if (q >= 0.75) {
-          ctx.lineWidth = 0.8 + 2 * near * near;
-          for (let s = 0; s < 3; s++) {
-            const a0 = -twist * 1.3 + s / 3 * Math.PI * 2;
-            ctx.strokeStyle = hexToRgba(theme.c1, a * 0.7);
-            ctx.beginPath(); ctx.arc(G.vx, G.vy, rr * 0.93, a0, a0 + 0.9); ctx.stroke();
+        // the clocks: a bezel of ticks and one bright hand. A ring's own time runs as fast as its
+        // depth allows (stopped at the hole, full speed at the camera), so its hand's angle is set
+        // by how far it has come: (zFar - z)^2 / (2 v zFar), scaled.
+        if (q >= 0.75 && id % 7 === 3 && near > 0.08) {
+          const ang = -Math.PI / 2 + id * 1.3 + 3.2 * Math.pow(G.zFar - z, 2) / (2 * v * G.zFar);
+          const ca = Math.min(0.5, a * 1.4);
+          ctx.strokeStyle = rgba(mixRgb(col, [255, 255, 255], 0.5), ca);
+          ctx.lineWidth = 0.6 + 1.6 * near;
+          ctx.beginPath();
+          for (let s = 0; s < 60; s++) {
+            const aa = s / 60 * Math.PI * 2 + ang * 0.08, len = s % 5 === 0 ? 0.075 : 0.035;
+            const c0 = Math.cos(aa), s0 = Math.sin(aa);
+            ctx.moveTo(G.vx + c0 * rr * (1 - len), G.vy + s0 * rr * (1 - len)); ctx.lineTo(G.vx + c0 * rr, G.vy + s0 * rr);
           }
+          ctx.stroke();
+          ctx.strokeStyle = rgba([255, 255, 255], Math.min(0.85, ca * 1.8)); ctx.lineWidth = 1.2 + 2.4 * near;
+          ctx.beginPath(); ctx.moveTo(G.vx + Math.cos(ang) * rr * 0.8, G.vy + Math.sin(ang) * rr * 0.8); ctx.lineTo(G.vx + Math.cos(ang) * rr * 1.02, G.vy + Math.sin(ang) * rr * 1.02); ctx.stroke();
         }
       }
-      // the beat ripple: a bright ring running down the tunnel on every beat
-      for (let j = 0; j < 2; j++) {
-        const f = (((bf + j * 0.5) % 1) + 1) % 1;
-        const z = G.zFar * Math.pow(G.zNear / G.zFar, f);
-        const rr = Rt * G.F / z;
-        if (rr > maxR * 1.3) continue;
-        ctx.strokeStyle = `rgba(255,255,255,${(0.35 * (1 - f) + 0.1) * k * (1 - dive)})`;
-        ctx.lineWidth = 1 + 5 * f * f;
-        ctx.beginPath(); ctx.arc(G.vx, G.vy, rr, 0, Math.PI * 2); ctx.stroke();
+      // the wave's crest: a bright ring running up the tunnel on every beat
+      {
+        const rr = Rt * G.F / zw * (1 + waveAmp);
+        if (rr < maxR * 1.3) {
+          ctx.strokeStyle = `rgba(255,255,255,${((0.32 * (1 - wf) + 0.08) * fade).toFixed(3)})`;
+          ctx.lineWidth = 1 + 5 * wf * wf;
+          ctx.beginPath(); ctx.arc(G.vx, G.vy, rr, 0, Math.PI * 2); ctx.stroke();
+        }
       }
       ctx.restore();
     }
 
-    function drawHole(G, t, k, dive) {
-      // the same black hole as the Supernova's (shadow, lensed disk, photon ring), bigger
-      const base = H * 0.05;
-      const Rh = (base * (1 + 0.25 * Math.min(1, (t - t0) / HYPER_DUR)) + dive * dive * Math.max(W, H) * 1.25) * k;
-      if (Rh < 1) return;
-      const x = G.vx, y = G.vy;
-      const diskA = 1 - Math.min(1, dive * 1.6);
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const glow = ctx.createRadialGradient(x, y, Rh * 0.9, x, y, Rh * 4.2);
-      glow.addColorStop(0, 'rgba(255,170,90,0.22)'); glow.addColorStop(0.35, 'rgba(176,92,255,0.16)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, Rh * 4.2, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-      drawBlackHole(x, y, Rh, base, { diskA: diskA * 1.1, spin: t * 1.5, ringA: 1, birth: 0 });
-      if (dive > 0.02) {
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = 'rgba(255,248,235,0.95)'; ctx.lineWidth = Math.min(6, Math.max(1.2, Rh * 0.045)) + dive * 3;
-        ctx.beginPath(); ctx.arc(x, y, Rh * 1.03, 0, Math.PI * 2); ctx.stroke();
-        ctx.restore();
+    // ---------- art: the black hole ahead ----------
+    // Modelled on a real (spinning) black hole seen from just above its disk, the way the
+    // simulations draw it:
+    //  - the shadow, with a thin photon ring round it (light that went round the hole), brighter
+    //    on the side turning toward us;
+    //  - the accretion disk, white-hot inside to orange-red outside, the inner gas lapping faster
+    //    than the outer, Doppler-beamed: the approaching (left) side bright and bluer, the receding
+    //    side dimmer and redder;
+    //  - the far side of that same disk, lensed up over the top of the shadow and, thinner, under it;
+    //  - a ring of background starlight smeared into arcs round the shadow (an Einstein ring);
+    //  - hot spots orbiting in the disk, and faint jets along the spin axis.
+    // It starts small and grows as we fall toward it over the flight, then the craft dives in.
+    // Two textures are made once (the disk face-on, the lensed starlight); each frame composes them.
+    const BH_IN = 1.45, BH_MID = 2.7, BH_OUT = 5.4, BH_COSI = 0.062, BH_ROLL = -0.11;
+    let bhTex = null, bhOffA = null, bhOffB = null, lastRs = 0;
+    function bhTextures() {
+      const key = SpaceFX.low ? 'lo' : 'hi';
+      if (bhTex && bhTex.key === key) return bhTex;
+      let sd = 0x5eed1e5;
+      const rnd = () => { sd = (sd + 0x6D2B79F5) | 0; let x = Math.imul(sd ^ (sd >>> 15), 1 | sd); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+      const S = key === 'lo' ? 512 : 1024, R = S / 2, rs = R / BH_OUT;
+      const TEMP = [[1.4, [255, 252, 246]], [1.9, [255, 236, 200]], [2.6, [255, 204, 140]], [3.4, [255, 160, 86]], [4.4, [246, 104, 58]], [5.4, [190, 60, 44]]];
+      const temp = (r) => {
+        for (let i = 1; i < TEMP.length; i++) if (r <= TEMP[i][0]) { const u = (r - TEMP[i - 1][0]) / (TEMP[i][0] - TEMP[i - 1][0]); return mixRgb(TEMP[i - 1][1], TEMP[i][1], Math.max(0, u)); }
+        return TEMP[TEMP.length - 1][1];
+      };
+      function disk(r0, r1, n) {
+        const c = document.createElement('canvas'); c.width = c.height = S;
+        const g = c.getContext('2d'); g.translate(R, R);
+        // the body: a smooth annulus, brightest at its inner edge
+        const bg = g.createRadialGradient(0, 0, r0 * rs, 0, 0, r1 * rs);
+        for (let i = 0; i <= 8; i++) {
+          const u = i / 8, r = r0 + (r1 - r0) * u;
+          const edgeIn = Math.min(1, u * 14), edgeOut = Math.pow(1 - u, r1 > 4 ? 1.6 : 0.6);
+          bg.addColorStop(u, rgba(temp(r), (r1 > 4 ? 0.34 : 0.62) * edgeIn * edgeOut));
+        }
+        g.fillStyle = bg; g.beginPath(); g.arc(0, 0, r1 * rs, 0, Math.PI * 2); g.arc(0, 0, r0 * rs, 0, Math.PI * 2, true); g.fill();
+        // the gas: thousands of short arcs, denser and hotter inside
+        g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+        for (let i = 0; i < n; i++) {
+          const u = Math.pow(rnd(), 1.6), r = r0 + (r1 - r0) * u;
+          const a0 = rnd() * Math.PI * 2, len = (0.08 + rnd() * 0.75) * (1.1 - 0.6 * u);
+          const fadeOut = Math.pow(1 - u, 1.2) * Math.min(1, (r - r0) / 0.06 + 0.3);
+          g.strokeStyle = rgba(mixRgb(temp(r), [255, 255, 255], rnd() * 0.35), (0.04 + rnd() * 0.22) * fadeOut);
+          g.lineWidth = rs * (0.006 + rnd() * rnd() * 0.05);
+          g.beginPath(); g.arc(0, 0, r * rs, a0, a0 + len); g.stroke();
+        }
+        // a few bright knots of hotter gas
+        for (let i = 0; i < n / 140; i++) {
+          const r = r0 + (r1 - r0) * Math.pow(rnd(), 2) * 0.7, a = rnd() * Math.PI * 2, kr = rs * (0.05 + rnd() * 0.14);
+          const x = Math.cos(a) * r * rs, y = Math.sin(a) * r * rs;
+          const kg = g.createRadialGradient(x, y, 0, x, y, kr);
+          kg.addColorStop(0, 'rgba(255,250,236,0.35)'); kg.addColorStop(1, 'rgba(255,200,140,0)');
+          g.fillStyle = kg; g.beginPath(); g.arc(x, y, kr, 0, Math.PI * 2); g.fill();
+        }
+        // dark lanes: gaps in the gas, so it reads as structured, not a smear
+        g.globalCompositeOperation = 'destination-out';
+        for (let i = 0; i < (r1 > 4 ? 9 : 6); i++) {
+          const r = r0 + 0.08 + (r1 - r0 - 0.1) * rnd(), a0 = rnd() * Math.PI * 2;
+          g.strokeStyle = `rgba(0,0,0,${(0.18 + rnd() * 0.3).toFixed(2)})`; g.lineWidth = rs * (0.02 + rnd() * 0.06);
+          g.beginPath(); g.arc(0, 0, r * rs, a0, a0 + Math.PI * (0.6 + rnd() * 1.3)); g.stroke();
+        }
+        return c;
       }
+      // the lensed starlight: tangential arcs, longer and brighter close to the shadow
+      function stars() {
+        const SS = key === 'lo' ? 256 : 512, RR = SS / 2, sr = RR / 3.4;
+        const c = document.createElement('canvas'); c.width = c.height = SS;
+        const g = c.getContext('2d'); g.translate(RR, RR); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+        const er = g.createRadialGradient(0, 0, sr * 1.04, 0, 0, sr * 2.2);
+        er.addColorStop(0, 'rgba(200,190,255,0.0)'); er.addColorStop(0.12, 'rgba(210,200,255,0.18)'); er.addColorStop(0.4, 'rgba(160,140,255,0.06)'); er.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = er; g.beginPath(); g.arc(0, 0, sr * 2.2, 0, Math.PI * 2); g.fill();
+        const N = key === 'lo' ? 260 : 720;
+        for (let i = 0; i < N; i++) {
+          const r = 1.06 + Math.pow(rnd(), 2.4) * 2.25, a = rnd() * Math.PI * 2;
+          const stretch = 0.012 + 0.42 * Math.pow(1.06 / r, 7);
+          const tint = rnd(), col = tint < 0.6 ? [255, 255, 255] : tint < 0.85 ? [190, 214, 255] : [255, 226, 180];
+          const al = (0.25 + 0.75 * rnd()) * Math.min(1, 0.35 + 1.4 * Math.pow(1.06 / r, 3));
+          g.strokeStyle = rgba(col, al); g.lineWidth = 0.7 + rnd() * 1.1;
+          g.beginPath(); g.arc(0, 0, r * sr, a, a + stretch); g.stroke();
+          if (r < 1.5 && rnd() < 0.5) {                            // its counter-image, across the hole
+            g.strokeStyle = rgba(col, al * 0.5); g.beginPath(); g.arc(0, 0, (2.12 - r * 0.7) * sr, a + Math.PI, a + Math.PI + stretch * 0.7); g.stroke();
+          }
+        }
+        return { c, R: RR, rs: sr };
+      }
+      const hi = key === 'hi';
+      const inner = disk(BH_IN, BH_MID + 0.15, hi ? 2600 : 900);
+      // a soft copy of the inner gas for the lensed images: light bent round the hole is smeared,
+      // not streaky (made by drawing it small; it is drawn back up smoothed)
+      const soft = document.createElement('canvas'); soft.width = soft.height = S / 8;
+      soft.getContext('2d').drawImage(inner, 0, 0, S / 8, S / 8);
+      bhTex = { key, R, rs, inner, soft, outer: disk(BH_MID - 0.1, BH_OUT, hi ? 2400 : 800), stars: stars() };
+      return bhTex;
+    }
+    function bhOff(n) {
+      if (!bhOffA) { bhOffA = document.createElement('canvas'); bhOffB = document.createElement('canvas'); }
+      return n ? bhOffB : bhOffA;
+    }
+    // the flat disk, tilted almost edge-on, spun and Doppler-beamed, composed off screen: returns
+    // the canvas and the scale it was drawn at (px of it per px on screen)
+    function bhDiskImage(T, Rs, spinIn, spinOut, a, beam) {
+      const span = 2 * BH_OUT * Rs;
+      const f = Math.min(1, (SpaceFX.low ? 480 : 820) / span);
+      const ow = Math.ceil(span * f) + 2, oh = Math.ceil(span * BH_COSI * f) + 2;
+      const A = bhOff(0), B = bhOff(1);
+      if (A.width < ow || A.height < oh) { A.width = B.width = Math.max(ow, A.width); A.height = B.height = Math.max(oh, A.height); }
+      const ga = A.getContext('2d'), gb = B.getContext('2d');
+      const paint = (g, alpha) => {
+        g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, ow + 2, oh + 2);
+        g.globalCompositeOperation = 'lighter'; g.globalAlpha = alpha;
+        g.translate(ow / 2, oh / 2); g.scale(f * Rs / T.rs, f * Rs / T.rs * BH_COSI);
+        g.save(); g.rotate(-spinOut); g.drawImage(T.outer, -T.R, -T.R, T.R * 2, T.R * 2); g.restore();
+        g.save(); g.rotate(-spinIn); g.drawImage(T.inner, -T.R, -T.R, T.R * 2, T.R * 2); g.restore();
+        g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
+      };
+      paint(ga, a);
+      if (beam) {
+        // the receding side dimmer and redder...
+        ga.globalCompositeOperation = 'source-atop';
+        const rg = ga.createLinearGradient(0, 0, ow, 0);
+        rg.addColorStop(0, 'rgba(255,90,40,0)'); rg.addColorStop(0.55, 'rgba(255,90,40,0)'); rg.addColorStop(1, 'rgba(150,30,20,0.55)');
+        ga.fillStyle = rg; ga.fillRect(0, 0, ow, oh);
+        // ...the approaching side beamed brighter and bluer: a second copy, masked to fade from left to right
+        paint(gb, Math.min(1, a * 0.9));
+        gb.globalCompositeOperation = 'source-atop'; gb.fillStyle = 'rgba(214,226,255,0.35)'; gb.fillRect(0, 0, ow, oh);
+        gb.globalCompositeOperation = 'destination-in';
+        const mg = gb.createLinearGradient(0, 0, ow, 0);
+        mg.addColorStop(0, 'rgba(0,0,0,1)'); mg.addColorStop(0.42, 'rgba(0,0,0,0.75)'); mg.addColorStop(0.62, 'rgba(0,0,0,0)'); mg.addColorStop(1, 'rgba(0,0,0,0)');
+        gb.fillStyle = mg; gb.fillRect(0, 0, ow, oh);
+        ga.globalCompositeOperation = 'lighter'; ga.drawImage(B, 0, 0, ow, oh, 0, 0, ow, oh);
+        ga.globalCompositeOperation = 'source-over';
+      }
+      return { c: A, f, ow, oh };
+    }
+    function drawHole(G, t, k, dive) {
+      const age = t - t0, prog = Math.min(1, Math.max(0, age / HYPER_DUR));
+      const base = Math.max(24, Math.min(70, Math.min(W, H) * 0.085));
+      const Rs = (base * (1 + 1.35 * ease(prog)) + dive * dive * Math.max(W, H) * 1.25) * k;
+      lastRs = Rs;
+      if (Rs < 1) return;
+      const T = bhTextures(), low = SpaceFX.low, hq = hd();
+      const diskA = Math.max(0, 1 - dive * 1.6) * Math.min(1, k * 1.2);
+      const beat = Math.pow(1 - musicBeatPhase(), 3);
+      const spinIn = t * 0.85, spinOut = t * 0.38;                    // the inner gas laps faster
+      ctx.save();
+      ctx.translate(G.vx, G.vy); ctx.rotate(BH_ROLL);
+      ctx.globalCompositeOperation = 'lighter';
+      // a warm haze round it all, and a violet one further out that ties it to the tunnel
+      const hz = ctx.createRadialGradient(0, 0, Rs, 0, 0, Rs * 7);
+      hz.addColorStop(0, `rgba(255,190,120,${(0.2 * diskA).toFixed(3)})`); hz.addColorStop(0.3, `rgba(255,120,90,${(0.07 * diskA).toFixed(3)})`);
+      hz.addColorStop(0.65, `rgba(150,80,255,${(0.05 * diskA).toFixed(3)})`); hz.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = hz; ctx.beginPath(); ctx.arc(0, 0, Rs * 7, 0, Math.PI * 2); ctx.fill();
+      // the lensed starlight, turning slowly (frame dragging)
+      if (!low) {
+        const S = T.stars, sc = Rs / S.rs;
+        ctx.save(); ctx.rotate(t * 0.06); ctx.globalAlpha = Math.min(1, k) * (1 - Math.min(1, dive * 2)) * 0.6;
+        ctx.drawImage(S.c, -S.R * sc, -S.R * sc, S.R * 2 * sc, S.R * 2 * sc);
+        ctx.restore(); ctx.globalAlpha = 1;
+      }
+      // faint jets along the spin axis, with knots running out on the beat
+      if (hq && diskA > 0.02) {
+        for (const dir of [-1, 1]) {
+          const L = Rs * 9, jg = ctx.createLinearGradient(0, dir * Rs, 0, dir * L);
+          jg.addColorStop(0, `rgba(170,190,255,${(0.2 * diskA).toFixed(3)})`); jg.addColorStop(0.35, `rgba(140,120,255,${(0.08 * diskA).toFixed(3)})`); jg.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = jg;
+          ctx.beginPath(); ctx.moveTo(-Rs * 0.08, dir * Rs * 0.9); ctx.lineTo(-Rs * 0.55, dir * L); ctx.lineTo(Rs * 0.55, dir * L); ctx.lineTo(Rs * 0.08, dir * Rs * 0.9); ctx.closePath(); ctx.fill();
+          const kf = (musicBeatFloat() % 1 + 1) % 1;
+          for (let j = 0; j < 2; j++) {
+            const u = (kf + j * 0.5) % 1, ky = dir * Rs * (1.4 + u * 6.5), kr = Rs * (0.12 + u * 0.35);
+            const kg = ctx.createRadialGradient(0, ky, 0, 0, ky, kr);
+            kg.addColorStop(0, `rgba(210,220,255,${(0.32 * (1 - u) * diskA).toFixed(3)})`); kg.addColorStop(1, 'rgba(160,140,255,0)');
+            ctx.fillStyle = kg; ctx.beginPath(); ctx.arc(0, ky, kr, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
+      const disk = diskA > 0.01 ? bhDiskImage(T, Rs, spinIn, spinOut, diskA * (0.82 + 0.14 * beat), !low) : null;
+      const half = (front) => {
+        if (!disk) return;
+        ctx.save(); ctx.beginPath();
+        if (front) ctx.rect(-Rs * BH_OUT * 1.1, 0, Rs * BH_OUT * 2.2, Rs * BH_OUT); else ctx.rect(-Rs * BH_OUT * 1.1, -Rs * BH_OUT, Rs * BH_OUT * 2.2, Rs * BH_OUT);
+        ctx.clip();
+        ctx.drawImage(disk.c, 0, 0, disk.ow, disk.oh, -disk.ow / disk.f / 2, -disk.oh / disk.f / 2, disk.ow / disk.f, disk.oh / disk.f);
+        ctx.restore();
+      };
+      // hot spots orbiting in the inner disk: drawn with the half of the disk they are in
+      const spots = (front) => {
+        if (low || diskA < 0.02) return;
+        for (let i = 0; i < 3; i++) {
+          const r = Rs * (1.75 + i * 0.45), ph = t * (2.2 - i * 0.45) + i * 2.1;
+          const y = Math.sin(ph) * r * BH_COSI;
+          if ((y >= 0) !== front) continue;
+          const x = Math.cos(ph) * r, beam = 1 - 0.75 * Math.cos(ph);      // brighter coming toward us (left)
+          const sr = Rs * 0.32, sg = ctx.createRadialGradient(x, y, 0, x, y, sr);
+          sg.addColorStop(0, `rgba(255,250,240,${(0.42 * beam * diskA * (0.8 + 0.4 * beat)).toFixed(3)})`); sg.addColorStop(1, 'rgba(255,190,120,0)');
+          ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(x, y, sr * 1.5, sr * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+        }
+      };
+      half(false); spots(false);
+      // the shadow
+      ctx.globalCompositeOperation = 'source-over';
+      const sg = ctx.createRadialGradient(0, 0, Rs * 0.9, 0, 0, Rs * 1.05);
+      sg.addColorStop(0, 'rgba(0,0,0,1)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, Rs * 0.92, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(0, 0, Rs * 1.05, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter';
+      // the far side of the disk, lensed over the top of the shadow (and, thinner, under it): the
+      // same gas, seen face-on and squeezed in against the shadow
+      if (diskA > 0.01) {
+        // (the inner gas only: squeezed by 0.72 it spans 1.04-2.05 shadow radii, the band seen
+        // arching over the top in the simulations)
+        const arch = (top, sIn, a, rMax) => {
+          ctx.save();
+          ctx.beginPath(); ctx.arc(0, 0, Rs * rMax, 0, Math.PI * 2); ctx.arc(0, 0, Rs * 1.0, 0, Math.PI * 2, true); ctx.clip();
+          ctx.beginPath(); if (top) ctx.rect(-Rs * 9, -Rs * 9, Rs * 18, Rs * 9 + Rs * 0.04); else ctx.rect(-Rs * 9, 0, Rs * 18, Rs * 9); ctx.clip();
+          ctx.globalAlpha = Math.min(1, a);
+          const sc = Rs / T.rs * sIn;
+          ctx.scale(sc, sc); ctx.rotate(-spinIn * 0.8); ctx.drawImage(T.soft, -T.R, -T.R, T.R * 2, T.R * 2);
+          ctx.restore();
+        };
+        arch(true, 0.75, diskA * (0.95 + 0.15 * beat), 1.82);
+        if (!low) {                                                   // the approaching side of the arch, beamed
+          ctx.save(); ctx.beginPath(); ctx.rect(-Rs * 9, -Rs * 9, Rs * 8.7, Rs * 18); ctx.clip();
+          arch(true, 0.75, diskA * 0.4, 1.82);
+          ctx.restore();
+        }
+        arch(false, 0.72, diskA * 0.6, 1.2);                          // the secondary image, under the shadow
+        ctx.globalAlpha = 1;
+      }
+      // the photon ring: a hair-thin circle of light, brightest where it comes at us, with the
+      // fainter second ring just inside it
+      const pr = Math.min(1, k) * (1 + 0.25 * beat);
+      ctx.lineWidth = Math.max(1, Rs * 0.03);
+      ctx.strokeStyle = `rgba(255,250,240,${Math.min(1, 0.9 * pr).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(0, 0, Rs * 1.012, Math.PI * 0.45, Math.PI * 1.55); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,206,150,${Math.min(1, 0.45 * pr).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(0, 0, Rs * 1.012, Math.PI * 1.55, Math.PI * 2.45); ctx.stroke();
+      ctx.lineWidth = Math.max(0.6, Rs * 0.014); ctx.strokeStyle = `rgba(255,255,255,${(0.28 * pr).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(0, 0, Rs * 0.992, 0, Math.PI * 2); ctx.stroke();
+      // the near side of the disk, crossing in front of the shadow
+      half(true); if (disk) { ctx.globalAlpha = 0.35; half(true); ctx.globalAlpha = 1; } spots(true);
+      // diving in: the photon ring flares as it sweeps past the screen's edges
+      if (dive > 0.02) {
+        ctx.strokeStyle = 'rgba(255,248,235,0.95)'; ctx.lineWidth = Math.min(6, Math.max(1.2, Rs * 0.045)) + dive * 3;
+        ctx.beginPath(); ctx.arc(0, 0, Rs * 1.03, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
     }
 
     function drawObj(G, o, t) {
@@ -9444,48 +9857,24 @@
         if (firstFlight) {
           ctx.globalAlpha = Math.min(1, a * 1.6);
           ctx.fillStyle = '#ffffff'; ctx.font = '900 10px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
-          ctx.fillText('TAP', edge - dir * dx * 1.3, y + hh + 16);
+          ctx.fillText(usesTouch() ? 'SLIDE' : dir < 0 ? (inputKind === 'mouse' ? 'CLICK · A' : 'A · ←') : (inputKind === 'mouse' ? 'CLICK · D' : 'D · →'), edge - dir * dx * 1.3, y + hh + 16);
         }
       }
       ctx.restore();
     }
-    // The controls card, on the first flight ever (it goes once you've steered a few times).
+    // After the first-flight card: a one-line reminder over the craft for the first few seconds of
+    // the warm-up (rings only), then it goes.
     function drawTutor(t) {
-      if (!tut || t < tutFrom || t > tutUntil + 0.4) return;
+      if (!firstFlight || card !== 'done' || t < tutFrom || t > tutUntil + 0.4) return;
       const a = Math.min(1, (t - tutFrom) / 0.3) * Math.min(1, (tutUntil + 0.4 - t) / 0.4);
-      const cfg = HYPER_CORES[abilityId];
-      const cw = Math.min(W * 0.88, 360), ch = cfg ? 186 : 160;
-      const cx = W / 2, cy = H * 0.47, x0 = cx - cw / 2, y0 = cy - ch / 2;
+      const G = geo(), txt = controlsLine();
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.fillStyle = 'rgba(8,6,26,0.78)';
-      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x0, y0, cw, ch, 18) : ctx.rect(x0, y0, cw, ch); ctx.fill();
-      ctx.strokeStyle = hexToRgba(theme.c1, 0.75); ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#d6b8ff'; ctx.font = '900 13px Inter, system-ui, sans-serif';
-      ctx.fillText('H Y P E R D R I V E', cx, y0 + 24);
-      ctx.fillStyle = '#ffffff'; ctx.font = '900 17px Inter, system-ui, sans-serif';
-      ctx.fillText('◀  TAP LEFT  ·  TAP RIGHT  ▶', cx, y0 + 56);
-      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '700 12px Inter, system-ui, sans-serif';
-      ctx.fillText('slide between the three lanes', cx, y0 + 76);
-      const row = (yy, chip, chipCol, txt) => {
-        ctx.font = '900 11px Inter, system-ui, sans-serif';
-        const cwid = ctx.measureText(chip).width + 18;
-        ctx.font = '700 13px Inter, system-ui, sans-serif';
-        const tw = ctx.measureText(txt).width;
-        const sx = cx - (cwid + 10 + tw) / 2;
-        ctx.fillStyle = hexToRgba(chipCol, 0.22); ctx.strokeStyle = chipCol; ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.roundRect ? ctx.roundRect(sx, yy - 11, cwid, 22, 11) : ctx.rect(sx, yy - 11, cwid, 22); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#ffffff'; ctx.font = '900 11px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText(chip, sx + cwid / 2, yy + 1);
-        ctx.textAlign = 'left'; ctx.font = '700 13px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.92)';
-        ctx.fillText(txt, sx + cwid + 10, yy + 1);
-        ctx.textAlign = 'center';
-      };
-      row(y0 + 106, 'FIRE', '#ffb070', 'shoots the rock ahead of you');
-      if (cfg) row(y0 + 136, 'CORE', cfg.col, cfg.name.toLowerCase() + ', your Boss Core');
-      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '700 11px Inter, system-ui, sans-serif';
-      ctx.fillText('grab the rings · dodge the rocks · 60 seconds', cx, y0 + ch - 20);
+      ctx.font = '900 12px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const w = ctx.measureText(txt).width + 26, y = G.yCraft - targetR * 1.9;
+      ctx.fillStyle = 'rgba(8,4,24,0.7)'; ctx.strokeStyle = hexToRgba(theme.c1, 0.7); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W / 2 - w / 2, y - 14, w, 28, 14) : ctx.rect(W / 2 - w / 2, y - 14, w, 28); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.fillText(txt, W / 2, y + 1);
       ctx.restore();
     }
 
@@ -9561,6 +9950,9 @@
 
     return {
       request, canStart, start, update, steer, tap, fire, fireCore, cancel, draw, drawOverlay,
+      closeCard, cardGo,
+      get cardOpen() { return card === 'open'; },
+      get duration() { return HYPER_DUR; },
       get active() { return active; },
       get pending() { return pending; },
       get stats() { return stats; },
@@ -9570,9 +9962,17 @@
       get coreCharges() { return coreCharges; },
       scene(t) { return active && (t - t0) < HYPER_DUR - HYPER_OUT * 0.45; },
       _geo: () => geo(),                                  // (read-only, for the layout tests)
+      _holeR: () => lastRs,                               // (read-only: the black hole's shadow radius last drawn)
       syncButtons,
       warpWant() { return active ? 1 : 0; }
     };
+  })();
+
+  // Continue on the first-flight card (touchend too: iOS can drop the click after a held finger)
+  (() => {
+    const b = document.getElementById('hyperCardGo'); if (!b) return;
+    b.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); Hyper.cardGo(); });
+    b.addEventListener('click', (e) => { e.stopPropagation(); Hyper.cardGo(); });
   })();
 
   // ================= THE ALIEN FLEET (Nov 12): the ultimate secret boss =================
@@ -12537,6 +12937,9 @@
       if (e.code === 'Escape') { e.preventDefault(); Mapper.hide(); return; }
       return;                       // mapper swallows keys while open
     }
+    if (Hyper.cardOpen && (e.code === 'Enter' || e.code === 'Space' || e.code === 'NumpadEnter')) {
+      e.preventDefault(); if (!e.repeat) Hyper.cardGo(); return;
+    }
     if ((e.code === 'Escape' || e.code === 'KeyP') && !e.repeat) {
       if (inRunState()) { e.preventDefault(); pauseGame('button'); return; }
       if (state === 'paused') { e.preventDefault(); requestResume(); return; }
@@ -12642,6 +13045,7 @@
     focus: 'Paused because the game lost focus.',
     audio: 'Paused because the audio was interrupted.',
     freeze: 'Paused because the game stalled for a moment.',
+    hypertut: '',
   };
   // iOS Safari can leave the context saying 'running' while its clock has stopped
   // (Siri, and after the screen is locked and woken). The state never changes, so
@@ -12742,6 +13146,7 @@
   }
   function requestResume() {
     if (state !== 'paused' || !pauseInfo || pauseInfo.countdownStart) return;
+    Hyper.closeCard();                  // the Hyperdrive card goes with any resume (Continue, Esc, P)
     disarmQuit();
     ensureAudio();
     kickAudio();                        // inside the tap: iOS needs a user gesture
