@@ -333,7 +333,7 @@ test('older saves are migrated from their records (secret gauntlets do not count
   expect(errors).toEqual([]);
 });
 
-test('Second Life: once per run, an energy death becomes a collapse that keeps the combo', async ({ page }) => {
+test('Second Life: once per run, an energy death becomes a rebirth that keeps the combo', async ({ page }) => {
   const { errors } = await bootZ(page, { level: 100, bestStage: 100, craft: 'zero' });
   await page.evaluate(() => startGame(false));
   await page.waitForFunction(() => state === 'playing');
@@ -350,6 +350,32 @@ test('Second Life: once per run, an energy death becomes a collapse that keeps t
   await page.evaluate(() => { energy = 0; endGame(); });
   await page.waitForTimeout(200);
   expect(await page.evaluate(() => state), 'only once per run').toBe('gameover');
+  expect(errors).toEqual([]);
+});
+
+test('Zero Form rebirth (Nov 13): passive alongside any Boss Core; the orb opens and a new one takes its place', async ({ page }) => {
+  const { errors } = await bootZ(page, { level: 100, bestStage: 100, craft: 'zero', equippedAbility: 'hexSaw', bossUnlocks: { hexatron: true } });
+  await page.evaluate(() => startGame(false));
+  await page.waitForFunction(() => state === 'playing');
+  await page.waitForTimeout(1200);
+  // a Boss Core works in Zero Form, and Second Life sits beside it
+  const both = await page.evaluate(() => { abReady = true; activateAbility(); return { craft: craftIsZero(), on: abActive, ab: abilityId, ready: secondLifeReady() }; });
+  expect(both).toEqual({ craft: true, on: true, ab: 'hexSaw', ready: true });
+  await page.evaluate(() => {
+    window.__open = []; window.__toasts = [];
+    const o = window.drawZeroOpening; window.drawZeroOpening = function (c, t, x, y, R, L) { window.__open.push(L); return o.apply(this, arguments); };
+    const st = window.showToast; window.showToast = function (a, b, c) { window.__toasts.push(a + ' / ' + c); return st.apply(this, arguments); };
+    energy = 0; endGame();
+  });
+  const at = await page.evaluate(() => ({ state, used: secondLifeUsed, ab: abilityId, len: ZERO_REBIRTH }));
+  expect(at).toMatchObject({ state: 'playing', used: true, ab: 'hexSaw' });
+  await page.waitForTimeout(at.len * 1000 + 600);
+  const r = await page.evaluate(() => ({ L: window.__open, done: zeroCollapse === null, toasts: window.__toasts }));
+  expect(Math.min(...r.L), 'it opens at once').toBeLessThan(0.2);
+  expect(Math.max(...r.L), 'and plays to the end').toBeGreaterThan(at.len - 0.3);
+  expect(Math.max(...r.L)).toBeLessThanOrEqual(at.len + 0.01);
+  expect(r.done, 'then the new orb is simply the craft').toBe(true);
+  expect(r.toasts).toContain('SECOND LIFE / THE ORB OPENS · A NEW ONE TAKES ITS PLACE');
   expect(errors).toEqual([]);
 });
 

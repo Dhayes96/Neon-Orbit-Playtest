@@ -5,10 +5,11 @@
 //    a miss gets through), then THE MOTHERSHIP comes down and fights as a boss (mothership-boss.spec.js
 //    covers its attacks). The player has Phantom Step for the whole thing. When the Mothership falls,
 //    the Milky Way core becomes STAR-FLEET COMMAND in the same slot, then the craft warps home.
-//  - STAR-FLEET COMMAND: hold to call the fleet for 12 s. In a boss fight waves of fighters take
-//    station round the boss and fire on the beat; every ring you hit calls a volley; the mothership
-//    joins the last wave; you still play every note. Anywhere else the fleet flies escort and shoots
-//    every ring down on its beat (all PERFECT).
+//  - STAR-FLEET COMMAND: hold to call the fleet for 12 s: three squadrons (green, red, blue lasers)
+//    of 3D fighters, interceptors, gunships and saucers spread over the screen, some holding a
+//    station, some strafing on and off screen, and they shoot every incoming ring down on its beat
+//    (all PERFECT; their lasers meet the circle then). In a boss fight they also fire on the boss on
+//    the beat, every ring they (or you) hit calls a volley, and the flagship joins the last wave.
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -139,7 +140,7 @@ test('Fleet fire gets through only right after a slip; Phantom Step dodges it', 
   expect(errors).toEqual([]);
 });
 
-test('STAR-FLEET COMMAND in a boss fight: the fleet fights for you for 12 s (and never plays a ring)', async ({ page }) => {
+test('STAR-FLEET COMMAND in a boss fight: the fleet fights for you for 12 s and shoots the rings down', async ({ page }) => {
   test.setTimeout(90000);
   const errors = await start(page, 'starWarrior', { ...BOSSES, fleet: true });
   await page.evaluate(() => { window.__fl.auto = false; setInterval(() => { energy = 100; }, 100); });
@@ -168,15 +169,16 @@ test('STAR-FLEET COMMAND in a boss fight: the fleet fights for you for 12 s (and
   expect(errors).toEqual([]);
   const at = (sec) => samples.find((s) => s.t - before.t >= sec) || samples[samples.length - 1];
   expect(at(2).ships, 'the first wave is on station').toBeGreaterThanOrEqual(4);
-  expect(at(6).ships, 'the second wave joins').toBeGreaterThanOrEqual(8);
-  expect(at(10).ships, 'and the third').toBeGreaterThanOrEqual(12);
+  expect(at(5).ships, 'the second wave joins').toBeGreaterThanOrEqual(8);
+  expect(at(9).ships, 'and the third').toBeGreaterThanOrEqual(12);
   expect(at(11).on, 'still running at 11 s').toBe(true);
   expect(at(12.6).on, 'over after 12 s').toBe(false);
   expect(after.allies, 'and they leave').toBe(false);
   expect(dmg, 'the fleet hurts the boss').toBeGreaterThan(30);
   expect(dmg, 'within the power\'s cap').toBeLessThanOrEqual(after.cap + 0.01);
-  expect(after.perfects, 'it never plays a ring for you').toBe(before.perfects);
-  expect(after.misses, 'unplayed rings are still missed').toBeGreaterThan(before.misses);
+  expect(after.perfects - before.perfects, 'the fleet shoots the rings down').toBeGreaterThan(6);
+  const during = samples.filter((s) => s.on).length;
+  expect(during).toBeGreaterThan(18);
 });
 
 test('STAR-FLEET COMMAND: hits call volleys; the fleet leaves when the boss falls', async ({ page }) => {
@@ -204,6 +206,40 @@ test('STAR-FLEET COMMAND: hits call volleys; the fleet leaves when the boss fall
   expect(withHits.perfects, 'the player hit rings').toBeGreaterThan(3);
   expect(withHits.n, 'beat fire plus a volley per hit').toBeGreaterThan(withHits.perfects);
   expect(end.allies, 'the fleet leaves when the boss falls').toBe(false);
+});
+
+test('STAR-FLEET COMMAND: three squadrons and four classes, spread out, strafers on and off screen, lasers that meet each ring on its beat', async ({ page }) => {
+  test.setTimeout(60000);
+  const errors = await start(page, 'starWarrior', { ...BOSSES, fleet: true });
+  await page.evaluate(() => { window.__fl.auto = false; setInterval(() => { energy = 100; }, 100); });
+  await page.waitForTimeout(1200);
+  await page.evaluate(() => {
+    window.__las = []; window.__pos = [];
+    abReady = true; activateAbility();
+    setInterval(() => {
+      const A = Fleet._allies(); if (!A) return;
+      for (const l of A.lasers) if (!l.__seen) { l.__seen = 1; window.__las.push({ col: l.col, land: l.land, x1: l.x1, y1: l.y1 }); }
+      window.__pos.push(A.ships.filter((s) => !s.out).map((s) => ({ x: s.x, y: s.y, strafe: s.strafe, sq: s.sq, cls: s.cls, bank: s.bank })));
+    }, 50);
+  });
+  await page.waitForTimeout(11000);
+  const r = await page.evaluate(() => {
+    const ships = [].concat(...window.__pos);
+    return { las: window.__las, ships, perfects, misses: runStats.misses, w: W, h: H, tx: tgt.x, ty: tgt.y, tr: targetR };
+  });
+  const sq = new Set(r.ships.map((s) => s.sq)), cls = new Set(r.ships.map((s) => s.cls)), cols = new Set(r.las.map((l) => l.col));
+  expect([...sq].sort(), 'three squadrons').toEqual([0, 1, 2]);
+  expect(cls.size, 'four classes of ship').toBe(4);
+  expect(cols.size, 'green, red and blue lasers').toBe(3);
+  const xs = r.ships.filter((s) => !s.strafe).map((s) => s.x);
+  expect(Math.max(...xs) - Math.min(...xs), 'the stations spread across the screen').toBeGreaterThan(r.w * 0.5);
+  const st = r.ships.filter((s) => s.strafe);
+  expect(st.some((s) => s.x < 0 || s.x > r.w) && st.some((s) => s.x > r.w * 0.3 && s.x < r.w * 0.7), 'strafers fly on and off screen').toBe(true);
+  expect(Math.max(...r.ships.map((s) => Math.abs(s.bank))), 'they bank into their turns').toBeGreaterThan(0.2);
+  expect(r.las.length, 'lasers at the rings').toBeGreaterThan(8);
+  expect(r.perfects, 'every ring shot down').toBeGreaterThan(8);
+  expect(r.misses, 'none missed while the fleet is up').toBe(0);
+  expect(errors).toEqual([]);
 });
 
 test('Saves, settings and the CrazyGames build', async ({ page }) => {

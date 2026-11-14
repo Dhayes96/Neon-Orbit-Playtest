@@ -1554,7 +1554,7 @@
     <div class="zf-stage hidden zf-reward" id="zfReward">
       <canvas id="zfOrb" width="480" height="480" aria-hidden="true"></canvas>
       <div class="zf-r1">ZERO FORM UNLOCKED</div>
-      <div class="zf-r2">Your craft can now take the form of the light in the files.<br><b>Second Life:</b> once per run, when your energy hits zero, the orb collapses to a point instead of dying. It clears the screen, refills your energy and keeps your combo.</div>
+      <div class="zf-r2">Your craft can now take the form of the light in the files.<br><b>Second Life</b> (passive, alongside any Boss Core): once per run, when your energy hits zero, the orb opens up and a new one comes out to take its place. It clears the screen, refills your energy and keeps your combo.</div>
       <div class="btn-stack">
         <button class="btn" id="zfEquip">Equip Zero Form</button>
         <button class="btn ghost" id="zfReplay">Replay Files</button>
@@ -5823,7 +5823,7 @@
       if (earned) {
         grid.innerHTML = '';
         const cur = save.craft === 'zero' ? 'zero' : 'saucer';
-        for (const [id, name, sub] of [['saucer', 'Saucer', 'The original craft'], ['zero', 'Zero Form', 'Project Zero · Second Life']]) {
+        for (const [id, name, sub] of [['saucer', 'Saucer', 'The original craft'], ['zero', 'Zero Form', 'Project Zero · passive: Second Life']]) {
           const btn = document.createElement('button');
           btn.className = 'ability-swatch' + (cur === id ? ' equipped' : '');
           btn.innerHTML = `<span class="ab-name">${name}</span><span class="ab-type">${sub}</span><span class="ab-lock">${cur === id ? 'Equipped' : 'Tap to equip'}</span>`;
@@ -5831,7 +5831,7 @@
           grid.appendChild(btn);
         }
         $('craftDesc').textContent = cur === 'zero'
-          ? 'Zero Form: the light from the files. Second Life: once per run, when your energy hits zero, the orb collapses to a point instead of dying, clears the screen, refills your energy and keeps your combo.'
+          ? 'Zero Form: the light from the files. Passive, alongside whichever Boss Core you equip: Second Life. Once per run, when your energy hits zero, the orb opens up and a new one comes out to take its place: it clears the screen, refills your energy and keeps your combo.'
           : 'The saucer you started with.';
       }
     }
@@ -10135,53 +10135,9 @@
     }
 
     // ---- ships
-    function hull(x, y, s, ang, alpha, charge, kind) {
-      ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(s, s); ctx.globalAlpha *= alpha;
-      if (s > targetR * 0.3) {                                                  // a sickly green aura round the attackers
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        const au = ctx.createRadialGradient(0, 0, 0, 0, 0, 1.5);
-        au.addColorStop(0, 'rgba(125,255,59,0.22)'); au.addColorStop(1, 'rgba(125,255,59,0)');
-        ctx.fillStyle = au; ctx.beginPath(); ctx.arc(0, 0, 1.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-      }
-      if (kind === 'disc') {
-        ctx.fillStyle = '#14181d'; ctx.strokeStyle = ACID; ctx.lineWidth = 0.05;
-        ctx.beginPath(); ctx.ellipse(0, 0.05, 1, 0.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.save(); ctx.globalAlpha *= 0.3; ctx.lineWidth = 0.16; ctx.stroke(); ctx.restore();
-        const dg = ctx.createRadialGradient(-0.1, -0.25, 0.02, 0, -0.1, 0.45);
-        dg.addColorStop(0, '#eaffd8'); dg.addColorStop(0.5, 'rgba(125,255,59,0.6)'); dg.addColorStop(1, 'rgba(30,80,20,0.4)');
-        ctx.fillStyle = dg; ctx.beginPath(); ctx.ellipse(0, -0.12, 0.42, 0.3, 0, Math.PI, 0); ctx.fill();
-        ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + performance.now() / 300; ctx.fillStyle = i % 2 ? '#ff5a2e' : '#ffd23d'; ctx.beginPath(); ctx.arc(Math.cos(a) * 0.82, 0.08 + Math.sin(a) * 0.2, 0.07, 0, Math.PI * 2); ctx.fill(); }
-      } else {
-        const hg = ctx.createLinearGradient(-0.6, -0.6, 0.6, 0.6);
-        hg.addColorStop(0, '#3b4650'); hg.addColorStop(0.5, '#12171c'); hg.addColorStop(1, '#2a333b');
-        ctx.fillStyle = hg; ctx.strokeStyle = ACID; ctx.lineWidth = 0.05; ctx.lineJoin = 'round';
-        ctx.beginPath();
-        [[1, 0], [0.15, -0.22], [-0.35, -0.78], [-0.58, -0.72], [-0.36, -0.2], [-0.62, 0], [-0.36, 0.2], [-0.58, 0.72], [-0.35, 0.78], [0.15, 0.22]]
-          .forEach(([px, py], i) => i ? ctx.lineTo(px, py) : ctx.moveTo(px, py));
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.save(); ctx.globalAlpha *= 0.3; ctx.lineWidth = 0.16; ctx.stroke(); ctx.restore();
-        ctx.strokeStyle = 'rgba(125,255,59,0.45)'; ctx.lineWidth = 0.025;                                     // panel lines
-        ctx.beginPath(); ctx.moveTo(0.85, 0); ctx.lineTo(-0.5, 0); ctx.moveTo(0.05, -0.18); ctx.lineTo(-0.42, -0.62); ctx.moveTo(0.05, 0.18); ctx.lineTo(-0.42, 0.62); ctx.stroke();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = ACID; ctx.beginPath(); ctx.ellipse(0.3, 0, 0.16, 0.07, 0, 0, Math.PI * 2); ctx.fill();   // cockpit
-        ctx.fillStyle = '#ff3b3b'; for (const wy of [-0.7, 0.7]) { ctx.globalAlpha = 0.5 + 0.5 * Math.sin(performance.now() / 120 + wy); ctx.beginPath(); ctx.arc(-0.46, wy, 0.045, 0, Math.PI * 2); ctx.fill(); }
-        ctx.globalAlpha = alpha;
-        const fl = 0.6 + 0.4 * Math.sin(performance.now() / 40 + x);
-        for (const sy of [-0.16, 0.16]) {                                                                        // engines
-          const eg = ctx.createLinearGradient(-0.6, 0, -1.25 - fl * 0.3, 0);
-          eg.addColorStop(0, 'rgba(200,255,220,0.95)'); eg.addColorStop(0.4, 'rgba(125,255,59,0.6)'); eg.addColorStop(1, 'rgba(0,255,180,0)');
-          ctx.fillStyle = eg; ctx.beginPath(); ctx.moveTo(-0.58, sy - 0.06); ctx.lineTo(-1.25 - fl * 0.3, sy); ctx.lineTo(-0.58, sy + 0.06); ctx.fill();
-        }
-      }
-      if (charge > 0) {                                                                                         // charging plasma at the nose
-        ctx.globalCompositeOperation = 'lighter';
-        const cr = 0.12 + charge * 0.3, cx = kind === 'disc' ? 0 : 1.05, cy = kind === 'disc' ? 0.35 : 0;
-        const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr * 2);
-        cg.addColorStop(0, 'rgba(255,255,255,0.95)'); cg.addColorStop(0.35, 'rgba(125,255,59,0.8)'); cg.addColorStop(1, 'rgba(125,255,59,0)');
-        ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, cr * 2, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.restore();
+    // every ship of the fleet, friend or foe, is a 3D model in its squadron's livery (drawShip, below)
+    function hull(x, y, s, ang, alpha, charge, kind, sq, cls, bank) {
+      drawShip(x, y, s * 0.92, ang, bank || 0, 0, cls || (kind === 'disc' ? 'disc' : 'viper'), sq == null ? 0 : sq, alpha, charge, 0);
     }
     function motherXY(t) { return [W * 0.5 + Math.sin(t * 0.4) * W * 0.04, Math.max(H * 0.19, 130)]; }
     function motherEmitter(t) { const [mx, my] = motherXY(t), ms = Math.max(W, H) * 0.36; return [mx, my + ms * 0.1]; }
@@ -10200,7 +10156,8 @@
       const ctrl = [(from[0] + hover[0]) / 2 + (fxRand() - 0.5) * W * 0.4, Math.min(from[1], hover[1]) - H * 0.15];
       const b = beatLen();
       const arrive = t + b * 1.5, fireAt = nextBeat(arrive + b * 1.6) - b * 0.85;   // bolt lands on a beat
-      ships.push({ kind, from, ctrl, hover, t0: t, arrive, fireAt, land: fireAt + b * 0.85, dead: false, fired: false, hp: HP[kind], pending: 0, hurt: -9, out: 0 });
+      const sq = (fxRand() * 3) | 0, cls = kind === 'disc' ? 'disc' : ['viper', 'raptor', 'hammer'][(fxRand() * 3) | 0];
+      ships.push({ kind, sq, cls, from, ctrl, hover, t0: t, arrive, fireAt, land: fireAt + b * 0.85, dead: false, fired: false, hp: HP[kind], pending: 0, hurt: -9, out: 0, bankV: 0, prevAng: null });
       if (kind === 'disc') for (let i = 0; i < 2; i++) decoys.push({ t0: nextBeat(arrive) + b * (i + 0.5) - b * 1.4, land: nextBeat(arrive) + b * (i + 0.5), x: tgt.x, y: tgt.y });
       if (save.settings.sfx) tone(kind === 'disc' ? 300 : 520, 0.18, 'sawtooth', 0.012);
     }
@@ -10670,7 +10627,7 @@
       if (phase === 'boss' || phase === 'victory') {                             // the boss system runs the fight; only scenery here
         if (state !== 'paused' && phase === 'boss' && t >= nextFly) {
           const y = H * (0.3 + fxRand() * 0.35), l = fxRand() < 0.5;
-          flybys.push({ t0: t, dur: 2.0 + fxRand() * 1.6, y0: y, y1: y + (fxRand() - 0.5) * H * 0.2, l, s: targetR * (0.1 + fxRand() * 0.12), kind: fxRand() < 0.3 ? 'disc' : 'dart', dead: false });
+          flybys.push({ t0: t, dur: 2.0 + fxRand() * 1.6, y0: y, y1: y + (fxRand() - 0.5) * H * 0.2, l, s: targetR * (0.1 + fxRand() * 0.12), kind: fxRand() < 0.3 ? 'disc' : 'dart', sq: (fxRand() * 3) | 0, cls: ['viper', 'raptor', 'hammer'][(fxRand() * 3) | 0], dead: false });
           nextFly = t + 1.2 + fxRand() * 1.6;
         }
         flybys = flybys.filter(f => t - f.t0 < f.dur);
@@ -10698,7 +10655,7 @@
       if (t >= nextSpawn && el < FIGHT - 2.5) { spawnAttacker(t); nextSpawn = t + gap; }
       if (t >= nextFly) {                                                          // ambient flybys, far behind
         const y = H * (0.12 + fxRand() * 0.45), l = fxRand() < 0.5;
-        flybys.push({ t0: t, dur: 2.4 + fxRand() * 2.2, y0: y, y1: y + (fxRand() - 0.5) * H * 0.3, l, s: targetR * (0.12 + fxRand() * 0.16), kind: fxRand() < 0.3 ? 'disc' : 'dart', dead: false });
+        flybys.push({ t0: t, dur: 2.4 + fxRand() * 2.2, y0: y, y1: y + (fxRand() - 0.5) * H * 0.3, l, s: targetR * (0.12 + fxRand() * 0.16), kind: fxRand() < 0.3 ? 'disc' : 'dart', sq: (fxRand() * 3) | 0, cls: ['viper', 'raptor', 'hammer'][(fxRand() * 3) | 0], dead: false });
         nextFly = t + 0.5 + fxRand() * 1.1;
       }
       flybys = flybys.filter(f => t - f.t0 < f.dur && !(f.dead && t - f.deadAt > 0.1));
@@ -10834,7 +10791,7 @@
       for (const f of flybys) {
         if (f.dead) continue;
         const k = (t - f.t0) / f.dur, x = f.l ? -60 + (W + 120) * k : W + 60 - (W + 120) * k, y = f.y0 + (f.y1 - f.y0) * k;
-        hull(x, y, f.s, f.l ? 0.08 : Math.PI - 0.08, 0.55, 0, f.kind);
+        hull(x, y, f.s, f.l ? 0.08 : Math.PI - 0.08, 0.55, 0, f.kind, f.sq, f.kind === 'disc' ? 'disc' : f.cls, (f.l ? 1 : -1) * 0.35);
       }
       // the flagship: far off and coming while the escorts fight; its fall at the end
       if (flag && phase === 'fight' && flag.seen != null) {
@@ -10865,15 +10822,17 @@
         if (s.dead) continue;
         const [x, y] = shipPos(s, t);
         const ang = s.out ? -Math.PI / 2 : Math.atan2(tgt.y - y, tgt.x - x);
+        if (s.prevAng != null) { const d = ((ang - s.prevAng + Math.PI * 3) % (Math.PI * 2)) - Math.PI; s.bankV += (Math.max(-1, Math.min(1, d * 12)) - s.bankV) * 0.12; }
+        s.prevAng = ang;
         const charge = !s.fired && t > s.fireAt - b * 1.2 ? Math.min(1, (t - (s.fireAt - b * 1.2)) / (b * 1.2)) : 0;
-        hull(x, y, targetR * (s.kind === 'disc' ? 0.82 : 0.74), s.kind === 'disc' ? Math.sin(t * 2) * 0.1 : ang, s.out ? Math.max(0, 1 - (t - s.out)) : 1, charge, s.kind);
+        hull(x, y, targetR * (s.kind === 'disc' ? 0.82 : 0.74), s.kind === 'disc' ? Math.sin(t * 2) * 0.1 : ang, s.out ? Math.max(0, 1 - (t - s.out)) : 1, charge, s.kind, s.sq, s.cls, s.bankV);
         if (t - s.hurt < 0.18) {                                             // a shot just chipped its armour
           const k = 1 - (t - s.hurt) / 0.18, hr = targetR * 0.6;
           const hg = ctx.createRadialGradient(x, y, 0, x, y, hr);
           hg.addColorStop(0, `rgba(220,255,255,${0.8 * k})`); hg.addColorStop(1, 'rgba(120,240,255,0)');
           ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(x, y, hr, 0, Math.PI * 2); ctx.fill(); ctx.restore();
         }
-        if (charge > 0) { ctx.save(); ctx.strokeStyle = `rgba(125,255,59,${0.25 * charge})`; ctx.setLineDash([4, 6]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tgt.x, tgt.y); ctx.stroke(); ctx.restore(); }
+        if (charge > 0) { ctx.save(); ctx.strokeStyle = hexToRgba(SQUADS[s.sq || 0].laser, 0.3 * charge); ctx.setLineDash([4, 6]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tgt.x, tgt.y); ctx.stroke(); ctx.restore(); }
       }
       // the mothership's beam
       if (mother) for (const bm of mother.beams) {
@@ -10895,7 +10854,7 @@
         else if (bo.state === 'reflect') { const k = Math.min(1, 1 - (bo.back - t) / 0.22); const [sx, sy] = bo.s && !bo.s.dead ? shipPos(bo.s, t) : [bo.x0, bo.y0]; x = bo.rx + (sx - bo.rx) * k; y = bo.ry + (sy - bo.ry) * k; tx = bo.rx; ty = bo.ry; }
         else continue;
         const dx = x - tx, dy = y - ty, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l;
-        ctx.strokeStyle = bo.state === 'reflect' ? 'rgba(120,240,255,0.8)' : 'rgba(125,255,59,0.75)'; ctx.lineWidth = 9;
+        ctx.strokeStyle = bo.state === 'reflect' ? 'rgba(120,240,255,0.8)' : hexToRgba(SQUADS[(bo.s && bo.s.sq) || 0].laser, 0.8); ctx.lineWidth = 9;
         ctx.beginPath(); ctx.moveTo(x - ux * 34, y - uy * 34); ctx.lineTo(x, y); ctx.stroke();
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - ux * 22, y - uy * 22); ctx.lineTo(x, y); ctx.stroke();
       }
@@ -10932,49 +10891,241 @@
     // Anywhere else (escort): fewer ships take station in an arc over the craft and shoot each ring
     // down on its beat (the ability loop scores them PERFECT and calls escortShot for the bolt).
     // If a boss fight begins while they escort, they re-form round the boss.
-    const ALLY_GAP = 4;
+    // ---- THE FLEET'S SHIPS (Nov 13 v2): real 3D models, three squadrons, four classes ----
+    // Dennel: "make them look BAD ASS": every ship is a lit, faceted 3D model (the game's own mesh
+    // renderer) that banks into its turns and climbs toward the camera, in one of three squadron
+    // liveries, each with its own laser colour:
+    //   VIPER WING  (acid green)   CRIMSON WING (red)   AZURE WING (blue)
+    // and four classes: VIPER fighters (swept deltas, twin engines), RAPTOR interceptors (forward-
+    // swept wings, long nose), HAMMER gunships (broad wings, wingtip cannons, three engines) and
+    // the saucer DISCs. Body space: nose +x, wings along y, the hull's top toward the camera (+z).
+    const SQUADS = [
+      { name: 'VIPER WING', hull: '#a9b6c2', wing: '#4fd12a', edge: '#9dff6a', glow: '#c8ffa0', laser: '#7dff3b' },
+      { name: 'CRIMSON WING', hull: '#b9a9ae', wing: '#e8283a', edge: '#ff5a66', glow: '#ffc09a', laser: '#ff3448' },
+      { name: 'AZURE WING', hull: '#a6b4c3', wing: '#2a86ff', edge: '#6ccbff', glow: '#c0ecff', laser: '#36b4ff' }
+    ];
+    const SHIP_CLASSES = ['viper', 'raptor', 'hammer', 'disc'];
+    function hullMesh(nose, tail, mx, w, up, down) {                      // a faceted fuselage: two pyramids on a diamond waist
+      const V = [[nose, 0, 0], [tail, 0, 0], [mx, -w, 0], [mx, 0, up], [mx, w, 0], [mx, 0, -down]], F = [];
+      for (let i = 0; i < 4; i++) { const a = 2 + i, b = 2 + ((i + 1) % 4); F.push({ v: [0, a, b] }); F.push({ v: [1, b, a] }); }
+      for (const f of F) f.n = faceNormal(V, f.v);
+      return { V, F };
+    }
+    const mirror = (pts) => pts.map(([x, y]) => [x, -y]).reverse();
+    function shipParts(cls) {
+      return meshOnce('fleetShip_' + cls, () => {
+        if (cls === 'disc') {
+          const V = [[0, 0, 0.17], [0, 0, -0.12]], F = [], n = 12;
+          for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; V.push([Math.cos(a) * 0.85, Math.sin(a) * 0.85, 0]); }
+          for (let i = 0; i < n; i++) { const j = (i + 1) % n; F.push({ v: [0, 2 + i, 2 + j] }); F.push({ v: [1, 2 + j, 2 + i] }); }
+          for (const f of F) f.n = faceNormal(V, f.v);
+          return { body: { V, F }, wings: [], engines: [[-0.6, 0], [0.6, 0], [0, -0.6], [0, 0.6]], nose: [0, 0, -0.1], cockpit: [0, 0, 0.2], tips: [[0.85, 0], [-0.85, 0]], guns: [[0.6, -0.3], [0.6, 0.3]] };
+        }
+        if (cls === 'raptor') {
+          const wl = [[-0.32, -0.07], [0.22, -0.72], [0.1, -0.78], [-0.5, -0.12]];
+          return { body: hullMesh(1.25, -0.62, -0.05, 0.13, 0.11, 0.08),
+            wings: [extrude(wl, 0.022), extrude(mirror(wl), 0.022), extrude([[0.7, -0.05], [0.5, -0.24], [0.42, -0.05]], 0.015), extrude(mirror([[0.7, -0.05], [0.5, -0.24], [0.42, -0.05]]), 0.015)],
+            engines: [[-0.62, 0]], nose: [1.25, 0, 0], cockpit: [0.5, 0, 0.09], tips: [[0.16, -0.76], [0.16, 0.76]], guns: [[1.1, 0]] };
+        }
+        if (cls === 'hammer') {
+          const wl = [[0.25, -0.2], [0.15, -0.86], [-0.32, -0.86], [-0.42, -0.2]], gun = [[0.62, -0.84], [0.62, -0.92], [-0.2, -0.92], [-0.2, -0.84]];
+          return { body: hullMesh(0.82, -0.72, 0.0, 0.25, 0.19, 0.14),
+            wings: [extrude(wl, 0.04), extrude(mirror(wl), 0.04), extrude(gun, 0.045), extrude(mirror(gun), 0.045)],
+            engines: [[-0.72, 0], [-0.42, -0.5], [-0.42, 0.5]], nose: [0.82, 0, 0], cockpit: [0.3, 0, 0.16], tips: [[0.62, -0.88], [0.62, 0.88]], guns: [[0.62, -0.88], [0.62, 0.88]] };
+        }
+        const wl = [[0.18, -0.1], [-0.42, -0.78], [-0.6, -0.74], [-0.46, -0.1]];    // viper
+        return { body: hullMesh(1.0, -0.75, 0.05, 0.16, 0.12, 0.1),
+          wings: [extrude(wl, 0.026), extrude(mirror(wl), 0.026), extrude([[-0.35, -0.03], [-0.68, -0.32], [-0.74, -0.3], [-0.55, -0.03]], 0.02), extrude(mirror([[-0.35, -0.03], [-0.68, -0.32], [-0.74, -0.3], [-0.55, -0.03]]), 0.02)],
+          engines: [[-0.75, -0.12], [-0.75, 0.12]], nose: [1.0, 0, 0], cockpit: [0.38, 0, 0.1], tips: [[-0.58, -0.76], [-0.58, 0.76]], guns: [[0.95, 0]] };
+      });
+    }
+    const shipPt = (p, P) => proj3(rot3(p, P.yaw, P.pitch, P.roll), P.S);
+    // x, y: screen centre; S: size (px for 1 body unit); hd: heading on screen (rad); bank, climb
+    // (rad); sq: squadron; charge 0..1 (a shot gathering at the guns); hurt 0..1 (a flash)
+    function drawShip(x, y, S, hd, bank, climb, cls, sq, alpha, charge, hurt) {
+      if (alpha <= 0.01 || S < 1) return;
+      const sc = SQUADS[sq % 3], M = shipParts(cls), low = SpaceFX.low;
+      const disc = cls === 'disc';
+      const P = { yaw: climb, pitch: disc ? 0.9 + bank * 0.4 : bank, roll: disc ? hd * 0.15 : hd, S };
+      ctx.save(); ctx.translate(x, y); ctx.globalAlpha *= alpha;
+      ctx.globalCompositeOperation = 'lighter';
+      // an underglow in the squadron's colour: the silhouette stands out against deep space
+      if (!low) {
+        const ug = ctx.createRadialGradient(0, 0, 0, 0, 0, S * 1.25);
+        ug.addColorStop(0, hexToRgba(sc.edge, 0.28)); ug.addColorStop(0.5, hexToRgba(sc.edge, 0.1)); ug.addColorStop(1, hexToRgba(sc.edge, 0));
+        ctx.fillStyle = ug; ctx.beginPath(); ctx.arc(0, 0, S * 1.25, 0, Math.PI * 2); ctx.fill();
+      }
+      // engines first (behind the hull): a hot core and a trail streaming back along the heading
+      const fl = 0.75 + 0.25 * Math.sin(performance.now() / 45 + x * 0.1);
+      for (const [ex, ey] of M.engines) {
+        const [px, py] = shipPt([ex, ey, 0], P);
+        const tl = S * (disc ? 0.25 : 0.9 + 0.5 * fl), bx = disc ? px : px - Math.cos(hd) * tl, by = disc ? py : py - Math.sin(hd) * tl;
+        const eg = ctx.createLinearGradient(px, py, bx, by);
+        eg.addColorStop(0, 'rgba(255,255,255,0.95)'); eg.addColorStop(0.25, hexToRgba(sc.glow, 0.8)); eg.addColorStop(1, hexToRgba(sc.edge, 0));
+        ctx.strokeStyle = eg; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.5, S * (disc ? 0.12 : 0.16));
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(bx + 0.01, by + 0.01); ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      // the hull: wings, then the fuselage over them, lit by the key light, edged in the squadron's colour
+      const lw = Math.max(0.8, Math.min(2, S * 0.032));
+      for (const w of M.wings) drawMesh(w, P, { tint: sc.wing, edge: sc.edge, lw, alpha: 0.98, edgeAlpha: 0.7 });
+      drawMesh(M.body, P, { tint: sc.hull, edge: sc.edge, lw, alpha: 0.98, edgeAlpha: disc ? 0.45 : 0.6 });
+      ctx.globalCompositeOperation = 'lighter';
+      // the cockpit glint, the wingtip running lights, and the guns charging
+      const [cx, cy, cz] = shipPt(M.cockpit, P);
+      if (cz > -0.05) {
+        const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, S * 0.16);
+        cg.addColorStop(0, 'rgba(255,255,255,0.95)'); cg.addColorStop(0.4, hexToRgba(sc.glow, 0.7)); cg.addColorStop(1, hexToRgba(sc.edge, 0));
+        ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, S * 0.16, 0, Math.PI * 2); ctx.fill();
+      }
+      const blink = Math.sin(performance.now() / 160 + sq * 2) > 0;
+      M.tips.forEach(([tx, ty], i) => {
+        const [px, py] = shipPt([tx, ty, 0], P);
+        ctx.fillStyle = i ? (blink ? '#ffffff' : sc.edge) : (blink ? sc.edge : '#ff4040');
+        ctx.beginPath(); ctx.arc(px, py, Math.max(1.2, S * 0.045), 0, Math.PI * 2); ctx.fill();
+      });
+      if (charge > 0) for (const [gx, gy] of M.guns) {
+        const [px, py] = shipPt([gx, gy, 0], P), r = S * (0.12 + 0.3 * charge);
+        const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+        g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.35, hexToRgba(sc.laser, 0.85)); g.addColorStop(1, hexToRgba(sc.laser, 0));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+      }
+      if (hurt > 0.02) {
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, S * 0.9);
+        g.addColorStop(0, `rgba(230,250,255,${(0.8 * hurt).toFixed(3)})`); g.addColorStop(1, 'rgba(160,230,255,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, S * 0.9, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+    // where a ship's guns are on screen (for lasers leaving the right place)
+    function shipGun(x, y, S, hd, bank, cls) {
+      const M = shipParts(cls), P = { yaw: 0, pitch: cls === 'disc' ? 0.9 : bank, roll: cls === 'disc' ? hd * 0.15 : hd, S };
+      const [gx, gy] = M.guns[0], [px, py] = shipPt([gx, gy, 0], P);
+      return [x + px, y + py];
+    }
+    // a laser bolt: a white-hot core in a coloured sheath, moving from a to b over its flight
+    function drawLaser(x0, y0, x1, y1, u, col, w) {
+      const L = Math.hypot(x1 - x0, y1 - y0) || 1, len = Math.min(L, Math.max(60, L * 0.5));
+      const hx = x0 + (x1 - x0) * u, hy = y0 + (y1 - y0) * u, tx = hx - (x1 - x0) / L * len, ty = hy - (y1 - y0) / L * len;
+      const sx = u * L < len ? x0 : tx, sy = u * L < len ? y0 : ty;
+      ctx.strokeStyle = hexToRgba(col, 0.3); ctx.lineWidth = (w || 1) * 12; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.strokeStyle = col; ctx.lineWidth = (w || 1) * 5; ctx.stroke();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = (w || 1) * 2; ctx.stroke();
+      // a hot head on the bolt, so it reads as a shot and not an engine trail
+      const hr = 9 * (w || 1), g = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
+      g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, hexToRgba(col, 0.9)); g.addColorStop(1, hexToRgba(col, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI * 2); ctx.fill();
+      // the muzzle flash at the gun, for the first part of the flight
+      if (u < 0.3) {
+        const k = 1 - u / 0.3, mr = 16 * (w || 1) * k, m = ctx.createRadialGradient(x0, y0, 0, x0, y0, Math.max(1, mr));
+        m.addColorStop(0, `rgba(255,255,255,${k.toFixed(3)})`); m.addColorStop(1, hexToRgba(col, 0));
+        ctx.fillStyle = m; ctx.beginPath(); ctx.arc(x0, y0, Math.max(1, mr), 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // a ring shot apart: its circle breaks into arcs that fly outward in the laser's colour
+    function drawShatter(sh, t) {
+      const k = (t - sh.t0) / 0.42; if (k >= 1 || k < 0) return;
+      const e = 1 - Math.pow(1 - k, 2), n = 8;
+      ctx.strokeStyle = sh.col; ctx.lineCap = 'round';
+      for (let i = 0; i < n; i++) {
+        const a0 = sh.a + i / n * Math.PI * 2 + 0.12, a1 = a0 + Math.PI * 2 / n - 0.24 - 0.2 * e;
+        const off = sh.r * 0.55 * e * (1 + 0.6 * Math.cos(a0 + 0.3 - sh.a));          // the side it was hit on flies furthest
+        const cx = sh.x + Math.cos(a0 + 0.3) * off, cy = sh.y + Math.sin(a0 + 0.3) * off;
+        ctx.globalAlpha = 1 - k; ctx.lineWidth = Math.max(1, 5 * (1 - k));
+        ctx.beginPath(); ctx.arc(cx, cy, sh.r * (1 + 0.15 * e), a0, Math.max(a0 + 0.05, a1)); ctx.stroke();
+      }
+      const fx = sh.x + Math.cos(sh.a) * sh.r, fy = sh.y + Math.sin(sh.a) * sh.r, fr = sh.r * 0.6 * (1 - k);
+      const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, Math.max(1, fr));
+      g.addColorStop(0, `rgba(255,255,255,${(1 - k).toFixed(3)})`); g.addColorStop(1, hexToRgba(sh.col, 0));
+      ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(fx, fy, Math.max(1, fr), 0, Math.PI * 2); ctx.fill();
+    }
+
+    const ALLY_GAP = 3.2;
     let allies = null;
+    // Stations spread across the screen: a loose formation over the play field (never down on the
+    // craft, never up in the HUD). In a boss fight they bend round the boss, further out and wider.
     function allyStation(i, n, wave) {
-      if (allies && allies.escort) {
-        const a = -Math.PI + (i + 0.5) / n * Math.PI + (wave - 1) * 0.09, rr = targetR * (2.5 + 0.55 * ((i + wave) % 2));
-        const x = Math.max(targetR * 0.8, Math.min(W - targetR * 0.8, tgt.x + Math.cos(a) * rr * 1.25));
-        const y = Math.max(Math.max(H * 0.22, 160), Math.min(H - targetR, tgt.y + Math.sin(a) * rr));
+      const top = Math.max(H * 0.2, 150), bot = Math.max(top + 40, tgt.y - targetR * 2.0);
+      if (allies && !allies.escort && bossActive) {
+        const bx = bossX(), by = bossY(), br = bossR();
+        const a = -Math.PI * 1.1 + (i + 0.5) / n * Math.PI * 1.2 + (wave - 1) * 0.1;
+        const wide = W > H * 1.1, rr = br * (1.45 + 0.4 * ((i + wave) % 2));
+        let x = bx + Math.cos(a) * rr * (wide ? 2.2 : 1.45), y = by + Math.sin(a) * rr * (wide ? 0.7 : 0.9);
+        x = Math.max(targetR * 0.7, Math.min(W - targetR * 0.7, x)); y = Math.max(top, Math.min(bot, y));
         return [x, y];
       }
-      const bx = bossX(), by = bossY(), br = bossR();
-      // an arc over and beside the boss (never down by the saucer, never up in the HUD)
-      const a = -Math.PI * 1.08 + (i + 0.5) / n * Math.PI * 1.16 + (wave - 1) * 0.12;
-      const rr = br * (1.3 + 0.35 * ((i + wave) % 2));
-      const wide = W > H * 1.1, kx = wide ? 2.1 : 1.3, ky = wide ? 0.6 : 0.85;   // a wider, flatter arc on landscape screens
-      let x = Math.max(targetR * 0.8, Math.min(W - targetR * 0.8, bx + Math.cos(a) * rr * kx));
-      let y = Math.max(Math.max(H * 0.2, 150), Math.min(by + br * 0.35, by + Math.sin(a) * rr * ky));
-      const dx = x - tgt.x, dy = y - tgt.y, d = Math.hypot(dx, dy), keep = targetR * 2.4;
-      if (d < keep) { x = tgt.x + dx / (d || 1) * keep; y = Math.min(y, tgt.y - keep * 0.6); }
-      return [x, y];
+      const cols = Math.max(3, n), u = (i + 0.5) / cols, row = (i + wave) % 3;
+      const x = W * (0.08 + 0.84 * u) + Math.sin(i * 2.3 + wave) * W * 0.04;
+      const y = top + (bot - top) * (0.12 + 0.36 * row + 0.08 * Math.sin(i * 1.7));
+      return [Math.max(targetR * 0.7, Math.min(W - targetR * 0.7, x)), y];
+    }
+    // a strafing run: in off one side, a long banking pass across the field, out the other
+    function strafePath(s, t) {
+      const fromL = s.dir > 0, y0 = H * (0.18 + 0.4 * s.ry), y1 = H * (0.2 + 0.42 * s.ry2);
+      s.p0 = [fromL ? -W * 0.18 : W * 1.18, y0];
+      s.p2 = [fromL ? W * 1.18 : -W * 0.18, y1];
+      s.p1 = [W * (0.5 + (fxRand() - 0.5) * 0.3), Math.min(tgt.y - targetR * 2.6, Math.max(H * 0.25, (y0 + y1) / 2 + H * (0.12 + 0.12 * fxRand())))];
+      s.r0 = t; s.r1 = t + 2.6 + fxRand() * 1.0;
     }
     function allyWave(t, w) {
-      const n = allies.escort ? 3 : w === 0 ? 4 : 6;
+      const n = 4;
       for (let i = 0; i < n; i++) {
-        const to = allyStation(i, n, w);
-        // they warp in out of nowhere, all over the screen, then dive to their stations
+        const sq = (w + i) % 3, cls = SHIP_CLASSES[(i * 3 + w) % 4];
+        const strafe = i === n - 1 || (w === 2 && i === 1);                    // some fly passes instead of holding a station
         const from = [W * (0.08 + 0.84 * fxRand()), H * (0.12 + 0.5 * fxRand())];
-        allies.ships.push({ kind: (i + w) % 3 === 2 ? 'disc' : 'dart', from, to, t0: t + i * 0.09, arrive: t + i * 0.09 + 0.75,
-          ph: fxRand() * 6.28, wave: w, out: 0, hurt: -9 });
+        const s = { cls, sq, depth: 0.82 + 0.36 * ((i * 7 + w * 3) % 5) / 4, from, to: allyStation(i, n, w), t0: t + i * 0.08, arrive: t + i * 0.08 + 0.75,
+          ph: fxRand() * 6.28, wave: w, out: 0, hurt: -9, strafe, x: from[0], y: from[1], hd: -Math.PI / 2, bank: 0, cool: 0, moveAt: t + 3 + fxRand() * 2, idx: i, n };
+        if (strafe) { s.dir = fxRand() < 0.5 ? 1 : -1; s.ry = fxRand(); s.ry2 = fxRand(); strafePath(s, t + i * 0.08 + 0.3); s.p0 = from.slice(); }
+        allies.ships.push(s);
       }
       if (w === 2 && !allies.escort) allies.mother = { t0: t, nextBeam: nextBeat(t + 1.2) };
       if (save.settings.sfx) { tone(523, 0.12, 'square', 0.02); tone(784, 0.16, 'square', 0.018, 0.08); tone(1046, 0.2, 'triangle', 0.016, 0.16); }
     }
-    function allyPos(s, t) {
-      if (t < s.t0) return null;
-      if (s.out) { const k = Math.min(1, (t - s.out) / 0.6); return [s.to[0], s.to[1] - k * k * H * 0.9]; }
-      const k = Math.min(1, (t - s.t0) / (s.arrive - s.t0)), e = 1 - Math.pow(1 - k, 3);
-      const x = s.from[0] + (s.to[0] - s.from[0]) * e, y = s.from[1] + (s.to[1] - s.from[1]) * e;
-      return [x + Math.sin(t * 2.1 + s.ph) * 5, y + Math.cos(t * 1.7 + s.ph) * 4];
+    // where each ship is (and which way it points, and how hard it banks), advanced every frame
+    function allyMove(s, t, dt) {
+      if (t < s.t0) return false;
+      let x, y;
+      if (s.out) {                                                            // leaving: a climbing turn up and away
+        if (t < s.out) { x = s.x; y = s.y; }
+        else { if (!s.o0) s.o0 = [s.x, s.y]; const k = Math.min(1, (t - s.out) / 0.7); x = s.o0[0] + (s.o0[0] < W / 2 ? -1 : 1) * k * k * W * 0.3; y = s.o0[1] - k * k * H * 0.5; s.climb = -k * 0.9; }
+      }
+      else if (s.strafe && t >= s.r0) {
+        if (t >= s.r1) { s.dir = -s.dir; s.ry = fxRand(); s.ry2 = fxRand(); strafePath(s, t + 0.5 + fxRand() * 0.9); }
+        if (t < s.r0) { x = s.x; y = s.y; }
+        else { const k = (t - s.r0) / (s.r1 - s.r0); [x, y] = bez(s.p0, s.p1, s.p2, k); }
+      } else if (s.strafe) { x = s.x; y = s.y; }
+      else {
+        if (t >= s.moveAt && t >= s.arrive) {                                  // break station and take another
+          s.from = [s.x, s.y]; s.to = allyStation((s.idx + 1 + ((s.ph * 10) | 0)) % (s.n + 2), s.n + 2, s.wave); s.t0m = t; s.arrive = t + 0.9; s.moveAt = t + 3.5 + fxRand() * 2.5;
+        }
+        const t0 = s.t0m || s.t0, k = Math.min(1, (t - t0) / Math.max(0.05, s.arrive - t0)), e = k * k * (3 - 2 * k);
+        x = s.from[0] + (s.to[0] - s.from[0]) * e + Math.sin(t * 1.4 + s.ph) * 7; y = s.from[1] + (s.to[1] - s.from[1]) * e + Math.cos(t * 1.1 + s.ph) * 5;
+      }
+      const dx = x - s.x, dy = y - s.y, sp = Math.hypot(dx, dy) / Math.max(1e-3, dt);
+      let want = s.hd;
+      if (sp > 40) want = Math.atan2(dy, dx);
+      else if (!s.out) want = s.aim != null ? s.aim : -Math.PI / 2;                 // hovering: nose toward what it shoots
+      let d = ((want - s.hd + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      const turn = Math.max(-1, Math.min(1, d * 6)) * Math.min(1, dt * 7);
+      s.hd += d * Math.min(1, dt * 7);
+      s.bank += (Math.max(-1.1, Math.min(1.1, turn * 9)) - s.bank) * Math.min(1, dt * 6);   // lean into the turn
+      if (!s.out) s.climb = 0.25 * Math.sin(t * 0.9 + s.ph);
+      s.x = x; s.y = y;
+      return true;
     }
-    const docked = (t) => allies.ships.filter(s => !s.out && t >= s.arrive);
+    const onScreen = (s) => s.x > 10 && s.x < W - 10 && s.y > 10 && s.y < H - 10;
+    const docked = (t) => allies.ships.filter(s => !s.out && t >= s.arrive && !s.strafe);
+    function laserTo(s, x, y, t, land, col, big) {
+      const sz = targetR * 0.64 * s.depth, [gx, gy] = shipGun(s.x, s.y, sz, s.hd, s.bank, s.cls);
+      allies.lasers.push({ x0: gx, y0: gy, x1: x, y1: y, t0: t, land, col: col || SQUADS[s.sq].laser, w: big ? 1.3 : 1 });
+      s.aim = Math.atan2(y - s.y, x - s.x); s.firedAt = t;
+    }
     function allyShot(t, s, dmg, big) {
-      const p = allyPos(s, t); if (!p) return;
-      allies.bolts.push({ x0: p[0], y0: p[1], t0: t, land: t + (big ? 0.28 : 0.36), dmg, big, ox: (fxRand() - 0.5) * 0.5, oy: (fxRand() - 0.5) * 0.4 });
+      if (!bossActive) return;
+      const br = bossR(), ox = (fxRand() - 0.5) * 0.5, oy = (fxRand() - 0.5) * 0.4;
+      const bx = bossX() + ox * br, by = bossY() + oy * br;
+      allies.bolts.push({ t0: t, land: t + 0.12, dmg, big, ox, oy });
+      laserTo(s, bx, by, t, t + 0.12, null, big);
     }
     function allyHit(dmg, x, y, big) {
       const d = Math.min(dmg, Math.max(0, abBossDmgLeft));
@@ -10983,7 +11134,7 @@
       if (big) shake = Math.max(shake, 3);
     }
     function summon(t, escort) {
-      allies = { t0: t, ships: [], bolts: [], booms: [], wave: -1, nextFire: nextBeat(t + 0.8), mother: null, beams: [], volleyAt: -9, leaving: 0, rr: 0, escort: !!escort };
+      allies = { t0: t, ships: [], bolts: [], lasers: [], shatters: [], wave: -1, nextFire: nextBeat(t + 0.8), mother: null, beams: [], volleyAt: -9, leaving: 0, rr: 0, escort: !!escort, lastT: t };
       if (save.settings.sfx) { [110, 138.6, 164.8, 220].forEach((f, i) => tone(f, 1.0, 'sawtooth', 0.026, i * 0.06)); tone(55, 0.9, 'sine', 0.08); }
       shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR * 0.6, alpha: 0.9, speed: 900, width: 6, color: ACID });
     }
@@ -10993,129 +11144,139 @@
       for (const s of allies.ships) if (!s.out) s.out = t + fxRand() * 0.25;
       if (save.settings.sfx) [784, 659, 523].forEach((f, i) => tone(f, 0.12, 'triangle', 0.02, i * 0.07));
     }
-    // escort: a ring shot down on its beat (the bolt from the next ship on station)
-    function escortShot(x, y) {
-      if (!allies || allies.leaving) return;
-      const t = clockNow() - startTime, ds = docked(t);
-      if (!ds.length) { createBurst(x, y, ACID, 8, 0.8); return; }
-      const sh = ds[(allies.rr++) % ds.length], p = allyPos(sh, t); if (!p) return;
-      allies.bolts.push({ x0: p[0], y0: p[1], t0: t - 0.1, land: t + 0.02, dmg: 0, big: false, tx: x, ty: y, ox: 0, oy: 0 });
-      if (save.settings.sfx) tone(1320, 0.04, 'square', 0.008);
+    // the rings: as each one closes in, a ship on screen lines up and fires so its laser meets the
+    // circle on the beat (the ability loop scores it PERFECT at that moment; ringShot shatters it)
+    function aimAtRings(t) {
+      const A = allies;
+      const ready = A.ships.filter((s) => !s.out && t >= s.t0 + 0.35 && onScreen(s));
+      if (!ready.length) return;
+      for (const n of notes) {
+        if (n.hit || n.missed || n.__fleet) continue;
+        const lead = n.hitTime - t;
+        if (lead > 0.3 || lead < 0.02) continue;
+        // the strafers on screen first (they are the show), then whoever hasn't fired for longest
+        const order = ready.slice().sort((a, b) => (b.strafe - a.strafe) || ((a.firedAt || -9) - (b.firedAt || -9)));
+        const pick = order[0], r = targetR * 1.02;
+        const fire = (sh) => {
+          const ang = Math.atan2(sh.y - n.ty, sh.x - n.tx), hx = n.tx + Math.cos(ang) * r, hy = n.ty + Math.sin(ang) * r;
+          const fly = Math.min(lead, Math.max(0.08, Math.hypot(hx - sh.x, hy - sh.y) / 1700));
+          laserTo(sh, hx, hy, n.hitTime - fly, n.hitTime, null, false);
+          return ang;
+        };
+        n.__fleet = { col: SQUADS[pick.sq].laser, a: fire(pick) };
+        // crossfire: often a second ship, from another squadron, hits the same ring
+        const second = order.find((sh) => sh !== pick && sh.sq !== pick.sq);
+        if (second && ((n.hitTime * 7.3) % 1) < 0.4) fire(second);
+      }
     }
-    // a ring hit while the fleet is on station: every ship fires
+    // called by the ability loop when the fleet's ring is scored
+    function ringShot(n) {
+      if (!allies) return;
+      const f = n.__fleet || { col: SQUADS[(allies.rr++) % 3].laser, a: -Math.PI / 2 };
+      allies.shatters.push({ x: n.tx, y: n.ty, r: targetR * 1.02, col: f.col, a: f.a, t0: clockNow() - startTime });
+      if (allies.shatters.length > 24) allies.shatters.shift();
+      if (!allies.escort && bossActive && state === 'bossBattle') volley();      // a boss fight: every ring shot calls a volley
+      if (save.settings.sfx) tone(1320 + ((allies.rr * 37) % 5) * 110, 0.05, 'square', 0.009);
+    }
+    // a ring hit (by you or the fleet) while the fleet fights a boss: every ship on station fires
     function volley() {
-      if (!allies || allies.leaving || allies.escort) return;            // escorting: they shoot the rings themselves
+      if (!allies || allies.leaving || allies.escort) return;
       const t = clockNow() - startTime;
       if (t - allies.volleyAt < 0.12) return;
       allies.volleyAt = t;
       const ds = docked(t);
       ds.forEach((s, i) => allyShot(t + i * 0.02, s, 3 / Math.max(1, ds.length), true));
-      if (ds.length && save.settings.sfx) tone(1568, 0.05, 'square', 0.01);
     }
+    function escortShot() {}                                                     // (kept for callers: the fleet aims ahead now, see aimAtRings)
     function updateAllies(dt, t) {
-      const A = allies;
+      const A = allies, fdt = Math.max(0.001, Math.min(0.1, t - A.lastT)); A.lastT = t;
       if (A.leaving) {
-        if (t - A.leaving > 1.0 && !A.bolts.length) allies = null;
-      } else if (A.escort) {
-        const w = Math.min(2, Math.floor((t - A.t0) / ALLY_GAP));
-        while (A.wave < w) { A.wave++; allyWave(t, A.wave); }
-        if (bossActive && state === 'bossBattle') {                     // a boss fight began: re-form round it
-          A.escort = false;
-          for (const sh of A.ships) { if (sh.out) continue; const p = allyPos(sh, t) || sh.to; sh.from = p; sh.t0 = t; sh.arrive = t + 0.7; }
-          A.ships.filter((sh) => !sh.out).forEach((sh, i, arr) => { sh.to = allyStation(i, arr.length, sh.wave); });
-        }
-      } else if (!bossActive || !(state === 'bossBattle' || state === 'paused')) {
-        dismiss(t);                                                      // the boss fell (or the fight ended): they leave
+        if (t - A.leaving > 1.2 && !A.bolts.length) { allies = null; return; }
       } else {
         const w = Math.min(2, Math.floor((t - A.t0) / ALLY_GAP));
         while (A.wave < w) { A.wave++; allyWave(t, A.wave); }
-        // the squadron's steady fire, on the beat: two ships at a time, round-robin
-        if (t >= A.nextFire) {
-          const ds = docked(t);
-          for (let k = 0; k < Math.min(2, ds.length); k++) { const s = ds[(A.rr++) % ds.length]; allyShot(t, s, 2, false); }
-          A.nextFire = nextBeat(A.nextFire + beatLen() * 0.5);
-          if (ds.length && save.settings.sfx) tone(880, 0.05, 'square', 0.008);
+        if (A.escort && bossActive && state === 'bossBattle') {                 // a boss fight began: re-form round it
+          A.escort = false;
+          for (const s of A.ships) if (!s.out && !s.strafe) { s.from = [s.x, s.y]; s.t0m = t; s.arrive = t + 0.8; s.to = allyStation(s.idx, s.n, s.wave); }
+        } else if (!A.escort && (!bossActive || !(state === 'bossBattle' || state === 'paused'))) {
+          dismiss(t);                                                           // the boss fell (or the fight ended): they leave
         }
-        if (A.mother && t >= A.mother.nextBeam) {
-          A.beams.push({ t0: t, land: t + beatLen() * 0.5 });
-          A.mother.nextBeam = nextBeat(t + beatLen() * 3.5);
-          if (save.settings.sfx) tone(98, beatLen() * 0.5, 'sawtooth', 0.02);
+        if (!A.leaving && state !== 'paused') {
+          aimAtRings(t);
+          if (!A.escort && t >= A.nextFire) {                                   // the squadron's steady fire at the boss, two at a time
+            const ds = docked(t);
+            for (let k = 0; k < Math.min(2, ds.length); k++) { const s = ds[(A.rr++) % ds.length]; allyShot(t, s, 2, false); }
+            A.nextFire = nextBeat(A.nextFire + beatLen() * 0.5);
+          }
+          if (A.mother && t >= A.mother.nextBeam) {
+            A.beams.push({ t0: t, land: t + beatLen() * 0.5 });
+            A.mother.nextBeam = nextBeat(t + beatLen() * 3.5);
+            if (save.settings.sfx) tone(98, beatLen() * 0.5, 'sawtooth', 0.02);
+          }
         }
       }
+      for (const s of A.ships) allyMove(s, t, fdt);
       for (const b of A.bolts) if (!b.done && t >= b.land) {
         b.done = true;
-        if (b.tx != null) { createBurst(b.tx, b.ty, ACID, 10, 0.9); continue; }   // an escort's shot: the ring is already scored
         const br = bossR();
         allyHit(b.dmg, bossX() + b.ox * br, bossY() + b.oy * br, b.big);
       }
       A.bolts = A.bolts.filter(b => !b.done || t - b.land < 0.15);
+      A.lasers = A.lasers.filter((l) => t - l.land < 0.12);
+      A.shatters = A.shatters.filter((s) => t - s.t0 < 0.45);
       for (const bm of A.beams) if (!bm.done && t >= bm.land) { bm.done = true; allyHit(8, bossX(), bossY(), true); shake = Math.max(shake, 7); }
       A.beams = A.beams.filter(bm => !bm.done || t - bm.land < 0.4);
     }
-    const allyMotherXY = (t) => [W * 0.5 + Math.sin(t * 0.4) * W * 0.05, Math.max(H * 0.17, 125)];
-    // behind the boss: the mothership hangs high over the arena
+    const allyMotherXY = (t) => [W * 0.5 + Math.sin(t * 0.4) * W * 0.05, Math.max(H * 0.14, 110)];
+    // behind the boss: the flagship itself, far up over the arena, on your side now
     function drawAlliesBack(t) {
       const A = allies; if (!A || !A.mother) return;
       const lv = A.leaving ? Math.min(1, (t - A.leaving) / 0.9) : 0, k = Math.min(1, (t - A.mother.t0) / 1.2);
       const e = (1 - Math.pow(1 - k, 3)) * (1 - lv);
       if (e <= 0) return;
-      const [mx, my0] = allyMotherXY(t), ms = Math.max(W, H) * 0.3, my = my0 - (1 - e) * ms * 0.4;
-      ctx.save(); ctx.translate(mx, my); ctx.globalAlpha = 0.9 * e;
-      const mg = ctx.createLinearGradient(0, -ms * 0.2, 0, ms * 0.12);
-      mg.addColorStop(0, '#05070a'); mg.addColorStop(1, '#232c33');
-      ctx.fillStyle = mg;
-      ctx.beginPath(); ctx.moveTo(-ms, -ms * 0.05); ctx.lineTo(-ms * 0.6, ms * 0.04); ctx.lineTo(-ms * 0.3, ms * 0.1); ctx.lineTo(ms * 0.3, ms * 0.1); ctx.lineTo(ms * 0.6, ms * 0.04); ctx.lineTo(ms, -ms * 0.05);
-      ctx.lineTo(ms, -ms * 0.4); ctx.lineTo(-ms, -ms * 0.4); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = ACID; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.55 * e; ctx.stroke();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = -10; i <= 10; i++) { ctx.globalAlpha = e * (0.35 + 0.65 * Math.max(0, Math.sin(t * 5 - Math.abs(i) * 0.5))); ctx.fillStyle = i % 4 ? ACID : '#7df9ff'; ctx.beginPath(); ctx.arc(i * ms * 0.075, ms * (0.085 - Math.abs(i) * 0.0055), 2, 0, Math.PI * 2); ctx.fill(); }
-      ctx.restore();
+      const [mx, my] = allyMotherXY(t), HW = Math.max(W, H) * 0.32;
+      drawFlagship(t, mx, my - (1 - e) * HW * 0.4 - HW * CORE_Y * 0.6, HW, { alpha: 0.92 * e, far: 0.35 });
     }
-    // in front of the boss, behind the rings: the squadron and its fire
+    // in front of the boss, behind the rings: the squadrons, their lasers and the rings they shatter
     function drawAllies(t) {
       const A = allies; if (!A) return;
       ctx.save();
-      const bx = bossX(), by = bossY(), br = bossR();
-      // the mothership's beam
+      // the flagship's beam at the boss
       if (A.mother) for (const bm of A.beams) {
-        const [mx, my] = allyMotherXY(t), ey = my + Math.max(W, H) * 0.3 * 0.1;
+        const [mx, my] = allyMotherXY(t), ey = my + Math.max(W, H) * 0.32 * 0.05;
         const k = bm.done ? Math.max(0, 1 - (t - bm.land) / 0.4) : Math.min(1, (t - bm.t0) / (bm.land - bm.t0)) * 0.35;
         ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
-        ctx.strokeStyle = `rgba(125,255,59,${0.6 * k})`; ctx.lineWidth = (bm.done ? 26 : 4) * k + 2; ctx.beginPath(); ctx.moveTo(mx, ey); ctx.lineTo(bx, by); ctx.stroke();
+        ctx.strokeStyle = `rgba(125,255,59,${0.6 * k})`; ctx.lineWidth = (bm.done ? 26 : 4) * k + 2; ctx.beginPath(); ctx.moveTo(mx, ey); ctx.lineTo(bossX(), bossY()); ctx.stroke();
         if (bm.done) { ctx.strokeStyle = `rgba(255,255,255,${0.9 * k})`; ctx.lineWidth = 6 * k + 1; ctx.stroke(); }
         ctx.restore();
       }
-      // the ships: a warp flash where they appear, then they take station facing the boss
-      for (const s of A.ships) {
-        const p = allyPos(s, t); if (!p) continue;
-        const [x, y] = p;
+      // the ships, far ones first: a warp flash where they appear, then the 3D model
+      const order = A.ships.filter((s) => t >= s.t0).sort((a, b) => a.depth - b.depth);
+      for (const s of order) {
         if (t - s.t0 < 0.25) {
           const k = (t - s.t0) / 0.25, fr = targetR * (0.9 - 0.6 * k);
           const g = ctx.createRadialGradient(s.from[0], s.from[1], 0, s.from[0], s.from[1], fr);
-          g.addColorStop(0, `rgba(240,255,230,${1 - k})`); g.addColorStop(1, 'rgba(125,255,59,0)');
+          g.addColorStop(0, `rgba(240,255,240,${1 - k})`); g.addColorStop(1, hexToRgba(SQUADS[s.sq].edge, 0));
           ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s.from[0], s.from[1], fr, 0, Math.PI * 2); ctx.fill(); ctx.restore();
         }
-        const ang = s.out || A.escort ? -Math.PI / 2 : Math.atan2(by - y, bx - x);
-        const alpha = s.out ? Math.max(0, 1 - (t - s.out) / 0.6) : Math.min(1, (t - s.t0) / 0.15);
-        hull(x, y, targetR * (s.kind === 'disc' ? 0.62 : 0.56), s.kind === 'disc' ? Math.sin(t * 2 + s.ph) * 0.1 : ang, alpha, 0, s.kind);
+        const alpha = s.out ? Math.max(0, 1 - (t - s.out) / 0.7) : Math.min(1, (t - s.t0) / 0.15);
+        const charge = s.firedAt != null && t - s.firedAt < 0.12 ? 1 - (t - s.firedAt) / 0.12 : 0;
+        drawShip(s.x, s.y, targetR * 0.64 * s.depth * (s.cls === 'disc' ? 0.9 : 1), s.hd, s.bank, s.climb || 0, s.cls, s.sq, alpha * (0.8 + 0.2 * s.depth), charge, 0);
       }
-      // plasma, ship to boss
+      // lasers, and the rings they break
       ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
-      for (const b of A.bolts) {
-        if (b.done) {
-          const k = 1 - (t - b.land) / 0.15, hx = b.tx != null ? b.tx : bx + b.ox * br, hy = b.ty != null ? b.ty : by + b.oy * br;
-          ctx.fillStyle = `rgba(200,255,150,${0.7 * k})`; ctx.beginPath(); ctx.arc(hx, hy, (b.big ? 18 : 10) * (1.4 - k), 0, Math.PI * 2); ctx.fill();
+      for (const l of A.lasers) {
+        if (t < l.t0) continue;
+        const u = Math.min(1, (t - l.t0) / Math.max(0.02, l.land - l.t0));
+        if (t > l.land) {                                                      // the impact spark
+          const k = 1 - (t - l.land) / 0.12, g = ctx.createRadialGradient(l.x1, l.y1, 0, l.x1, l.y1, 16 * l.w);
+          g.addColorStop(0, `rgba(255,255,255,${k.toFixed(3)})`); g.addColorStop(1, hexToRgba(l.col, 0));
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(l.x1, l.y1, 16 * l.w, 0, Math.PI * 2); ctx.fill();
           continue;
         }
-        const k = Math.max(0, Math.min(1, (t - b.t0) / (b.land - b.t0)));
-        const tx = b.tx != null ? b.tx : bx + b.ox * br, ty = b.ty != null ? b.ty : by + b.oy * br;
-        const x = b.x0 + (tx - b.x0) * k, y = b.y0 + (ty - b.y0) * k;
-        const dx = tx - b.x0, dy = ty - b.y0, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, len = b.big ? 30 : 22;
-        ctx.strokeStyle = 'rgba(125,255,59,0.75)'; ctx.lineWidth = b.big ? 8 : 5;
-        ctx.beginPath(); ctx.moveTo(x - ux * len, y - uy * len); ctx.lineTo(x, y); ctx.stroke();
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = b.big ? 3 : 2;
-        ctx.beginPath(); ctx.moveTo(x - ux * len * 0.6, y - uy * len * 0.6); ctx.lineTo(x, y); ctx.stroke();
+        drawLaser(l.x0, l.y0, l.x1, l.y1, u, l.col, l.w);
       }
+      for (const sh of A.shatters) drawShatter(sh, t);
       ctx.restore();
     }
 
@@ -11123,7 +11284,9 @@
       get active() { return active(); }, get inFight() { return inFight(); }, get phase() { return phase; },
       get alliesOn() { return !!allies; }, get allyCount() { return allies ? allies.ships.filter(s => !s.out).length : 0; },
       get escorting() { return !!(allies && allies.escort && !allies.leaving); },
-      summon, dismiss, volley, escortShot, drawAllies, drawAlliesBack,
+      get shooting() { return !!(allies && !allies.leaving); },
+      _allies: () => allies,                                             // (read-only, for tests)
+      summon, dismiss, volley, escortShot, ringShot, drawAllies, drawAlliesBack,
       get downed() { return downed; }, get wave() { return wave; },
       get stats() { return { fired: nFired, reflected: nReflected, through: nThrough, downed }; },
       shouldWarp, begin, update, drawBack, drawFront, onHit, fault, cancel,
@@ -11141,7 +11304,7 @@
   // and STAGE 100, green when done and red when not: it only opens with both green. Opened: the
   // PROJECT ZERO dossier (ILLINOIS // 2016), the creator's footage in an evidence viewer over its
   // own original score, then ZERO FORM: a craft made to look like the light in the footage, with
-  // SECOND LIFE (once per run, when energy hits zero the orb collapses to a point instead of
+  // SECOND LIFE, passive (once per run, when energy hits zero the orb opens and a new one takes its place instead of
   // dying, clears the screen, refills energy and keeps the combo).
   // The reward is derived from the two clearances and never depends on the media playing. The
   // footage and score are separate files next to index.html, requested only when the case opens.
@@ -11190,18 +11353,69 @@
     }
     c.closePath();
   }
+  // Second Life, as in the footage (about 20-23 s in): the light flares, then OPENS into a glowing
+  // ring with a dark, hollow middle that widens as the ring spreads and breaks into arcs and fades.
+  // Out of the hollow middle a new point of light is born and swells into a whole orb in its place
+  // (drawn by drawZeroOrb at a growing scale from 0.55 s).
+  const ZERO_REBIRTH = 2.1;
+  function drawZeroOpening(c, t, x, y, R, L) {
+    const low = !!(SpaceFX && SpaceFX.low);
+    c.save(); c.translate(x, y);
+    c.globalCompositeOperation = 'lighter';
+    if (L < 0.35) {
+      // 1. the flare: the old orb swells and burns bright, its heart going dark
+      const u = L / 0.35, r = R * (1 + 0.18 * u);
+      const halo = zeroHaloSprite();
+      c.globalAlpha = 0.6 + 0.4 * u; c.drawImage(halo, -r * 3.4, -r * 3.4, r * 6.8, r * 6.8);
+      const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, `rgba(120,60,60,${(0.9 - 0.6 * u).toFixed(3)})`); g.addColorStop(0.45, 'rgba(255,226,214,1)'); g.addColorStop(0.75, 'rgba(255,190,170,0.9)'); g.addColorStop(1, 'rgba(255,150,130,0)');
+      c.globalAlpha = 1; c.fillStyle = g; zeroBlob(c, r, 0.05 + 0.05 * u, t, 0.7); c.fill();
+    } else {
+      // 2. it opens: a ring with a hollow middle, spreading, thinning, breaking into arcs
+      const v = Math.min(1, (L - 0.35) / 1.25), e = 1 - Math.pow(1 - v, 2);
+      const ro = R * (1.18 + 1.5 * e), ri = ro * (0.32 + 0.5 * e), mid = (ro + ri) / 2, A = Math.pow(1 - v, 1.3);
+      const halo = zeroHaloSprite();
+      c.globalAlpha = 0.55 * A; c.drawImage(halo, -ro * 2.2, -ro * 2.2, ro * 4.4, ro * 4.4);
+      const g = c.createRadialGradient(0, 0, ri, 0, 0, ro);
+      g.addColorStop(0, 'rgba(255,180,160,0)'); g.addColorStop(0.3, 'rgba(255,236,226,0.95)'); g.addColorStop(0.55, 'rgba(242,190,180,0.85)');
+      g.addColorStop(0.8, 'rgba(206,120,112,0.5)'); g.addColorStop(1, 'rgba(176,90,90,0)');
+      c.strokeStyle = g; c.lineWidth = ro - ri; c.lineCap = 'round';
+      const n = 6, gap = v < 0.35 ? 0 : (v - 0.35) / 0.65 * 0.42;      // whole at first, then arcs drifting apart
+      c.globalAlpha = A;
+      if (gap <= 0) { c.beginPath(); c.arc(0, 0, mid, 0, Math.PI * 2); c.stroke(); }
+      else for (let i = 0; i < n; i++) {
+        const a0 = i / n * Math.PI * 2 + t * 0.4 + gap, a1 = a0 + Math.PI * 2 / n - gap * 2;
+        c.beginPath(); c.arc(0, 0, mid * (1 + gap * 0.25), a0, a1); c.stroke();
+      }
+      if (!low && v < 0.7) {                                           // sparks thrown off the rim
+        c.fillStyle = 'rgba(255,230,210,0.9)';
+        for (let i = 0; i < 14; i++) {
+          const a = i / 14 * Math.PI * 2 + i * 0.37, d = ro * (1 + 0.6 * v) + (i % 3) * R * 0.1;
+          c.globalAlpha = A * (0.5 + 0.5 * Math.sin(i * 2.1 + t * 9));
+          c.beginPath(); c.arc(Math.cos(a) * d, Math.sin(a) * d, Math.max(1, R * 0.035), 0, Math.PI * 2); c.fill();
+        }
+      }
+    }
+    c.restore();
+  }
   function drawZeroOrb(c, t, x, y, R, p, still) {
     const low = !!(SpaceFX && SpaceFX.low);
     const thump = still ? 0 : Math.pow(1 - musicBeatPhase(), 3);
     zeroFlash = Math.max(0, zeroFlash - 0.035);
-    let s = 1;
-    if (zeroCollapse && !still) {                        // Second Life: collapse to a point, then re-form
+    let s = 1, born = 0;
+    if (zeroCollapse && !still) {                        // Second Life: the orb opens; a new one comes out of it
       const L = (clockNow() - startTime) - zeroCollapse.t0;
-      if (L > 1.7) zeroCollapse = null;
-      else s = L < 0.35 ? 1 - L / 0.35 : L < 0.6 ? 0 : (L - 0.6) / 1.1;
-      s = Math.max(0.03, Math.min(1, s));
+      if (L > ZERO_REBIRTH) zeroCollapse = null;
+      else {
+        drawZeroOpening(c, t, x, y, R, L);
+        if (L < 0.55) return;                            // only the old orb, opening, so far
+        const u = Math.min(1, (L - 0.55) / 0.9);
+        s = Math.max(0.03, u * (1 + 0.14 * Math.sin(Math.PI * u)));          // it swells out of the centre, overshoots a touch, settles
+        born = Math.max(0, 1 - (L - 0.55) / 0.5);                             // white-hot as it is born
+      }
     }
     const flick = 0.86 + 0.14 * zeroNoise(t * 7.1) * zeroNoise(t * 2.3 + 1.1);
+    if (born > 0) zeroFlash = Math.max(zeroFlash, born);
     const r = R * s * (1 + 0.04 * Math.sin(t * 1.7) + 0.06 * thump + 0.08 * Math.min(1, p || 0) + 0.12 * zeroFlash);
     c.save(); c.translate(x, y);
     c.globalCompositeOperation = 'lighter';
@@ -11276,7 +11490,7 @@
     shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR * 0.2, alpha: 1, speed: 1400, width: 12, color: '#ffcf8a' });
     shake = Math.max(shake, 12); bgPulse = 1;
     buzz([80, 40, 120, 40, 200]);
-    showToast('SECOND LIFE', '#ffcf8a', 'THE ORB REFUSES TO DIE');
+    showToast('SECOND LIFE', '#ffcf8a', 'THE ORB OPENS · A NEW ONE TAKES ITS PLACE');
     if (save.settings.sfx) { [880, 659, 440, 330, 220].forEach((f, i) => tone(f, 0.16, 'sine', 0.03, i * 0.05)); tone(41, 1.2, 'sine', 0.12, 0.3); [262, 392, 523, 784].forEach((f, i) => tone(f, 0.25, 'triangle', 0.03, 0.7 + i * 0.07)); }
     syncSecondLifePip();
     trackEvent('second_life', { stage });
@@ -12652,11 +12866,12 @@
         if (note.hit || note.missed) continue;
         if (t >= note.hitTime + audioOffset() + 0.035) phantomDodge(note, t, false);
       }
-    } else if (abilityId === 'starWarrior' && Fleet.escorting) {
-      // Star-Fleet Command outside a boss fight: the escort shoots every ring down on its beat
+    } else if (abilityId === 'starWarrior' && Fleet.shooting) {
+      // Star-Fleet Command: the fleet shoots every ring down on its beat (its lasers are fired ahead
+      // so they meet the circle then); in a boss fight each one also calls a volley at the boss
       for (const note of notes) {
         if (note.hit || note.missed) continue;
-        if (t >= note.hitTime - 0.01) { note.hit = true; awardAbilityPerfect(note.tx, note.ty, '#7dff3b', 'FLEET', true); Fleet.escortShot(note.tx, note.ty); }
+        if (t >= note.hitTime - 0.01) { note.hit = true; awardAbilityPerfect(note.tx, note.ty, (note.__fleet && note.__fleet.col) || '#7dff3b', 'FLEET', true); Fleet.ringShot(note); }
       }
     } else if (abilityId === 'bigBang') {
       // Every ring detonates on its own beat, so the star keeps time with the song.
