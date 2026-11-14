@@ -20,7 +20,7 @@ jobs:
   fast:
     name: static + smoke (PR gate, ~2 min)
     runs-on: ubuntu-latest
-    timeout-minutes: 30      # the gate has grown with each feature (about 20 min with Hyperdrive and the boss-dodge suites)
+    timeout-minutes: 35      # the gate has grown with each feature (about 22 min with Hyperdrive v3 and the boss-dodge suites)
     defaults: { run: { working-directory: qa } }
     steps:
       - uses: actions/checkout@v4
@@ -79,6 +79,12 @@ jobs:
       - name: Bug sweep fixes (Hit Rate, Hyperdrive HUD and landscape layout)
         if: ${{ !cancelled() }}
         run: npx playwright test tests/sweep-fixes.spec.js --project=desktop-chrome
+      - name: Hyperdrive v3 (slide to steer, tap to fire, 30 s, the first-flight card freezes time, space-time tunnel and black hole)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/hyperdrive-v3.spec.js --project=desktop-chrome
+      - name: The Mothership (Alien Fleet boss; Broadside, Tractor Beam, Main Cannon)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/mothership-boss.spec.js --project=desktop-chrome
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: fast-results, path: qa/results, retention-days: 14 }

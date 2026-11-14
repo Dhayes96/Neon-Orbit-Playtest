@@ -170,8 +170,9 @@ for (const [stage, name, cost] of [[10, 'CUBEX', 10], [20, 'HEXATRON', 12], [30,
   });
 }
 
-test('the secret Alien Fleet fight is not a dodge fight', async ({ page }) => {
+test('the Alien Fleet: its escort waves are not a dodge fight; the Mothership is (mothership-boss.spec.js)', async ({ page }) => {
   const errors = await boot(page, { save: { level: 90, bossUnlocks: ALL } });
-  expect(await page.evaluate(() => Object.keys(DODGE_BOSSES).sort())).toEqual(['cubex', 'eclipseSovereign', 'hexatron', 'metronox', 'nullstar', 'triarch', 'vantaPrism']);
+  expect(await page.evaluate(() => Object.keys(DODGE_BOSSES).sort())).toEqual(['cubex', 'eclipseSovereign', 'hexatron', 'metronox', 'mothership', 'nullstar', 'triarch', 'vantaPrism']);
+  expect(await page.evaluate(() => DODGE_BOSSES.mothership.pools.flat().filter((k, i, a) => a.indexOf(k) === i).sort())).toEqual(['broadside', 'cannon', 'tractor']);
   expect(real(errors)).toEqual([]);
 });

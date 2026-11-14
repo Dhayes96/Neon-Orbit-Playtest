@@ -762,6 +762,42 @@
       .tut-ring.r2 { display: none; }
       .tut-tap { opacity: 1; }
     }
+    /* --- Hyperdrive first-flight card (time frozen behind it) --- */
+    #hyperCard { z-index: 42; background: radial-gradient(circle at 50% 40%, rgba(120,60,255,0.18), rgba(0,0,0,0.55) 62%, rgba(0,0,0,0.78)); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .hc-card { width: min(380px, 92vw); padding: 18px 20px 20px; }
+    .hc-kicker { font-size: 11px; font-weight: 950; letter-spacing: 0.32em; color: #d6b8ff; margin: 4px 0 2px; }
+    .hc-title { font-size: 21px; margin: 0 0 12px; }
+    .hc-rows { display: flex; flex-direction: column; gap: 8px; margin: 0 auto 12px; max-width: 320px; text-align: left; }
+    .hc-row { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; }
+    .hc-key { flex: none; min-width: 52px; padding: 5px 10px; border-radius: 999px; text-align: center; font-size: 11px; font-weight: 950; letter-spacing: 0.12em;
+      background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.04)); border: 1px solid rgba(255,255,255,0.3); box-shadow: inset 0 1px 0.5px rgba(255,255,255,0.55); }
+    .hc-key.alt { min-width: 0; opacity: 0.8; }
+    .hc-txt { opacity: 0.92; line-height: 1.3; }
+    .hc-foot { margin: 0 0 14px; font-size: 12px; opacity: 0.7; }
+    .hc-demo { position: relative; width: 220px; height: 128px; margin: 0 auto 6px; overflow: hidden; border-radius: 18px;
+      background: radial-gradient(circle at 50% 30%, #000 0 9%, rgba(255,190,120,0.55) 10%, rgba(120,60,255,0.25) 22%, rgba(10,4,30,0.9) 60%); }
+    .hc-tunnel i { position: absolute; left: 50%; top: 30%; width: 30px; height: 30px; translate: -50% -50%; border-radius: 50%; border: 1.5px solid rgba(214,184,255,0.7);
+      animation: hcRing 1.6s linear infinite; }
+    .hc-tunnel i:nth-child(2) { animation-delay: -0.53s; } .hc-tunnel i:nth-child(3) { animation-delay: -1.06s; }
+    @keyframes hcRing { 0% { width: 18px; height: 18px; opacity: 0.9; } 100% { width: 300px; height: 300px; opacity: 0; } }
+    .hc-lanes { position: absolute; left: 0; right: 0; bottom: 30px; display: flex; justify-content: center; gap: 46px; }
+    .hc-lanes b { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,0.35); box-shadow: 0 0 6px rgba(255,255,255,0.4); }
+    .hc-craft { position: absolute; bottom: 24px; left: 50%; width: 40px; height: 14px; margin-left: -20px; border-radius: 50%;
+      background: radial-gradient(ellipse at 50% 30%, #fff, #b48cff 45%, #4a1fa8 80%); box-shadow: 0 0 14px #b48cff; animation: hcSteer 3.2s ease-in-out infinite; }
+    .hc-finger { position: absolute; bottom: 2px; left: 50%; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%;
+      background: rgba(255,255,255,0.85); box-shadow: 0 0 0 6px rgba(255,255,255,0.18); animation: hcSteer 3.2s ease-in-out infinite, hcTap 3.2s ease-in-out infinite; }
+    .hc-bolt { position: absolute; bottom: 40px; left: 50%; width: 3px; height: 16px; margin-left: -1.5px; border-radius: 2px; background: #ffb070;
+      box-shadow: 0 0 8px #ffb070; opacity: 0; animation: hcBolt 3.2s ease-out infinite; }
+    @keyframes hcSteer { 0%, 12% { translate: 0 0; } 24%, 44% { translate: -54px 0; } 58%, 74% { translate: 54px 0; } 88%, 100% { translate: 0 0; } }
+    @keyframes hcTap { 0%, 88%, 100% { scale: 1; } 93% { scale: 0.78; } }
+    @keyframes hcBolt { 0%, 90% { opacity: 0; translate: 0 0; } 91% { opacity: 1; translate: 0 0; } 100% { opacity: 0; translate: 0 -60px; } }
+    .hc-keycaps { display: none; position: absolute; bottom: 4px; left: 0; right: 0; justify-content: center; gap: 6px; }
+    .hc-keycaps span { min-width: 22px; padding: 2px 6px; border-radius: 6px; font-size: 10px; font-weight: 900; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.35); }
+    #hyperCard.keys .hc-finger { display: none; }
+    #hyperCard.keys .hc-keycaps { display: flex; }
+    #hyperCard.keys .hc-craft { bottom: 32px; } #hyperCard.keys .hc-lanes { bottom: 38px; } #hyperCard.keys .hc-bolt { bottom: 48px; }
+    @media (prefers-reduced-motion: reduce) { .hc-tunnel i, .hc-craft, .hc-finger, .hc-bolt { animation: none; } }
+    @media (max-height: 520px) { .hc-demo { height: 84px; } .hc-title { font-size: 18px; margin-bottom: 8px; } .hc-rows { gap: 5px; margin-bottom: 8px; } .hc-foot { margin-bottom: 8px; } }
     .tut-glyph {
       width: 76px; height: 76px; margin: 6px auto 14px;
       border-radius: 50%; display: grid; place-items: center;
@@ -1434,6 +1470,25 @@
     </div>
   </div>
 
+  <!-- Hyperdrive, first flight ever: the controls, with time frozen until Continue -->
+  <div class="overlay hidden" id="hyperCard" role="dialog" aria-label="Hyperdrive controls">
+    <div class="card hc-card">
+      <div class="hc-demo" aria-hidden="true">
+        <div class="hc-tunnel"><i></i><i></i><i></i></div>
+        <div class="hc-lanes"><b></b><b></b><b></b></div>
+        <div class="hc-craft"></div>
+        <div class="hc-finger"></div>
+        <div class="hc-bolt"></div>
+        <div class="hc-keycaps"><span>A</span><span>D</span><span class="wide">SPACE</span></div>
+      </div>
+      <div class="hc-kicker">H Y P E R D R I V E</div>
+      <h2 class="hc-title">Fall through space-time</h2>
+      <div class="hc-rows"></div>
+      <p class="hc-foot"></p>
+      <button class="btn" id="hyperCardGo">Continue</button>
+    </div>
+  </div>
+
   <!-- Level-up announcement: a brief centered banner during the levelup pause -->
   <div id="levelUp">
     <div class="lu-level" id="luLevel">LEVEL 2</div>
@@ -1499,7 +1554,7 @@
     <div class="zf-stage hidden zf-reward" id="zfReward">
       <canvas id="zfOrb" width="480" height="480" aria-hidden="true"></canvas>
       <div class="zf-r1">ZERO FORM UNLOCKED</div>
-      <div class="zf-r2">Your craft can now take the form of the light in the files.<br><b>Second Life:</b> once per run, when your energy hits zero, the orb collapses to a point instead of dying. It clears the screen, refills your energy and keeps your combo.</div>
+      <div class="zf-r2">Your craft can now take the form of the light in the files.<br><b>Second Life</b> (passive, alongside any Boss Core): once per run, when your energy hits zero, the orb opens up and a new one comes out to take its place. It clears the screen, refills your energy and keeps your combo.</div>
       <div class="btn-stack">
         <button class="btn" id="zfEquip">Equip Zero Form</button>
         <button class="btn ghost" id="zfReplay">Replay Files</button>
@@ -2643,7 +2698,7 @@
       music: { kick: 1.4, tense: 0.8, metal: 0.75, sub: 1.1, heavy: true, stab: true }
     },
     // ---- SECRET (Stage 100): the true end of the song. Every Warden was a
-    // piece of it. Its core is the Big Bang.
+    // piece of it. Its core is the Milky Way (once called the Big Bang).
     100: {
       id: 'nullstar', name: 'NULLSTAR', subtitle: 'THE HEART OF THE VOID',
       kind: 'nullstar', hp: 900, auraCol: '#4a1078', energyReward: 999, ability: 'bigBang', secretBoss: true,
@@ -2682,6 +2737,17 @@
     colors: ['#6bd5ff', '#ff5a1e', '#ffffff'], barColor: '#6bd5ff',
     scale: 1.24,
     music: { kick: 1.45, tense: 0.9, metal: 1.0, sub: 1.15, heavy: true, stab: true, guitar: true }
+  };
+
+  // ---- SECRET: the Alien Fleet's flagship (Nov 13 v2). Reached through the Milky Way core until
+  // the fleet is beaten: two waves of escorts first, then it comes down out of the dark and fights
+  // like any boss (health, phases, its own dodge attacks). Keyed by id: the Fleet drives it.
+  const MOTHERSHIP_BOSS = {
+    id: 'mothership', name: 'THE MOTHERSHIP', subtitle: 'FLAGSHIP OF THE FLEET',
+    kind: 'mothership', hp: 600, energyReward: 999, ability: null, intro: 3.4, defeatHold: 2.8,
+    colors: ['#7dff3b', '#ff3b3b', '#eaffd8'], barColor: '#7dff3b', auraCol: '#1d5a08',
+    scale: 1.25,
+    music: { kick: 1.45, tense: 0.95, metal: 0.9, sub: 1.25, heavy: true, stab: true, guitar: true }
   };
 
   const BOSS_PHASE_THRESHOLDS = [0.70, 0.40, 0.15];
@@ -2737,21 +2803,26 @@
       flavor: 'Metronox kept perfect time. Now you can step between its ticks.',
       desc: 'Hold the target to slip out of time for 18 seconds. The craft dodges every ring on its own, in a blur of afterimages: each dodge is a PERFECT, and drain stops. Tap a ring on time yourself to COUNTER it for double score. In a boss fight every dodge slashes back. Recharges every 6 stages.'
     },
-    // SECRET: the reward for Stage 100. Its name stays hidden until earned.
+    // SECRET: the reward for Stage 100. Its name stays hidden until earned. (Nov 13: renamed from
+    // Big Bang to Milky Way; the id stays 'bigBang' so saves carry over.)
     bigBang: {
-      name: 'Big Bang', short: 'BIG BANG', type: 'hold', bossName: 'Nullstar', secret: true,
+      name: 'Milky Way', short: 'MILKY WAY', type: 'hold', bossName: 'Nullstar', secret: true,
       unlockText: 'Reach the end of the song',
       flavor: 'The first light in the universe, taken back from the heart of the Void.',
-      desc: 'Hold the target to ignite a newborn star for 14 seconds. Everything in flight detonates at once, then every ring detonates on its beat: all PERFECT, at double score, and drain stops. In a boss fight every detonation hurls a solar flare at the boss. When it ends, the Big Bang clears the field, refills 50 energy and slams the boss for massive damage. Recharges every 6 stages.'
+      desc: 'Hold the target to ignite a newborn star for 14 seconds. Everything in flight detonates at once, then every ring detonates on its beat: all PERFECT, at double score, and drain stops. In a boss fight every detonation hurls a solar flare at the boss. When it ends, the blast clears the field, refills 50 energy and slams the boss for massive damage. Recharges every 6 stages.'
     },
-    // SECRET: the reward for surviving the Alien Fleet (what waits beyond the Big Bang).
+    // SECRET: the reward for beating the Alien Fleet's Mothership. It takes Milky Way's place: once
+    // earned, the Milky Way core IS Star-Fleet Command (the id stays 'starWarrior' for old saves).
     starWarrior: {
-      name: 'Star-Warrior', short: 'STAR', type: 'hold', bossName: 'The Alien Fleet', secret: true,
-      unlockText: 'Find what waits beyond the Big Bang',
-      flavor: 'You beat the fleet. Now it answers your call.',
-      desc: 'Boss fights only. Hold the target to summon the Alien Fleet to your side for 12 seconds: wave after wave of their fighters warp in all over the screen, take station round the boss and pour plasma into it on every beat. Every ring you hit calls a volley from every ship, and the mothership joins the last wave to beam the boss. You still play every note. Recharges every 5 stages.'
+      name: 'Star-Fleet Command', short: 'FLEET', type: 'hold', bossName: 'The Mothership', secret: true,
+      unlockText: 'Find what waits beyond the Milky Way',
+      flavor: 'You brought down their flagship. Now the fleet answers to you.',
+      desc: 'Your Milky Way core, upgraded. Hold the target to call the Alien Fleet for 12 seconds. In a boss fight wave after wave of fighters warp in, take station round the boss and pour plasma into it on every beat; every ring you hit calls a volley from every ship, and the mothership joins the last wave to beam the boss (you still play every note). Anywhere else the fleet flies escort and shoots down every ring on its beat: all PERFECT, and drain stops. Recharges every 6 stages.'
     }
   };
+  // Star-Fleet Command replaces Milky Way in the same slot once the fleet is beaten: the list shows
+  // one or the other, never both.
+  function abilityOrder() { return ABILITY_ORDER.filter((id) => id !== (save.bossUnlocks.fleet ? 'bigBang' : 'starWarrior')); }
   const ABILITY_ORDER = ['quantize', 'hexSaw', 'triLaser', 'prismGuard', 'eventHorizon', 'phantomStep', 'bigBang', 'starWarrior'];
   // OVERCLOCK (Stage 70 reward): an upgrade to every core, not a core itself.
   const OVERCLOCK_TEXT = 'Overclocked: every core lasts 50% longer, recharges 2 stages sooner, hits bosses 50% harder and refills 25 energy when you fire it.';
@@ -2905,6 +2976,8 @@
         s.equippedAbility = ABILITY_MIGRATE[s.equippedAbility];
       }
       if (typeof s.equippedAbility !== 'string' || !ABILITY_IDS.includes(s.equippedAbility)) s.equippedAbility = 'none';
+      // Milky Way became Star-Fleet Command when the fleet fell (same slot)
+      if (s.bossUnlocks.fleet && s.equippedAbility === 'bigBang') s.equippedAbility = 'starWarrior';
       // an equipped ability must actually be unlocked; else fall back to none
       if (s.equippedAbility !== 'none') {
         const boss = ABILITY_UNLOCK_BOSS[s.equippedAbility];
@@ -5715,7 +5788,7 @@
       noneBtn.addEventListener('click', () => { save.equippedAbility = 'none'; persist(); sfxSelect(); buzz(12); refreshSettings(); });
       abGrid.appendChild(noneBtn);
 
-      for (const id of ABILITY_ORDER) {
+      for (const id of abilityOrder()) {
         const meta = ABILITIES[id];
         const boss = ABILITY_UNLOCK_BOSS[id];
         const unlocked = !!save.bossUnlocks[boss];
@@ -5738,7 +5811,7 @@
       $('abilityDesc').textContent = (eqMeta ? (eqMeta.flavor + ' ' + eqMeta.desc)
         : 'Capture a boss core to wield its power. Hold the target (or hold Space) to activate. One equipped at a time.')
         + (save.overclock ? ' ⚡ ' + OVERCLOCK_TEXT : '');
-      const anyUnlocked = ABILITY_ORDER.some(id => save.bossUnlocks[ABILITY_UNLOCK_BOSS[id]]);
+      const anyUnlocked = abilityOrder().some(id => save.bossUnlocks[ABILITY_UNLOCK_BOSS[id]]);
       $('abilityHint').textContent = anyUnlocked ? '' : '— defeat bosses to unlock';
     }
 
@@ -5750,7 +5823,7 @@
       if (earned) {
         grid.innerHTML = '';
         const cur = save.craft === 'zero' ? 'zero' : 'saucer';
-        for (const [id, name, sub] of [['saucer', 'Saucer', 'The original craft'], ['zero', 'Zero Form', 'Project Zero · Second Life']]) {
+        for (const [id, name, sub] of [['saucer', 'Saucer', 'The original craft'], ['zero', 'Zero Form', 'Project Zero · passive: Second Life']]) {
           const btn = document.createElement('button');
           btn.className = 'ability-swatch' + (cur === id ? ' equipped' : '');
           btn.innerHTML = `<span class="ab-name">${name}</span><span class="ab-type">${sub}</span><span class="ab-lock">${cur === id ? 'Equipped' : 'Tap to equip'}</span>`;
@@ -5758,7 +5831,7 @@
           grid.appendChild(btn);
         }
         $('craftDesc').textContent = cur === 'zero'
-          ? 'Zero Form: the light from the files. Second Life: once per run, when your energy hits zero, the orb collapses to a point instead of dying, clears the screen, refills your energy and keeps your combo.'
+          ? 'Zero Form: the light from the files. Passive, alongside whichever Boss Core you equip: Second Life. Once per run, when your energy hits zero, the orb opens up and a new one comes out to take its place: it clears the screen, refills your energy and keeps your combo.'
           : 'The saucer you started with.';
       }
     }
@@ -6295,6 +6368,7 @@
   // intro. Handy for onboarding fresh playtesters on a shared device.
   $('resetTutorialBtn').addEventListener('click', () => {
     save.tutorialDone = false;
+    save.hyperTutDone = false;          // the Hyperdrive controls card shows again on the next flight
     persist();
     sfxClick();
     buzz(15);
@@ -6597,9 +6671,10 @@
     bigBang:      { dur: 14, uses: 999, stages: 6, bossCap: 120 },
     // Phantom Step: 18 s of dodges. Counters (on-time taps) score double.
     phantomStep:  { dur: 18, uses: 999, stages: 6, bossCap: 70 },
-    // Star-Warrior (the Alien Fleet's reward): boss fights only. 12 s of the fleet fighting on
-    // your side (see Fleet.summon); bossCap is everything the squadron can do to the boss.
-    starWarrior:  { dur: 12, uses: 999, stages: 5, bossCap: 150, bossOnly: true }
+    // Star-Fleet Command (the Mothership's reward, Milky Way upgraded): 12 s of the fleet on your
+    // side (see Fleet.summon). In a boss fight bossCap is everything the squadron can do to the
+    // boss; anywhere else it flies escort and shoots down every ring on its beat.
+    starWarrior:  { dur: 12, uses: 999, stages: 6, bossCap: 150 }
   };
   // OVERCLOCK: the same table, upgraded. Cached per core.
   const _ocTuning = {};
@@ -7663,8 +7738,8 @@
   // Called from stageUp when the new stage is a boss stage that hasn't been
   // fought yet this run. Begins the intro; the battle freezes normal stage
   // progression until the boss falls (or the player loses).
-  function startBossEncounter(st) {
-    const def = BOSSES[st];
+  function startBossEncounter(st, defIn) {
+    const def = defIn || BOSSES[st];
     if (!def) return;
     trackEvent('boss_reached', {
       boss_name: def.id || def.name || 'unknown',
@@ -7866,6 +7941,9 @@
       tone(196, 0.5, 'sawtooth', 0.05, 0.1);
     }
 
+    // SECRET: the mothership's fall is the Fleet's ending (its own reward, then the warp home)
+    if (def.id === 'mothership') { Fleet.mothershipDown(nowT); applyBossMusic(false); return; }
+
     // records
     // SECRET: the Cyber Dragon lives outside normal progression — it never
     // touches boss records, ability unlocks or XP. Its only reward is the Hellgrid theme.
@@ -7936,7 +8014,7 @@
       coreCapture = { t0: clockNow() - startTime, dur: 1.9, color: def.colors[0] };
     } else if (firstTime && def.id === 'nullstar') {
       bossDefeatNameEl.textContent = 'THE VOID FALLS';
-      bossRewardLabelEl.textContent = 'BIG BANG UNLOCKED';
+      bossRewardLabelEl.textContent = 'MILKY WAY UNLOCKED';
       bossRewardValueEl.textContent = 'Boss Core: Nullstar';
       coreCapture = { t0: clockNow() - startTime, dur: 2.4, color: '#ffe9a8' };
     } else if (firstTime) {
@@ -7997,8 +8075,10 @@
     bossHud.classList.remove('show');
     stageChip.classList.remove('boss-hidden');
     const wasDragon = doomMode && doomCfg && activeBoss && activeBoss.id === doomCfg.boss().id;
+    const wasMothership = !!(activeBoss && activeBoss.id === 'mothership');
     bossActive = false;
     activeBoss = null;
+    if (wasMothership) { Fleet.warpHome(nowT); return; }
 
     // SECRET: dragon down → the gauntlet is complete. End the run in victory
     // and restore everything the gauntlet overrode.
@@ -8244,7 +8324,7 @@
     if (abilityId === 'eventHorizon') horizonCollapse(nowT);
     if (abilityId === 'bigBang') bigBangIgnite(nowT);
     if (abilityId === 'phantomStep') phantomStart(nowT);
-    if (abilityId === 'starWarrior') Fleet.summon(nowT);
+    if (abilityId === 'starWarrior') Fleet.summon(nowT, !(bossActive && state === 'bossBattle'));
     startAssault();
     updateAbilityHud();
     trackEvent('ability_used', { ability: abilityId, stage });
@@ -8749,22 +8829,32 @@
     }
   }
 
-  // ---- HYPERDRIVE v2: a 150 streak (Goods count, a miss resets it) drops the
-  // camera behind the craft for 60 seconds, tunnelling through spacetime toward
-  // a black hole. Rocks and signal rings arrive on the beat in three lanes. Tap
-  // the left or right half (or arrows / A, D) to slide a lane. FIRE shoots the
-  // rock ahead in your lane (3 shots, they recharge). If a Boss Core is equipped,
-  // CORE fires its Hyperdrive version (charges every 20 s). Rocks cost energy but
-  // never end the run. Then the craft dives into the hole and the rings return.
-  const HYPER_DUR = 60, HYPER_IN = 1.8, HYPER_OUT = 1.8, HYPER_APPROACH = 1.45, HYPER_COOLDOWN = 90;
-  const HYPER_AMMO = 3, HYPER_RELOAD = 1.4, HYPER_CORE_EVERY = 20;
+  // ---- HYPERDRIVE v3 (Nov 13): a 150 streak (Goods count, a miss resets it) drops the
+  // camera behind the craft for 30 seconds, falling through space-time toward a black hole.
+  // Rocks and signal rings arrive on the beat in three lanes.
+  //  - Touch: SLIDE left/right anywhere to change lanes (one slide can cross two lanes), TAP
+  //    anywhere to fire. One thumb is enough. FIRE and CORE buttons stay for those who like them.
+  //  - Keyboard: A/D or arrows steer, Space/W fire, E/S core (as before). Mouse: click a half.
+  // FIRE shoots the rock ahead in your lane (3 shots, they recharge). If a Boss Core is equipped,
+  // CORE fires its Hyperdrive version (charges every 12 s). Rocks cost energy but never end the
+  // run. Then the craft dives into the hole and the rings return. The first flight ever opens on
+  // a controls card with time frozen until Continue (once; Reset Tutorial brings it back).
+  // What the player is steering with, for the hints and the controls card: 'touch' (or pen), 'mouse'
+  // or 'key'. A phone starts as touch; a key press switches to keyboard hints, a touch back again.
+  let inputKind = (() => { try { return matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 && !matchMedia('(hover: hover)').matches ? 'touch' : 'key'; } catch (e) { return 'touch'; } })();
+  window.addEventListener('pointerdown', (e) => { inputKind = e.pointerType === 'mouse' ? 'mouse' : 'touch'; }, { passive: true, capture: true });
+  window.addEventListener('keydown', () => { inputKind = 'key'; }, { passive: true, capture: true });
+  const usesTouch = () => inputKind === 'touch';
+  const HYPER_DUR = 30, HYPER_IN = 1.8, HYPER_OUT = 1.8, HYPER_APPROACH = 1.45, HYPER_COOLDOWN = 90;
+  const HYPER_AMMO = 3, HYPER_RELOAD = 1.4, HYPER_CORE_EVERY = 12;
   const HYPER_CORES = {
     quantize: { name: 'LOCK GRID', dur: 5, col: '#a6ff3d' },
     hexSaw: { name: 'SAW VOLLEY', dur: 1.7, col: '#00f5ff' },
     triLaser: { name: 'TRI-BEAM', dur: 3, col: '#ff2e4d' },
     prismGuard: { name: 'PRISM SHIELD', dur: 8, col: '#b06bff' },
     eventHorizon: { name: 'GRAVITY WELL', dur: 2.6, col: '#ffd23d' },
-    bigBang: { name: 'BIG BANG', dur: 6, col: '#ffe9a8' },
+    bigBang: { name: 'MILKY WAY', dur: 6, col: '#ffe9a8' },
+    starWarrior: { name: 'FLEET STRIKE', dur: 6, col: '#7dff3b' },
     phantomStep: { name: 'PHASE DASH', dur: 4, col: '#e6f6ff' }
   };
   const Hyper = (() => {
@@ -8776,6 +8866,8 @@
     let ammo = HYPER_AMMO, reloadAt = 0, coreCharges = 0, coreNextAt = 0, core = null;   // core: {kind, t0, until}
     // guidance: edge arrows (always), and the controls card on the first flight ever
     let tut = false, firstFlight = false, tutFrom = 0, tutUntil = 0, pressL = -9, pressR = -9, steers = 0;
+    let card = 'none';                    // the first-flight controls card: 'none' -> 'open' -> 'done'
+    const slides = {};                    // touch: one entry per finger on the glass (slide = steer, tap = fire)
     const hash = (n) => {
       n = (n ^ 61) ^ (n >>> 16); n = (n + (n << 3)) | 0; n = n ^ (n >>> 4);
       n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15); return (n >>> 0) / 4294967296;
@@ -8784,7 +8876,7 @@
     const hd = () => !SpaceFX.low && save.settings.spaceQuality !== 'lite';
     const ultra = () => !SpaceFX.low && save.settings.spaceQuality === 'ultra';
     const nowT = () => clockNow() - startTime;
-    const mult = () => FEVER_MULTS[Math.max(1, feverLevel || 1)] * (core && core.kind === 'bigBang' && nowT() < core.until ? 2 : 1);
+    const mult = () => FEVER_MULTS[Math.max(1, feverLevel || 1)] * (core && (core.kind === 'bigBang' || core.kind === 'starWarrior') && nowT() < core.until ? 2 : 1);
 
     // ---------- lifecycle ----------
     function request() {
@@ -8801,7 +8893,9 @@
       crashFlash = 0; ringFlash = 0;
       ammo = HYPER_AMMO; reloadAt = 0;
       tut = firstFlight = !save.hyperTutDone; steers = 0; pressL = pressR = -9;
-      tutFrom = t + HYPER_IN - 0.3; tutUntil = t + HYPER_IN + 6.5;
+      card = tut ? 'pending' : 'none';
+      for (const k in slides) delete slides[k];
+      tutFrom = t + HYPER_IN; tutUntil = t + HYPER_IN + 5;
       const hasCore = abilityId !== 'none' && HYPER_CORES[abilityId];
       coreCharges = hasCore ? 1 : 0; coreNextAt = t + HYPER_CORE_EVERY; core = null;
       seed = (Math.floor(startTime * 977) ^ Math.floor(t * 131)) | 0;
@@ -8810,7 +8904,7 @@
       novaBlast('sing');
       plan(t);
       shown++;
-      showToast('HYPERDRIVE', '#d6b8ff', shown === 1 ? 'TAP LEFT / RIGHT · FIRE TO SHOOT' : '60 SECONDS');
+      showToast('HYPERDRIVE', '#d6b8ff', shown === 1 ? controlsLine() : HYPER_DUR + ' SECONDS');
       if (save.settings.sfx) {
         [220, 330, 440, 660, 880, 1320, 1760].forEach((f, i) => tone(f, 0.14, 'sawtooth', 0.024, i * 0.07));
         tone(41, 1.6, 'sine', 0.11, 0.1);
@@ -8820,6 +8914,43 @@
       trackEvent('hyperdrive_start', { stage });
     }
     function learned() { if (tut) { tut = false; save.hyperTutDone = true; persist(); } }
+    function controlsLine() {
+      return usesTouch() ? 'SLIDE TO STEER · TAP TO FIRE' : inputKind === 'mouse' ? 'CLICK LEFT / RIGHT · SPACE TO FIRE' : 'A / D TO STEER · SPACE TO FIRE';
+    }
+    // ---------- the first-flight controls card: time stands still until Continue ----------
+    // It rides the pause machinery (game time frozen, music paused, the scene drawn still behind
+    // it); Continue resumes through the normal 3-2-1 so the thumb is down before anything moves.
+    function cardFill() {
+      const el = document.getElementById('hyperCard'); if (!el) return null;
+      const cfg = HYPER_CORES[abilityId], touch = usesTouch();
+      el.classList.toggle('touch', touch); el.classList.toggle('keys', !touch);
+      const rows = touch
+        ? [['SLIDE', '← →', 'anywhere to change lanes'], ['TAP', '', 'anywhere to fire at the rock ahead']]
+        : [['A / D', '← →', 'change lanes' + (inputKind === 'mouse' ? ' (or click a side)' : '')], ['SPACE', 'W', 'fire at the rock ahead']];
+      if (cfg) rows.push([touch ? 'CORE' : 'E', touch ? '' : 'S', cfg.name.toLowerCase() + ', your Boss Core']);
+      el.querySelector('.hc-rows').innerHTML = rows.map(([a, b, txt]) =>
+        `<div class="hc-row"><span class="hc-key">${a}</span>${b ? `<span class="hc-key alt">${b}</span>` : ''}<span class="hc-txt">${txt}</span></div>`).join('');
+      el.querySelector('.hc-foot').textContent = 'Grab the rings · dodge or blast the rocks · ' + HYPER_DUR + ' seconds';
+      return el;
+    }
+    function openCard() {
+      const el = cardFill();
+      if (!el || !pauseGame('hypertut')) { card = 'done'; learned(); return; }
+      card = 'open';
+      pauseOverlayEl.classList.remove('show');            // the card stands in for the pause screen
+      el.classList.remove('hidden');
+      setTimeout(() => { const b = document.getElementById('hyperCardGo'); if (b && card === 'open') try { b.focus({ preventScroll: true }); } catch (e) {} }, 60);
+      trackEvent('hyperdrive_card', {});
+    }
+    function closeCard() {                                 // Continue (or any resume while it's up)
+      if (card !== 'open') return false;
+      card = 'done';
+      const el = document.getElementById('hyperCard'); if (el) el.classList.add('hidden');
+      learned();
+      pauseOverlayEl.classList.add('show');               // the 3-2-1 shows there
+      return true;
+    }
+    function cardGo() { if (card !== 'open') return; sfxConfirm(); buzz(10); closeCard(); requestResume(); }
     function finish(t) {
       active = false; lastEnd = t; core = null;
       learned();
@@ -8836,7 +8967,12 @@
       firePulse(); bgPulse = 1;
       trackEvent('hyperdrive_end', { rings: stats.rings, crashes: stats.crashes, blasted: stats.blasted });
     }
-    function cancel() { active = false; pending = false; objs = []; pops = []; shots = []; frags = []; core = null; lastEnd = -1e9; syncButtons(); }
+    function cancel() {
+      active = false; pending = false; objs = []; pops = []; shots = []; frags = []; core = null; lastEnd = -1e9;
+      if (card === 'open') { card = 'none'; const el = document.getElementById('hyperCard'); if (el) el.classList.add('hidden'); }
+      for (const k in slides) delete slides[k];
+      syncButtons();
+    }
 
     // ---------- the course: events on the beat grid ----------
     function plan(t) {
@@ -8916,8 +9052,40 @@
     }
     function tap(e) {
       if (!active || !e || typeof e.clientX !== 'number') return;
+      if (e.pointerType === 'touch' || e.pointerType === 'pen') return;     // a finger slides and taps: see below
       steer(canvasPoint(e).x < W / 2 ? -1 : 1);
     }
+    // Touch: a finger that slides sideways steers, one lane per step of travel, so one long slide
+    // can cross two lanes; a finger that lifts without sliding was a tap, and fires.
+    function slideStep() { const G = geo(); return Math.max(24, Math.min(48, G.lanePx * 0.33)); }
+    function slideDown(e) {
+      if (!active || (e.pointerType !== 'touch' && e.pointerType !== 'pen')) return;
+      if (e.target && e.target.closest && e.target.closest('.overlay, button, input, label, .hyper-btns, #hyperCard')) return;
+      slides[e.pointerId] = { x: e.clientX, y: e.clientY, ax: e.clientX, at: performance.now(), steps: 0 };
+    }
+    function slideMove(e) {
+      const sl = slides[e.pointerId];
+      if (!sl || !active) return;
+      const step = slideStep();
+      let dx = e.clientX - sl.ax;
+      if (sl.steps === 0 && Math.abs(dx) < Math.abs(e.clientY - sl.y) * 0.8) return;   // mostly vertical: not a slide (yet)
+      while (Math.abs(dx) >= step) {
+        const dir = dx > 0 ? 1 : -1;
+        steer(dir); sl.ax += dir * step; sl.steps++;
+        dx = e.clientX - sl.ax;
+      }
+    }
+    function slideUp(e) {
+      const sl = slides[e.pointerId];
+      delete slides[e.pointerId];
+      if (!sl || !active || e.type === 'pointercancel') return;
+      const travel = Math.hypot(e.clientX - sl.x, e.clientY - sl.y);
+      if (!sl.steps && travel < Math.min(20, slideStep() * 0.6) && performance.now() - sl.at < 450) fire();
+    }
+    window.addEventListener('pointerdown', slideDown, { passive: true });
+    window.addEventListener('pointermove', slideMove, { passive: true });
+    window.addEventListener('pointerup', slideUp, { passive: true });
+    window.addEventListener('pointercancel', slideUp, { passive: true });
     function blast(o, t, how) {
       if (o.dead || o.done) return;
       o.dead = true; o.deadAt = t; o.how = how || 'shot';
@@ -8961,11 +9129,11 @@
       showToast(cfg.name, cfg.col, save.overclock ? '⚡ OVERCLOCKED' : 'CORE');
       buzz([20, 15, 30]);
       if (save.settings.sfx) abilitySound(kind, 'start');
-      if (kind === 'bigBang' || kind === 'eventHorizon') {
-        // everything close enough is gone at once (the well swallows, the bang vaporises)
+      if (kind === 'bigBang' || kind === 'eventHorizon' || kind === 'starWarrior') {
+        // everything close enough is gone at once (the well swallows, the bang vaporises, the fleet strafes)
         const G = geo();
-        for (const o of objs) if (o.kind === 'rock' && !o.done && !o.dead && o.arrive > t && zOf(G, o, t) < (kind === 'bigBang' ? G.zFar : 12)) blast(o, t, 'core');
-        if (kind === 'bigBang') { shake = Math.max(shake, 12); crashFlash = 0; }
+        for (const o of objs) if (o.kind === 'rock' && !o.done && !o.dead && o.arrive > t && zOf(G, o, t) < (kind === 'eventHorizon' ? 12 : G.zFar)) blast(o, t, 'core');
+        if (kind !== 'eventHorizon') { shake = Math.max(shake, 12); crashFlash = 0; }
       }
       syncButtons();
     }
@@ -9008,6 +9176,7 @@
     function update(dt, t) {
       if (!active) return;
       const age = t - t0;
+      if (card === 'pending' && age >= HYPER_IN) { openCard(); return; }   // first flight: the card, time frozen
       const G = geo();
       laneVis += (lane - laneVis) * Math.min(1, dt / 0.085);
       if (reloadAt && t >= reloadAt) { ammo = Math.min(HYPER_AMMO, ammo + 1); reloadAt = ammo < HYPER_AMMO ? t + HYPER_RELOAD : 0; }
@@ -9134,95 +9303,364 @@
     // Rings of light stream past the camera, twisting as they come; spokes of the
     // space-time grid spiral out from the throat; each beat a brighter ripple runs
     // down the tunnel. No road, no rails: just the tunnel and the hole at its end.
+    // ---------- art: the fall through space-time (Nov 13 v3) ----------
+    // The tunnel is the fabric of space-time falling away toward the hole. Rings of it stream at the
+    // camera, and spokes run down into the throat, twisted into a slow spiral the deeper they go (a
+    // spinning hole drags space round with it). Light ahead is blue-shifted and light streaming
+    // past is red-shifted. Clock rings set in the walls tick slower the deeper they are, and stop
+    // at the hole (time dilation). Every beat a gravitational wave runs up the tunnel and swells it.
+    const rgbOf = (hex) => { const n = parseInt(hex.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+    const mixRgb = (a, b, u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u];
+    const rgba = (c, a) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a.toFixed(3)})`;
+    const BLUESHIFT = [168, 220, 255], VIOLET = [176, 92, 255], REDSHIFT = [255, 70, 120];
     function drawTunnel(G, t, k, dive) {
-      const v = (G.zFar - G.zU) / HYPER_APPROACH, gap = 1.25;
+      const v = (G.zFar - G.zU) / HYPER_APPROACH, gap = 1.1;
       const Rt = Math.max(G.L * 2.6, G.hW * 2.1);
-      const maxR = Math.hypot(W, H) * 0.7;
-      const bf = musicBeatFloat();
+      const maxR = Math.hypot(W, H) * 0.72;
       const q = ultra() ? 1 : hd() ? 0.75 : 0.5;
+      const fade = k * (1 - dive);
+      if (fade < 0.01) return;
+      const prog = Math.min(1, Math.max(0, (t - t0) / HYPER_DUR));
+      const near0 = rgbOf(theme.c1);
+      // depth colour: blue-shifted at the throat, violet in the middle, the theme's colour (red-
+      // shifted toward pink) as it streams past
+      const colAt = (dz) => dz > 0.5 ? mixRgb(VIOLET, BLUESHIFT, (dz - 0.5) * 2) : mixRgb(mixRgb(near0, REDSHIFT, 0.35), VIOLET, dz * 2);
+      // the gravitational wave of this beat: its front runs from the throat to the camera
+      const bf = musicBeatFloat(), wf = ((bf % 1) + 1) % 1;
+      const zw = G.zFar * Math.pow(G.zNear / G.zFar, wf), lzw = Math.log(zw);
+      const waveAmp = (0.05 + 0.04 * prog) * (1 - wf * 0.6);
+      const swell = (z) => 1 + waveAmp * Math.exp(-Math.pow((Math.log(z) - lzw) / 0.16, 2));
+      const R = (z) => Rt * G.F / z * swell(z);
+      const curl = 1.7 + 1.1 * prog;                               // frame dragging grows as we close in
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.lineCap = 'round';
       // the walls: a faint glow that brightens toward the edges of the screen
-      const wg = ctx.createRadialGradient(G.vx, G.vy, Math.min(W, H) * 0.12, G.vx, G.vy, maxR);
-      wg.addColorStop(0, 'rgba(0,0,0,0)'); wg.addColorStop(0.6, hexToRgba(theme.c1, 0.06 * k)); wg.addColorStop(1, `rgba(176,92,255,${0.16 * k})`);
+      const wg = ctx.createRadialGradient(G.vx, G.vy, Math.min(W, H) * 0.1, G.vx, G.vy, maxR);
+      wg.addColorStop(0, 'rgba(0,0,0,0)'); wg.addColorStop(0.55, rgba(VIOLET, 0.05 * fade)); wg.addColorStop(1, rgba(mixRgb(near0, REDSHIFT, 0.3), 0.15 * fade));
       ctx.fillStyle = wg; ctx.fillRect(0, 0, W, H);
-      // spacetime spokes, spiralling out of the throat
-      const spokes = Math.round(18 * q);
-      ctx.lineWidth = 1.2;
-      for (let i = 0; i < spokes; i++) {
-        const base = i / spokes * Math.PI * 2;
-        ctx.strokeStyle = hexToRgba(i % 3 ? theme.c1 : '#b05cff', 0.26 * k * (1 - dive));
-        ctx.beginPath();
-        let first = true;
-        for (let z = G.zFar; z > G.zNear; z *= 0.82) {
-          const a = base + z * 0.22 + t * 0.55, rr = Rt * G.F / z;
-          if (rr > maxR * 1.2) break;
+      // the spokes (meridians): one path per depth band, so the colour can shift along them
+      const M = Math.round(30 * q), BANDS = 5;
+      const paths = []; for (let b = 0; b < BANDS; b++) paths.push(new Path2D());
+      for (let i = 0; i < M; i++) {
+        const base = i / M * Math.PI * 2 + t * 0.12;
+        let px = 0, py = 0, pb = -1, have = false;
+        for (let z = G.zFar; z > G.zNear * 0.9; z *= 0.87) {
+          const rr = R(z);
+          if (rr > maxR * 1.25) break;
+          const a = base + curl * Math.pow(z / G.zFar, 2);
           const x = G.vx + Math.cos(a) * rr, y = G.vy + Math.sin(a) * rr;
-          if (first) { ctx.moveTo(x, y); first = false; } else ctx.lineTo(x, y);
+          const dz = (z - G.zNear) / (G.zFar - G.zNear), b = Math.min(BANDS - 1, Math.max(0, Math.floor((1 - dz) * BANDS)));
+          if (have) { paths[b].moveTo(px, py); paths[b].lineTo(x, y); }
+          px = x; py = y; pb = b; have = true;
         }
-        ctx.stroke();
       }
-      // streaming rings, each a broken, twisting band
-      const ph = ((t * v) % gap + gap) % gap;
+      for (let b = 0; b < BANDS; b++) {
+        const nearB = (b + 0.5) / BANDS;                             // 0 = at the throat, 1 = at the camera
+        ctx.strokeStyle = rgba(colAt(1 - nearB), (0.07 + 0.2 * nearB) * fade);
+        ctx.lineWidth = 0.7 + 1.6 * nearB * nearB;
+        ctx.stroke(paths[b]);
+      }
+      // the rings, world-anchored so each keeps its identity as it streams at us (every fourth is
+      // a major line of the grid; every seventh carries a clock)
+      const travel = t * v, ph = ((travel % gap) + gap) % gap;
       for (let z = G.zFar - ph; z > G.zNear; z -= gap) {
-        const rr = Rt * G.F / z;
+        const id = Math.round((travel + G.zFar - z) / gap);
+        const rr = R(z);
         if (rr > maxR * 1.3) continue;
-        const near = 1 - (z - G.zNear) / (G.zFar - G.zNear);
-        const fadeEdge = Math.max(0, 1 - rr / (maxR * 1.3));
-        const a = (0.1 + 0.6 * near * near) * fadeEdge * k * (1 - dive);
-        if (a < 0.01) continue;
-        const twist = z * 0.35 + t * 0.8;
-        const seg = 6, gapA = 0.32;
-        ctx.lineWidth = 1 + 4.5 * near * near;
-        for (let s = 0; s < seg; s++) {
-          const a0 = twist + s / seg * Math.PI * 2, a1 = a0 + Math.PI * 2 / seg - gapA;
-          ctx.strokeStyle = hexToRgba(s % 2 ? theme.c3 : '#b05cff', a);
-          ctx.beginPath(); ctx.arc(G.vx, G.vy, rr, a0, a1); ctx.stroke();
+        const dz = (z - G.zNear) / (G.zFar - G.zNear), near = 1 - dz;
+        const edge = Math.max(0, 1 - rr / (maxR * 1.3));
+        const major = id % 4 === 0;
+        const boost = 1 + 2.2 * (swell(z) - 1) / Math.max(0.01, waveAmp);
+        const a = (0.05 + 0.42 * near * near) * edge * fade * (major ? 1.55 : 0.8) * Math.min(2.2, boost);
+        if (a < 0.008) continue;
+        const col = colAt(dz);
+        ctx.lineWidth = (major ? 1.4 : 0.7) + 3.4 * near * near;
+        ctx.strokeStyle = rgba(col, Math.min(1, a));
+        ctx.beginPath(); ctx.arc(G.vx, G.vy, rr, 0, Math.PI * 2); ctx.stroke();
+        if (q >= 1 && near > 0.55) {                                // a whisper of chromatic fringe near the lens
+          ctx.lineWidth = 1 + 1.5 * near;
+          ctx.strokeStyle = rgba([255, 60, 90], a * 0.3); ctx.beginPath(); ctx.arc(G.vx + 1.2, G.vy, rr * 1.012, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = rgba([60, 220, 255], a * 0.3); ctx.beginPath(); ctx.arc(G.vx - 1.2, G.vy, rr * 0.988, 0, Math.PI * 2); ctx.stroke();
         }
-        // a counter-twisting inner ribbon, so the walls read as woven spacetime
-        if (q >= 0.75) {
-          ctx.lineWidth = 0.8 + 2 * near * near;
-          for (let s = 0; s < 3; s++) {
-            const a0 = -twist * 1.3 + s / 3 * Math.PI * 2;
-            ctx.strokeStyle = hexToRgba(theme.c1, a * 0.7);
-            ctx.beginPath(); ctx.arc(G.vx, G.vy, rr * 0.93, a0, a0 + 0.9); ctx.stroke();
+        // the clocks: a bezel of ticks and one bright hand. A ring's own time runs as fast as its
+        // depth allows (stopped at the hole, full speed at the camera), so its hand's angle is set
+        // by how far it has come: (zFar - z)^2 / (2 v zFar), scaled.
+        if (q >= 0.75 && id % 7 === 3 && near > 0.08) {
+          const ang = -Math.PI / 2 + id * 1.3 + 3.2 * Math.pow(G.zFar - z, 2) / (2 * v * G.zFar);
+          const ca = Math.min(0.5, a * 1.4);
+          ctx.strokeStyle = rgba(mixRgb(col, [255, 255, 255], 0.5), ca);
+          ctx.lineWidth = 0.6 + 1.6 * near;
+          ctx.beginPath();
+          for (let s = 0; s < 60; s++) {
+            const aa = s / 60 * Math.PI * 2 + ang * 0.08, len = s % 5 === 0 ? 0.075 : 0.035;
+            const c0 = Math.cos(aa), s0 = Math.sin(aa);
+            ctx.moveTo(G.vx + c0 * rr * (1 - len), G.vy + s0 * rr * (1 - len)); ctx.lineTo(G.vx + c0 * rr, G.vy + s0 * rr);
           }
+          ctx.stroke();
+          ctx.strokeStyle = rgba([255, 255, 255], Math.min(0.85, ca * 1.8)); ctx.lineWidth = 1.2 + 2.4 * near;
+          ctx.beginPath(); ctx.moveTo(G.vx + Math.cos(ang) * rr * 0.8, G.vy + Math.sin(ang) * rr * 0.8); ctx.lineTo(G.vx + Math.cos(ang) * rr * 1.02, G.vy + Math.sin(ang) * rr * 1.02); ctx.stroke();
         }
       }
-      // the beat ripple: a bright ring running down the tunnel on every beat
-      for (let j = 0; j < 2; j++) {
-        const f = (((bf + j * 0.5) % 1) + 1) % 1;
-        const z = G.zFar * Math.pow(G.zNear / G.zFar, f);
-        const rr = Rt * G.F / z;
-        if (rr > maxR * 1.3) continue;
-        ctx.strokeStyle = `rgba(255,255,255,${(0.35 * (1 - f) + 0.1) * k * (1 - dive)})`;
-        ctx.lineWidth = 1 + 5 * f * f;
-        ctx.beginPath(); ctx.arc(G.vx, G.vy, rr, 0, Math.PI * 2); ctx.stroke();
+      // the wave's crest: a bright ring running up the tunnel on every beat
+      {
+        const rr = Rt * G.F / zw * (1 + waveAmp);
+        if (rr < maxR * 1.3) {
+          ctx.strokeStyle = `rgba(255,255,255,${((0.32 * (1 - wf) + 0.08) * fade).toFixed(3)})`;
+          ctx.lineWidth = 1 + 5 * wf * wf;
+          ctx.beginPath(); ctx.arc(G.vx, G.vy, rr, 0, Math.PI * 2); ctx.stroke();
+        }
       }
       ctx.restore();
     }
 
-    function drawHole(G, t, k, dive) {
-      // the same black hole as the Supernova's (shadow, lensed disk, photon ring), bigger
-      const base = H * 0.05;
-      const Rh = (base * (1 + 0.25 * Math.min(1, (t - t0) / HYPER_DUR)) + dive * dive * Math.max(W, H) * 1.25) * k;
-      if (Rh < 1) return;
-      const x = G.vx, y = G.vy;
-      const diskA = 1 - Math.min(1, dive * 1.6);
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const glow = ctx.createRadialGradient(x, y, Rh * 0.9, x, y, Rh * 4.2);
-      glow.addColorStop(0, 'rgba(255,170,90,0.22)'); glow.addColorStop(0.35, 'rgba(176,92,255,0.16)'); glow.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, Rh * 4.2, 0, Math.PI * 2); ctx.fill();
-      ctx.restore();
-      drawBlackHole(x, y, Rh, base, { diskA: diskA * 1.1, spin: t * 1.5, ringA: 1, birth: 0 });
-      if (dive > 0.02) {
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = 'rgba(255,248,235,0.95)'; ctx.lineWidth = Math.min(6, Math.max(1.2, Rh * 0.045)) + dive * 3;
-        ctx.beginPath(); ctx.arc(x, y, Rh * 1.03, 0, Math.PI * 2); ctx.stroke();
-        ctx.restore();
+    // ---------- art: the black hole ahead ----------
+    // Modelled on a real (spinning) black hole seen from just above its disk, the way the
+    // simulations draw it:
+    //  - the shadow, with a thin photon ring round it (light that went round the hole), brighter
+    //    on the side turning toward us;
+    //  - the accretion disk, white-hot inside to orange-red outside, the inner gas lapping faster
+    //    than the outer, Doppler-beamed: the approaching (left) side bright and bluer, the receding
+    //    side dimmer and redder;
+    //  - the far side of that same disk, lensed up over the top of the shadow and, thinner, under it;
+    //  - a ring of background starlight smeared into arcs round the shadow (an Einstein ring);
+    //  - hot spots orbiting in the disk, and faint jets along the spin axis.
+    // It starts small and grows as we fall toward it over the flight, then the craft dives in.
+    // Two textures are made once (the disk face-on, the lensed starlight); each frame composes them.
+    const BH_IN = 1.45, BH_MID = 2.7, BH_OUT = 5.4, BH_COSI = 0.062, BH_ROLL = -0.11;
+    let bhTex = null, bhOffA = null, bhOffB = null, lastRs = 0;
+    function bhTextures() {
+      const key = SpaceFX.low ? 'lo' : 'hi';
+      if (bhTex && bhTex.key === key) return bhTex;
+      let sd = 0x5eed1e5;
+      const rnd = () => { sd = (sd + 0x6D2B79F5) | 0; let x = Math.imul(sd ^ (sd >>> 15), 1 | sd); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+      const S = key === 'lo' ? 512 : 1024, R = S / 2, rs = R / BH_OUT;
+      const TEMP = [[1.4, [255, 252, 246]], [1.9, [255, 236, 200]], [2.6, [255, 204, 140]], [3.4, [255, 160, 86]], [4.4, [246, 104, 58]], [5.4, [190, 60, 44]]];
+      const temp = (r) => {
+        for (let i = 1; i < TEMP.length; i++) if (r <= TEMP[i][0]) { const u = (r - TEMP[i - 1][0]) / (TEMP[i][0] - TEMP[i - 1][0]); return mixRgb(TEMP[i - 1][1], TEMP[i][1], Math.max(0, u)); }
+        return TEMP[TEMP.length - 1][1];
+      };
+      function disk(r0, r1, n) {
+        const c = document.createElement('canvas'); c.width = c.height = S;
+        const g = c.getContext('2d'); g.translate(R, R);
+        // the body: a smooth annulus, brightest at its inner edge
+        const bg = g.createRadialGradient(0, 0, r0 * rs, 0, 0, r1 * rs);
+        for (let i = 0; i <= 8; i++) {
+          const u = i / 8, r = r0 + (r1 - r0) * u;
+          const edgeIn = Math.min(1, u * 14), edgeOut = Math.pow(1 - u, r1 > 4 ? 1.6 : 0.6);
+          bg.addColorStop(u, rgba(temp(r), (r1 > 4 ? 0.34 : 0.62) * edgeIn * edgeOut));
+        }
+        g.fillStyle = bg; g.beginPath(); g.arc(0, 0, r1 * rs, 0, Math.PI * 2); g.arc(0, 0, r0 * rs, 0, Math.PI * 2, true); g.fill();
+        // the gas: thousands of short arcs, denser and hotter inside
+        g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+        for (let i = 0; i < n; i++) {
+          const u = Math.pow(rnd(), 1.6), r = r0 + (r1 - r0) * u;
+          const a0 = rnd() * Math.PI * 2, len = (0.08 + rnd() * 0.75) * (1.1 - 0.6 * u);
+          const fadeOut = Math.pow(1 - u, 1.2) * Math.min(1, (r - r0) / 0.06 + 0.3);
+          g.strokeStyle = rgba(mixRgb(temp(r), [255, 255, 255], rnd() * 0.35), (0.04 + rnd() * 0.22) * fadeOut);
+          g.lineWidth = rs * (0.006 + rnd() * rnd() * 0.05);
+          g.beginPath(); g.arc(0, 0, r * rs, a0, a0 + len); g.stroke();
+        }
+        // a few bright knots of hotter gas
+        for (let i = 0; i < n / 140; i++) {
+          const r = r0 + (r1 - r0) * Math.pow(rnd(), 2) * 0.7, a = rnd() * Math.PI * 2, kr = rs * (0.05 + rnd() * 0.14);
+          const x = Math.cos(a) * r * rs, y = Math.sin(a) * r * rs;
+          const kg = g.createRadialGradient(x, y, 0, x, y, kr);
+          kg.addColorStop(0, 'rgba(255,250,236,0.35)'); kg.addColorStop(1, 'rgba(255,200,140,0)');
+          g.fillStyle = kg; g.beginPath(); g.arc(x, y, kr, 0, Math.PI * 2); g.fill();
+        }
+        // dark lanes: gaps in the gas, so it reads as structured, not a smear
+        g.globalCompositeOperation = 'destination-out';
+        for (let i = 0; i < (r1 > 4 ? 9 : 6); i++) {
+          const r = r0 + 0.08 + (r1 - r0 - 0.1) * rnd(), a0 = rnd() * Math.PI * 2;
+          g.strokeStyle = `rgba(0,0,0,${(0.18 + rnd() * 0.3).toFixed(2)})`; g.lineWidth = rs * (0.02 + rnd() * 0.06);
+          g.beginPath(); g.arc(0, 0, r * rs, a0, a0 + Math.PI * (0.6 + rnd() * 1.3)); g.stroke();
+        }
+        return c;
       }
+      // the lensed starlight: tangential arcs, longer and brighter close to the shadow
+      function stars() {
+        const SS = key === 'lo' ? 256 : 512, RR = SS / 2, sr = RR / 3.4;
+        const c = document.createElement('canvas'); c.width = c.height = SS;
+        const g = c.getContext('2d'); g.translate(RR, RR); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
+        const er = g.createRadialGradient(0, 0, sr * 1.04, 0, 0, sr * 2.2);
+        er.addColorStop(0, 'rgba(200,190,255,0.0)'); er.addColorStop(0.12, 'rgba(210,200,255,0.18)'); er.addColorStop(0.4, 'rgba(160,140,255,0.06)'); er.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = er; g.beginPath(); g.arc(0, 0, sr * 2.2, 0, Math.PI * 2); g.fill();
+        const N = key === 'lo' ? 260 : 720;
+        for (let i = 0; i < N; i++) {
+          const r = 1.06 + Math.pow(rnd(), 2.4) * 2.25, a = rnd() * Math.PI * 2;
+          const stretch = 0.012 + 0.42 * Math.pow(1.06 / r, 7);
+          const tint = rnd(), col = tint < 0.6 ? [255, 255, 255] : tint < 0.85 ? [190, 214, 255] : [255, 226, 180];
+          const al = (0.25 + 0.75 * rnd()) * Math.min(1, 0.35 + 1.4 * Math.pow(1.06 / r, 3));
+          g.strokeStyle = rgba(col, al); g.lineWidth = 0.7 + rnd() * 1.1;
+          g.beginPath(); g.arc(0, 0, r * sr, a, a + stretch); g.stroke();
+          if (r < 1.5 && rnd() < 0.5) {                            // its counter-image, across the hole
+            g.strokeStyle = rgba(col, al * 0.5); g.beginPath(); g.arc(0, 0, (2.12 - r * 0.7) * sr, a + Math.PI, a + Math.PI + stretch * 0.7); g.stroke();
+          }
+        }
+        return { c, R: RR, rs: sr };
+      }
+      const hi = key === 'hi';
+      const inner = disk(BH_IN, BH_MID + 0.15, hi ? 2600 : 900);
+      // a soft copy of the inner gas for the lensed images: light bent round the hole is smeared,
+      // not streaky (made by drawing it small; it is drawn back up smoothed)
+      const soft = document.createElement('canvas'); soft.width = soft.height = S / 8;
+      soft.getContext('2d').drawImage(inner, 0, 0, S / 8, S / 8);
+      bhTex = { key, R, rs, inner, soft, outer: disk(BH_MID - 0.1, BH_OUT, hi ? 2400 : 800), stars: stars() };
+      return bhTex;
+    }
+    function bhOff(n) {
+      if (!bhOffA) { bhOffA = document.createElement('canvas'); bhOffB = document.createElement('canvas'); }
+      return n ? bhOffB : bhOffA;
+    }
+    // the flat disk, tilted almost edge-on, spun and Doppler-beamed, composed off screen: returns
+    // the canvas and the scale it was drawn at (px of it per px on screen)
+    function bhDiskImage(T, Rs, spinIn, spinOut, a, beam) {
+      const span = 2 * BH_OUT * Rs;
+      const f = Math.min(1, (SpaceFX.low ? 480 : 820) / span);
+      const ow = Math.ceil(span * f) + 2, oh = Math.ceil(span * BH_COSI * f) + 2;
+      const A = bhOff(0), B = bhOff(1);
+      if (A.width < ow || A.height < oh) { A.width = B.width = Math.max(ow, A.width); A.height = B.height = Math.max(oh, A.height); }
+      const ga = A.getContext('2d'), gb = B.getContext('2d');
+      const paint = (g, alpha) => {
+        g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, ow + 2, oh + 2);
+        g.globalCompositeOperation = 'lighter'; g.globalAlpha = alpha;
+        g.translate(ow / 2, oh / 2); g.scale(f * Rs / T.rs, f * Rs / T.rs * BH_COSI);
+        g.save(); g.rotate(-spinOut); g.drawImage(T.outer, -T.R, -T.R, T.R * 2, T.R * 2); g.restore();
+        g.save(); g.rotate(-spinIn); g.drawImage(T.inner, -T.R, -T.R, T.R * 2, T.R * 2); g.restore();
+        g.setTransform(1, 0, 0, 1, 0, 0); g.globalAlpha = 1;
+      };
+      paint(ga, a);
+      if (beam) {
+        // the receding side dimmer and redder...
+        ga.globalCompositeOperation = 'source-atop';
+        const rg = ga.createLinearGradient(0, 0, ow, 0);
+        rg.addColorStop(0, 'rgba(255,90,40,0)'); rg.addColorStop(0.55, 'rgba(255,90,40,0)'); rg.addColorStop(1, 'rgba(150,30,20,0.55)');
+        ga.fillStyle = rg; ga.fillRect(0, 0, ow, oh);
+        // ...the approaching side beamed brighter and bluer: a second copy, masked to fade from left to right
+        paint(gb, Math.min(1, a * 0.9));
+        gb.globalCompositeOperation = 'source-atop'; gb.fillStyle = 'rgba(214,226,255,0.35)'; gb.fillRect(0, 0, ow, oh);
+        gb.globalCompositeOperation = 'destination-in';
+        const mg = gb.createLinearGradient(0, 0, ow, 0);
+        mg.addColorStop(0, 'rgba(0,0,0,1)'); mg.addColorStop(0.42, 'rgba(0,0,0,0.75)'); mg.addColorStop(0.62, 'rgba(0,0,0,0)'); mg.addColorStop(1, 'rgba(0,0,0,0)');
+        gb.fillStyle = mg; gb.fillRect(0, 0, ow, oh);
+        ga.globalCompositeOperation = 'lighter'; ga.drawImage(B, 0, 0, ow, oh, 0, 0, ow, oh);
+        ga.globalCompositeOperation = 'source-over';
+      }
+      return { c: A, f, ow, oh };
+    }
+    function drawHole(G, t, k, dive) {
+      const age = t - t0, prog = Math.min(1, Math.max(0, age / HYPER_DUR));
+      const base = Math.max(24, Math.min(70, Math.min(W, H) * 0.085));
+      const Rs = (base * (1 + 1.35 * ease(prog)) + dive * dive * Math.max(W, H) * 1.25) * k;
+      lastRs = Rs;
+      if (Rs < 1) return;
+      const T = bhTextures(), low = SpaceFX.low, hq = hd();
+      const diskA = Math.max(0, 1 - dive * 1.6) * Math.min(1, k * 1.2);
+      const beat = Math.pow(1 - musicBeatPhase(), 3);
+      const spinIn = t * 0.85, spinOut = t * 0.38;                    // the inner gas laps faster
+      ctx.save();
+      ctx.translate(G.vx, G.vy); ctx.rotate(BH_ROLL);
+      ctx.globalCompositeOperation = 'lighter';
+      // a warm haze round it all, and a violet one further out that ties it to the tunnel
+      const hz = ctx.createRadialGradient(0, 0, Rs, 0, 0, Rs * 7);
+      hz.addColorStop(0, `rgba(255,190,120,${(0.2 * diskA).toFixed(3)})`); hz.addColorStop(0.3, `rgba(255,120,90,${(0.07 * diskA).toFixed(3)})`);
+      hz.addColorStop(0.65, `rgba(150,80,255,${(0.05 * diskA).toFixed(3)})`); hz.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = hz; ctx.beginPath(); ctx.arc(0, 0, Rs * 7, 0, Math.PI * 2); ctx.fill();
+      // the lensed starlight, turning slowly (frame dragging)
+      if (!low) {
+        const S = T.stars, sc = Rs / S.rs;
+        ctx.save(); ctx.rotate(t * 0.06); ctx.globalAlpha = Math.min(1, k) * (1 - Math.min(1, dive * 2)) * 0.6;
+        ctx.drawImage(S.c, -S.R * sc, -S.R * sc, S.R * 2 * sc, S.R * 2 * sc);
+        ctx.restore(); ctx.globalAlpha = 1;
+      }
+      // faint jets along the spin axis, with knots running out on the beat
+      if (hq && diskA > 0.02) {
+        for (const dir of [-1, 1]) {
+          const L = Rs * 9, jg = ctx.createLinearGradient(0, dir * Rs, 0, dir * L);
+          jg.addColorStop(0, `rgba(170,190,255,${(0.2 * diskA).toFixed(3)})`); jg.addColorStop(0.35, `rgba(140,120,255,${(0.08 * diskA).toFixed(3)})`); jg.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = jg;
+          ctx.beginPath(); ctx.moveTo(-Rs * 0.08, dir * Rs * 0.9); ctx.lineTo(-Rs * 0.55, dir * L); ctx.lineTo(Rs * 0.55, dir * L); ctx.lineTo(Rs * 0.08, dir * Rs * 0.9); ctx.closePath(); ctx.fill();
+          const kf = (musicBeatFloat() % 1 + 1) % 1;
+          for (let j = 0; j < 2; j++) {
+            const u = (kf + j * 0.5) % 1, ky = dir * Rs * (1.4 + u * 6.5), kr = Rs * (0.12 + u * 0.35);
+            const kg = ctx.createRadialGradient(0, ky, 0, 0, ky, kr);
+            kg.addColorStop(0, `rgba(210,220,255,${(0.32 * (1 - u) * diskA).toFixed(3)})`); kg.addColorStop(1, 'rgba(160,140,255,0)');
+            ctx.fillStyle = kg; ctx.beginPath(); ctx.arc(0, ky, kr, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
+      const disk = diskA > 0.01 ? bhDiskImage(T, Rs, spinIn, spinOut, diskA * (0.82 + 0.14 * beat), !low) : null;
+      const half = (front) => {
+        if (!disk) return;
+        ctx.save(); ctx.beginPath();
+        if (front) ctx.rect(-Rs * BH_OUT * 1.1, 0, Rs * BH_OUT * 2.2, Rs * BH_OUT); else ctx.rect(-Rs * BH_OUT * 1.1, -Rs * BH_OUT, Rs * BH_OUT * 2.2, Rs * BH_OUT);
+        ctx.clip();
+        ctx.drawImage(disk.c, 0, 0, disk.ow, disk.oh, -disk.ow / disk.f / 2, -disk.oh / disk.f / 2, disk.ow / disk.f, disk.oh / disk.f);
+        ctx.restore();
+      };
+      // hot spots orbiting in the inner disk: drawn with the half of the disk they are in
+      const spots = (front) => {
+        if (low || diskA < 0.02) return;
+        for (let i = 0; i < 3; i++) {
+          const r = Rs * (1.75 + i * 0.45), ph = t * (2.2 - i * 0.45) + i * 2.1;
+          const y = Math.sin(ph) * r * BH_COSI;
+          if ((y >= 0) !== front) continue;
+          const x = Math.cos(ph) * r, beam = 1 - 0.75 * Math.cos(ph);      // brighter coming toward us (left)
+          const sr = Rs * 0.32, sg = ctx.createRadialGradient(x, y, 0, x, y, sr);
+          sg.addColorStop(0, `rgba(255,250,240,${(0.42 * beam * diskA * (0.8 + 0.4 * beat)).toFixed(3)})`); sg.addColorStop(1, 'rgba(255,190,120,0)');
+          ctx.fillStyle = sg; ctx.beginPath(); ctx.ellipse(x, y, sr * 1.5, sr * 0.6, 0, 0, Math.PI * 2); ctx.fill();
+        }
+      };
+      half(false); spots(false);
+      // the shadow
+      ctx.globalCompositeOperation = 'source-over';
+      const sg = ctx.createRadialGradient(0, 0, Rs * 0.9, 0, 0, Rs * 1.05);
+      sg.addColorStop(0, 'rgba(0,0,0,1)'); sg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, Rs * 0.92, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(0, 0, Rs * 1.05, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter';
+      // the far side of the disk, lensed over the top of the shadow (and, thinner, under it): the
+      // same gas, seen face-on and squeezed in against the shadow
+      if (diskA > 0.01) {
+        // (the inner gas only: squeezed by 0.72 it spans 1.04-2.05 shadow radii, the band seen
+        // arching over the top in the simulations)
+        const arch = (top, sIn, a, rMax) => {
+          ctx.save();
+          ctx.beginPath(); ctx.arc(0, 0, Rs * rMax, 0, Math.PI * 2); ctx.arc(0, 0, Rs * 1.0, 0, Math.PI * 2, true); ctx.clip();
+          ctx.beginPath(); if (top) ctx.rect(-Rs * 9, -Rs * 9, Rs * 18, Rs * 9 + Rs * 0.04); else ctx.rect(-Rs * 9, 0, Rs * 18, Rs * 9); ctx.clip();
+          ctx.globalAlpha = Math.min(1, a);
+          const sc = Rs / T.rs * sIn;
+          ctx.scale(sc, sc); ctx.rotate(-spinIn * 0.8); ctx.drawImage(T.soft, -T.R, -T.R, T.R * 2, T.R * 2);
+          ctx.restore();
+        };
+        arch(true, 0.75, diskA * (0.95 + 0.15 * beat), 1.82);
+        if (!low) {                                                   // the approaching side of the arch, beamed
+          ctx.save(); ctx.beginPath(); ctx.rect(-Rs * 9, -Rs * 9, Rs * 8.7, Rs * 18); ctx.clip();
+          arch(true, 0.75, diskA * 0.4, 1.82);
+          ctx.restore();
+        }
+        arch(false, 0.72, diskA * 0.6, 1.2);                          // the secondary image, under the shadow
+        ctx.globalAlpha = 1;
+      }
+      // the photon ring: a hair-thin circle of light, brightest where it comes at us, with the
+      // fainter second ring just inside it
+      const pr = Math.min(1, k) * (1 + 0.25 * beat);
+      ctx.lineWidth = Math.max(1, Rs * 0.03);
+      ctx.strokeStyle = `rgba(255,250,240,${Math.min(1, 0.9 * pr).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(0, 0, Rs * 1.012, Math.PI * 0.45, Math.PI * 1.55); ctx.stroke();
+      ctx.strokeStyle = `rgba(255,206,150,${Math.min(1, 0.45 * pr).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(0, 0, Rs * 1.012, Math.PI * 1.55, Math.PI * 2.45); ctx.stroke();
+      ctx.lineWidth = Math.max(0.6, Rs * 0.014); ctx.strokeStyle = `rgba(255,255,255,${(0.28 * pr).toFixed(3)})`;
+      ctx.beginPath(); ctx.arc(0, 0, Rs * 0.992, 0, Math.PI * 2); ctx.stroke();
+      // the near side of the disk, crossing in front of the shadow
+      half(true); if (disk) { ctx.globalAlpha = 0.35; half(true); ctx.globalAlpha = 1; } spots(true);
+      // diving in: the photon ring flares as it sweeps past the screen's edges
+      if (dive > 0.02) {
+        ctx.strokeStyle = 'rgba(255,248,235,0.95)'; ctx.lineWidth = Math.min(6, Math.max(1.2, Rs * 0.045)) + dive * 3;
+        ctx.beginPath(); ctx.arc(0, 0, Rs * 1.03, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
     }
 
     function drawObj(G, o, t) {
@@ -9444,48 +9882,24 @@
         if (firstFlight) {
           ctx.globalAlpha = Math.min(1, a * 1.6);
           ctx.fillStyle = '#ffffff'; ctx.font = '900 10px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
-          ctx.fillText('TAP', edge - dir * dx * 1.3, y + hh + 16);
+          ctx.fillText(usesTouch() ? 'SLIDE' : dir < 0 ? (inputKind === 'mouse' ? 'CLICK · A' : 'A · ←') : (inputKind === 'mouse' ? 'CLICK · D' : 'D · →'), edge - dir * dx * 1.3, y + hh + 16);
         }
       }
       ctx.restore();
     }
-    // The controls card, on the first flight ever (it goes once you've steered a few times).
+    // After the first-flight card: a one-line reminder over the craft for the first few seconds of
+    // the warm-up (rings only), then it goes.
     function drawTutor(t) {
-      if (!tut || t < tutFrom || t > tutUntil + 0.4) return;
+      if (!firstFlight || card !== 'done' || t < tutFrom || t > tutUntil + 0.4) return;
       const a = Math.min(1, (t - tutFrom) / 0.3) * Math.min(1, (tutUntil + 0.4 - t) / 0.4);
-      const cfg = HYPER_CORES[abilityId];
-      const cw = Math.min(W * 0.88, 360), ch = cfg ? 186 : 160;
-      const cx = W / 2, cy = H * 0.47, x0 = cx - cw / 2, y0 = cy - ch / 2;
+      const G = geo(), txt = controlsLine();
       ctx.save();
       ctx.globalAlpha = a;
-      ctx.fillStyle = 'rgba(8,6,26,0.78)';
-      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(x0, y0, cw, ch, 18) : ctx.rect(x0, y0, cw, ch); ctx.fill();
-      ctx.strokeStyle = hexToRgba(theme.c1, 0.75); ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = '#d6b8ff'; ctx.font = '900 13px Inter, system-ui, sans-serif';
-      ctx.fillText('H Y P E R D R I V E', cx, y0 + 24);
-      ctx.fillStyle = '#ffffff'; ctx.font = '900 17px Inter, system-ui, sans-serif';
-      ctx.fillText('◀  TAP LEFT  ·  TAP RIGHT  ▶', cx, y0 + 56);
-      ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.font = '700 12px Inter, system-ui, sans-serif';
-      ctx.fillText('slide between the three lanes', cx, y0 + 76);
-      const row = (yy, chip, chipCol, txt) => {
-        ctx.font = '900 11px Inter, system-ui, sans-serif';
-        const cwid = ctx.measureText(chip).width + 18;
-        ctx.font = '700 13px Inter, system-ui, sans-serif';
-        const tw = ctx.measureText(txt).width;
-        const sx = cx - (cwid + 10 + tw) / 2;
-        ctx.fillStyle = hexToRgba(chipCol, 0.22); ctx.strokeStyle = chipCol; ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.roundRect ? ctx.roundRect(sx, yy - 11, cwid, 22, 11) : ctx.rect(sx, yy - 11, cwid, 22); ctx.fill(); ctx.stroke();
-        ctx.fillStyle = '#ffffff'; ctx.font = '900 11px Inter, system-ui, sans-serif'; ctx.textAlign = 'center';
-        ctx.fillText(chip, sx + cwid / 2, yy + 1);
-        ctx.textAlign = 'left'; ctx.font = '700 13px Inter, system-ui, sans-serif'; ctx.fillStyle = 'rgba(255,255,255,0.92)';
-        ctx.fillText(txt, sx + cwid + 10, yy + 1);
-        ctx.textAlign = 'center';
-      };
-      row(y0 + 106, 'FIRE', '#ffb070', 'shoots the rock ahead of you');
-      if (cfg) row(y0 + 136, 'CORE', cfg.col, cfg.name.toLowerCase() + ', your Boss Core');
-      ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '700 11px Inter, system-ui, sans-serif';
-      ctx.fillText('grab the rings · dodge the rocks · 60 seconds', cx, y0 + ch - 20);
+      ctx.font = '900 12px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const w = ctx.measureText(txt).width + 26, y = G.yCraft - targetR * 1.9;
+      ctx.fillStyle = 'rgba(8,4,24,0.7)'; ctx.strokeStyle = hexToRgba(theme.c1, 0.7); ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.roundRect ? ctx.roundRect(W / 2 - w / 2, y - 14, w, 28, 14) : ctx.rect(W / 2 - w / 2, y - 14, w, 28); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#ffffff'; ctx.fillText(txt, W / 2, y + 1);
       ctx.restore();
     }
 
@@ -9561,6 +9975,9 @@
 
     return {
       request, canStart, start, update, steer, tap, fire, fireCore, cancel, draw, drawOverlay,
+      closeCard, cardGo,
+      get cardOpen() { return card === 'open'; },
+      get duration() { return HYPER_DUR; },
       get active() { return active; },
       get pending() { return pending; },
       get stats() { return stats; },
@@ -9570,27 +9987,41 @@
       get coreCharges() { return coreCharges; },
       scene(t) { return active && (t - t0) < HYPER_DUR - HYPER_OUT * 0.45; },
       _geo: () => geo(),                                  // (read-only, for the layout tests)
+      _holeR: () => lastRs,                               // (read-only: the black hole's shadow radius last drawn)
+      _span: () => [t0, lastEnd],                         // (read-only: when the last flight started and ended, game time)
       syncButtons,
       warpWant() { return active ? 1 : 0; }
     };
   })();
 
-  // ================= THE ALIEN FLEET (Nov 12): the ultimate secret boss =================
-  // Until the fleet has been beaten, holding to fire BIG BANG in a normal stage does something
-  // else: a far spiral galaxy is picked out of the sky, the camera locks on and the craft punches
-  // across space into it (WARP OUT), arriving in a new arena with the Milky Way behind it. There
-  // the fleet attacks in three waves (FIGHT): alien darts swoop in, charge and fire plasma at the
-  // saucer, alien discs throw decoy rings on the off-beats, and in the last wave a mothership
-  // fires a beam. Staying on the beat is the defence: every ring you hit fires a shot that downs
-  // a ship, and enemy fire that lands while you're on the beat is REFLECTED back at the ship that
-  // fired it. Only fire that lands right after a miss or a stray tap gets through (it costs
-  // energy). Phantom Step is lent for the fight (charged at every wave). Survive and the fleet
-  // retreats: STAR-WARRIOR is unlocked and the craft warps home (WARP HOME). Running out of energy
-  // in there ends the run like any boss. Gameplay randomness: none (fxRand only, cosmetic).
+  // Continue on the first-flight card (touchend too: iOS can drop the click after a held finger)
+  (() => {
+    const b = document.getElementById('hyperCardGo'); if (!b) return;
+    b.addEventListener('touchend', (e) => { e.preventDefault(); e.stopPropagation(); Hyper.cardGo(); });
+    b.addEventListener('click', (e) => { e.stopPropagation(); Hyper.cardGo(); });
+  })();
+
+  // ================= THE ALIEN FLEET (Nov 12; the mothership boss Nov 13): the ultimate secret boss =================
+  // Until the fleet has been beaten, holding to fire MILKY WAY (the Nullstar core, once called Big
+  // Bang) in a normal stage does something else: a far spiral galaxy is picked out of the sky, the
+  // camera locks on and the craft punches across space into it (WARP OUT), arriving in a new arena
+  // with the Milky Way behind it.
+  //  1. ESCORTS (two waves, 20 s): alien darts swoop in, charge and fire plasma at the saucer, alien
+  //     discs throw decoy rings on the off-beats. Every ring you hit fires a shot that chips a ship;
+  //     enemy fire that lands while you're on the beat is REFLECTED back at the ship that fired it;
+  //     only fire right after a miss or a stray tap gets through (it costs energy). The flagship
+  //     can be seen far off, coming.
+  //  2. THE MOTHERSHIP: it comes down out of the dark and fights like every boss: a health bar
+  //     and phases, damage from the rings you hit, and three dodge attacks of its own (BROADSIDE,
+  //     MAIN CANNON, TRACTOR BEAM: see DODGE_KINDS). Phantom Step is lent for the whole fight.
+  //  3. It falls, burning, back into the dark; the fleet surrenders. The first time, the Milky Way
+  //     core becomes STAR-FLEET COMMAND (the same slot), and the craft warps home (WARP HOME).
+  // Running out of energy in there ends the run like any boss. Gameplay randomness: none (fxRand
+  // is cosmetic only).
   const Fleet = (() => {
-    const WARP_OUT = 3.2, FIGHT = 36, WAVE = 12, VICTORY = 2.6, WARP_HOME = 2.2;
+    const WARP_OUT = 3.2, FIGHT = 20, WAVE = 10, VICTORY = 2.8, WARP_HOME = 2.2;
     const ACID = '#7dff3b';
-    let phase = 'off', t0 = 0, tFight = 0, tWin = 0;
+    let phase = 'off', t0 = 0, tFight = 0, tWin = 0, tHome = 0, flag = null;   // flag: the flagship {seen, down}
     let gx = 0, gy = 0, gal = null, stars = null;
     let ships = [], bolts = [], shots = [], decoys = [], flybys = [], booms = [];
     let nextSpawn = 0, nextFly = 0, wave = 0, downed = 0, faultAt = -9, hitFlash = 0, shieldFlash = 0;
@@ -9704,53 +10135,9 @@
     }
 
     // ---- ships
-    function hull(x, y, s, ang, alpha, charge, kind) {
-      ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.scale(s, s); ctx.globalAlpha *= alpha;
-      if (s > targetR * 0.3) {                                                  // a sickly green aura round the attackers
-        ctx.save(); ctx.globalCompositeOperation = 'lighter';
-        const au = ctx.createRadialGradient(0, 0, 0, 0, 0, 1.5);
-        au.addColorStop(0, 'rgba(125,255,59,0.22)'); au.addColorStop(1, 'rgba(125,255,59,0)');
-        ctx.fillStyle = au; ctx.beginPath(); ctx.arc(0, 0, 1.5, 0, Math.PI * 2); ctx.fill(); ctx.restore();
-      }
-      if (kind === 'disc') {
-        ctx.fillStyle = '#14181d'; ctx.strokeStyle = ACID; ctx.lineWidth = 0.05;
-        ctx.beginPath(); ctx.ellipse(0, 0.05, 1, 0.3, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.save(); ctx.globalAlpha *= 0.3; ctx.lineWidth = 0.16; ctx.stroke(); ctx.restore();
-        const dg = ctx.createRadialGradient(-0.1, -0.25, 0.02, 0, -0.1, 0.45);
-        dg.addColorStop(0, '#eaffd8'); dg.addColorStop(0.5, 'rgba(125,255,59,0.6)'); dg.addColorStop(1, 'rgba(30,80,20,0.4)');
-        ctx.fillStyle = dg; ctx.beginPath(); ctx.ellipse(0, -0.12, 0.42, 0.3, 0, Math.PI, 0); ctx.fill();
-        ctx.globalCompositeOperation = 'lighter';
-        for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2 + performance.now() / 300; ctx.fillStyle = i % 2 ? '#ff5a2e' : '#ffd23d'; ctx.beginPath(); ctx.arc(Math.cos(a) * 0.82, 0.08 + Math.sin(a) * 0.2, 0.07, 0, Math.PI * 2); ctx.fill(); }
-      } else {
-        const hg = ctx.createLinearGradient(-0.6, -0.6, 0.6, 0.6);
-        hg.addColorStop(0, '#3b4650'); hg.addColorStop(0.5, '#12171c'); hg.addColorStop(1, '#2a333b');
-        ctx.fillStyle = hg; ctx.strokeStyle = ACID; ctx.lineWidth = 0.05; ctx.lineJoin = 'round';
-        ctx.beginPath();
-        [[1, 0], [0.15, -0.22], [-0.35, -0.78], [-0.58, -0.72], [-0.36, -0.2], [-0.62, 0], [-0.36, 0.2], [-0.58, 0.72], [-0.35, 0.78], [0.15, 0.22]]
-          .forEach(([px, py], i) => i ? ctx.lineTo(px, py) : ctx.moveTo(px, py));
-        ctx.closePath(); ctx.fill(); ctx.stroke();
-        ctx.save(); ctx.globalAlpha *= 0.3; ctx.lineWidth = 0.16; ctx.stroke(); ctx.restore();
-        ctx.strokeStyle = 'rgba(125,255,59,0.45)'; ctx.lineWidth = 0.025;                                     // panel lines
-        ctx.beginPath(); ctx.moveTo(0.85, 0); ctx.lineTo(-0.5, 0); ctx.moveTo(0.05, -0.18); ctx.lineTo(-0.42, -0.62); ctx.moveTo(0.05, 0.18); ctx.lineTo(-0.42, 0.62); ctx.stroke();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = ACID; ctx.beginPath(); ctx.ellipse(0.3, 0, 0.16, 0.07, 0, 0, Math.PI * 2); ctx.fill();   // cockpit
-        ctx.fillStyle = '#ff3b3b'; for (const wy of [-0.7, 0.7]) { ctx.globalAlpha = 0.5 + 0.5 * Math.sin(performance.now() / 120 + wy); ctx.beginPath(); ctx.arc(-0.46, wy, 0.045, 0, Math.PI * 2); ctx.fill(); }
-        ctx.globalAlpha = alpha;
-        const fl = 0.6 + 0.4 * Math.sin(performance.now() / 40 + x);
-        for (const sy of [-0.16, 0.16]) {                                                                        // engines
-          const eg = ctx.createLinearGradient(-0.6, 0, -1.25 - fl * 0.3, 0);
-          eg.addColorStop(0, 'rgba(200,255,220,0.95)'); eg.addColorStop(0.4, 'rgba(125,255,59,0.6)'); eg.addColorStop(1, 'rgba(0,255,180,0)');
-          ctx.fillStyle = eg; ctx.beginPath(); ctx.moveTo(-0.58, sy - 0.06); ctx.lineTo(-1.25 - fl * 0.3, sy); ctx.lineTo(-0.58, sy + 0.06); ctx.fill();
-        }
-      }
-      if (charge > 0) {                                                                                         // charging plasma at the nose
-        ctx.globalCompositeOperation = 'lighter';
-        const cr = 0.12 + charge * 0.3, cx = kind === 'disc' ? 0 : 1.05, cy = kind === 'disc' ? 0.35 : 0;
-        const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, cr * 2);
-        cg.addColorStop(0, 'rgba(255,255,255,0.95)'); cg.addColorStop(0.35, 'rgba(125,255,59,0.8)'); cg.addColorStop(1, 'rgba(125,255,59,0)');
-        ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, cr * 2, 0, Math.PI * 2); ctx.fill();
-      }
-      ctx.restore();
+    // every ship of the fleet, friend or foe, is a 3D model in its squadron's livery (drawShip, below)
+    function hull(x, y, s, ang, alpha, charge, kind, sq, cls, bank) {
+      drawShip(x, y, s * 0.92, ang, bank || 0, 0, cls || (kind === 'disc' ? 'disc' : 'viper'), sq == null ? 0 : sq, alpha, charge, 0);
     }
     function motherXY(t) { return [W * 0.5 + Math.sin(t * 0.4) * W * 0.04, Math.max(H * 0.19, 130)]; }
     function motherEmitter(t) { const [mx, my] = motherXY(t), ms = Math.max(W, H) * 0.36; return [mx, my + ms * 0.1]; }
@@ -9769,7 +10156,8 @@
       const ctrl = [(from[0] + hover[0]) / 2 + (fxRand() - 0.5) * W * 0.4, Math.min(from[1], hover[1]) - H * 0.15];
       const b = beatLen();
       const arrive = t + b * 1.5, fireAt = nextBeat(arrive + b * 1.6) - b * 0.85;   // bolt lands on a beat
-      ships.push({ kind, from, ctrl, hover, t0: t, arrive, fireAt, land: fireAt + b * 0.85, dead: false, fired: false, hp: HP[kind], pending: 0, hurt: -9, out: 0 });
+      const sq = (fxRand() * 3) | 0, cls = kind === 'disc' ? 'disc' : ['viper', 'raptor', 'hammer'][(fxRand() * 3) | 0];
+      ships.push({ kind, sq, cls, from, ctrl, hover, t0: t, arrive, fireAt, land: fireAt + b * 0.85, dead: false, fired: false, hp: HP[kind], pending: 0, hurt: -9, out: 0, bankV: 0, prevAng: null });
       if (kind === 'disc') for (let i = 0; i < 2; i++) decoys.push({ t0: nextBeat(arrive) + b * (i + 0.5) - b * 1.4, land: nextBeat(arrive) + b * (i + 0.5), x: tgt.x, y: tgt.y });
       if (save.settings.sfx) tone(kind === 'disc' ? 300 : 520, 0.18, 'sawtooth', 0.012);
     }
@@ -9802,6 +10190,301 @@
       if (save.settings.sfx) { tone(90, 0.25, 'sawtooth', 0.04); tone(1400, 0.06, 'square', 0.014); }
     }
 
+    // ---- THE MOTHERSHIP (Nov 13 v2): a city-sized flagship, wider than the screen, seen from below.
+    // Three stepped tiers, the lowest holding the core (its weak point: the boss's position), gun
+    // decks along the rim, hangar bays, thousands of lit windows; running lights chase round the rim,
+    // searchlights sweep the arena, and it burns and strobes red as it takes damage. The hull is
+    // painted once into a sprite; the lights, the core and the damage are drawn live.
+    // Units: 1 = the hull's half-width; (0, 0) is the hull's centre, the core sits at (0, CORE_Y).
+    const CORE_Y = 0.19;
+    let flagSprite = null;
+    const SPINES = [0.1, 0.19, 0.29, 0.39, 0.61, 0.71, 0.81, 0.9].map((u) => Math.PI * u);   // fins under the rim
+    function flagHull() {
+      const key = SpaceFX.low ? 'lo' : 'hi';
+      if (flagSprite && flagSprite.key === key) return flagSprite;
+      let sd = 0x0f1ee7;
+      const rnd = () => { sd = (sd + 0x6D2B79F5) | 0; let x = Math.imul(sd ^ (sd >>> 15), 1 | sd); x = (x + Math.imul(x ^ (x >>> 7), 61 | x)) ^ x; return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+      const U = key === 'lo' ? 560 : 1000, cw = U * 2.1, ch = U * 0.78, ox = cw / 2, oy = ch * 0.4;
+      const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+      const g = c.getContext('2d'); g.translate(ox, oy); g.scale(U, U);
+      const ell = (y, rx, ry) => { g.beginPath(); g.ellipse(0, y, rx, ry, 0, 0, Math.PI * 2); };
+      const lowerArc = (y, rx, ry) => { g.beginPath(); g.ellipse(0, y, rx, ry, 0, 0.02, Math.PI - 0.02); };
+      const TIERS = [[0, 1.0, 0.135], [0.085, 0.72, 0.1], [0.16, 0.37, 0.074]];
+      // the skyline on its back: towers and spines, black against the galaxy
+      g.fillStyle = '#04060a';
+      for (let i = 0; i < 40; i++) {
+        const x = (rnd() * 2 - 1) * 0.64, w = 0.008 + rnd() * 0.03, h = 0.03 + Math.pow(rnd(), 2) * 0.17 * (1 - Math.abs(x) * 1.2);
+        g.fillRect(x - w / 2, -0.06 - h, w, h + 0.05);
+      }
+      ell(-0.05, 0.64, 0.15); g.fill();
+      // spines hanging below the rim, drawn first so the rim covers their roots
+      for (const th of SPINES) {
+        const x = -Math.cos(th), y = Math.sin(th) * 0.135, L = 0.045 + 0.03 * Math.sin(th), w = 0.016;
+        g.fillStyle = '#080b0e'; g.beginPath(); g.moveTo(x - w, y - 0.01); g.lineTo(x + w, y - 0.01); g.lineTo(x + w * 0.15, y + L); g.closePath(); g.fill();
+        g.strokeStyle = 'rgba(150,175,190,0.3)'; g.lineWidth = 0.0025; g.stroke();
+      }
+      // the tiers: plated, lit from below by the core, a bright rim edge on each
+      TIERS.forEach(([y, rx, ry], ti) => {
+        const gr = g.createLinearGradient(0, y - ry, 0, y + ry);
+        gr.addColorStop(0, ti ? '#151b20' : '#232c34'); gr.addColorStop(0.5, '#0e1317'); gr.addColorStop(1, '#06080a');
+        g.fillStyle = gr; ell(y, rx, ry); g.fill();
+        for (let k = 0; k < 6; k++) {                                   // plating bands
+          const f = 0.93 - k * 0.075;
+          g.strokeStyle = 'rgba(0,0,0,0.55)'; g.lineWidth = 0.005; lowerArc(y + 0.002, rx * f, ry * f); g.stroke();
+          g.strokeStyle = 'rgba(130,150,165,0.16)'; g.lineWidth = 0.0025; lowerArc(y - 0.002, rx * f, ry * f); g.stroke();
+        }
+        g.strokeStyle = 'rgba(0,0,0,0.45)'; g.lineWidth = 0.003;          // radial seams
+        const n = [44, 32, 18][ti];
+        for (let i = 1; i < n; i++) {
+          const th = Math.PI * i / n;
+          g.beginPath(); g.moveTo(-Math.cos(th) * rx * 0.55, y + Math.sin(th) * ry * 0.55); g.lineTo(-Math.cos(th) * rx, y + Math.sin(th) * ry); g.stroke();
+        }
+        g.strokeStyle = 'rgba(175,205,220,0.5)'; g.lineWidth = 0.0045; lowerArc(y, rx, ry); g.stroke();     // the rim edge catching the light
+        g.strokeStyle = 'rgba(125,255,59,0.12)'; g.lineWidth = 0.014; lowerArc(y, rx, ry); g.stroke();
+      });
+      // greebles: the clutter that says it's enormous
+      for (let i = 0; i < (key === 'lo' ? 300 : 700); i++) {
+        const [y, rx, ry] = TIERS[rnd() < 0.55 ? 0 : rnd() < 0.7 ? 1 : 2];
+        const th = Math.PI * (0.04 + 0.92 * rnd()), f = 0.5 + 0.45 * rnd();
+        const x = -Math.cos(th) * rx * f, yy = y + Math.sin(th) * ry * f, w = 0.004 + rnd() * 0.012, h = 0.002 + rnd() * 0.005;
+        g.fillStyle = rnd() < 0.5 ? `rgba(80,95,108,${0.2 + rnd() * 0.25})` : `rgba(0,0,0,${0.35 + rnd() * 0.35})`;
+        g.fillRect(x - w / 2, yy - h / 2, w, h);
+      }
+      // decks of windows: neat rows following the tiers (most lit cold white, some acid, a few red)
+      for (const [y, rx, ry, f] of [[0, 1.0, 0.135, 0.96], [0, 1.0, 0.135, 0.9], [0, 1.0, 0.135, 0.83], [0.085, 0.72, 0.1, 0.94], [0.085, 0.72, 0.1, 0.86], [0.16, 0.37, 0.074, 0.9]]) {
+        const n = Math.round(rx * f * (key === 'lo' ? 70 : 130));
+        for (let i = 0; i < n; i++) {
+          if (rnd() < 0.4) continue;
+          const th = Math.PI * (0.06 + 0.88 * (i + 0.5) / n), x = -Math.cos(th) * rx * f, yy = y + Math.sin(th) * ry * f;
+          const q = rnd();
+          g.fillStyle = q < 0.78 ? `rgba(215,232,255,${0.3 + rnd() * 0.4})` : q < 0.96 ? `rgba(140,255,90,${0.35 + rnd() * 0.4})` : `rgba(255,70,60,${0.5 + rnd() * 0.4})`;
+          g.fillRect(x - 0.0024, yy - 0.0012, 0.0048, 0.0024);
+        }
+      }
+      // hangar bays on the middle tier, a weak light inside
+      for (const x of [-0.5, -0.32, 0.32, 0.5]) {
+        const y = 0.085 + 0.1 * Math.sqrt(Math.max(0, 1 - (x / 0.72) * (x / 0.72))) * 0.8;
+        g.fillStyle = '#010202'; g.fillRect(x - 0.028, y - 0.008, 0.056, 0.014);
+        g.fillStyle = 'rgba(125,255,59,0.16)'; g.fillRect(x - 0.025, y + 0.001, 0.05, 0.004);
+        g.strokeStyle = 'rgba(160,190,200,0.35)'; g.lineWidth = 0.0018; g.strokeRect(x - 0.028, y - 0.008, 0.056, 0.014);
+      }
+      // gun batteries along the rim's underside, six a side
+      for (const side of [-1, 1]) for (let i = 0; i < 6; i++) {
+        const th = 0.2 + i * 0.09, x = side * Math.cos(th) * 0.93, y = Math.sin(th) * 0.13 * 0.93 + 0.006;
+        g.fillStyle = '#1b2228'; g.fillRect(x - 0.014, y - 0.006, 0.028, 0.013);
+        g.strokeStyle = 'rgba(160,185,200,0.4)'; g.lineWidth = 0.0018; g.strokeRect(x - 0.014, y - 0.006, 0.028, 0.013);
+        g.strokeStyle = '#3a4650'; g.lineWidth = 0.005; g.beginPath(); g.moveTo(x, y + 0.006); g.lineTo(x - side * 0.007, y + 0.03); g.stroke();
+      }
+      // the core lights the underside round it (green, fading out across the tiers)
+      g.globalCompositeOperation = 'source-atop';
+      const ug = g.createRadialGradient(0, CORE_Y, 0.02, 0, CORE_Y, 0.55);
+      ug.addColorStop(0, 'rgba(125,255,59,0.28)'); ug.addColorStop(0.4, 'rgba(90,200,60,0.08)'); ug.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = ug; g.fillRect(-1.1, -0.3, 2.2, 0.7);
+      g.globalCompositeOperation = 'source-over';
+      // the core's well: a recessed ring in the lowest tier
+      g.fillStyle = '#010202'; g.beginPath(); g.ellipse(0, CORE_Y, 0.1, 0.042, 0, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = 'rgba(170,190,200,0.5)'; g.lineWidth = 0.004; g.beginPath(); g.ellipse(0, CORE_Y, 0.1, 0.042, 0, 0, Math.PI * 2); g.stroke();
+      flagSprite = { key, c, U, ox, oy, cw, ch };
+      return flagSprite;
+    }
+    // points on the rim, for the running lights and the guns: th 0..PI along the front edge
+    const rimPt = (th, f) => [-Math.cos(th) * (f || 0.99), Math.sin(th) * 0.13 * (f || 0.99) + 0.004];
+    const gunPt = (side, i) => { const th = 0.2 + i * 0.09; return [side * Math.cos(th) * 0.93, Math.sin(th) * 0.13 * 0.93 + 0.03]; };
+    const FIRES = [[-0.62, 0.04], [0.48, 0.07], [-0.2, 0.12], [0.8, 0.02], [-0.85, 0.03], [0.15, 0.15], [-0.4, 0.09], [0.66, 0.05]];
+    // o: { alpha, far (0..1 haze), flash, frac (health), charge (0..1 main cannon), gun: {side, i, k} muzzle,
+    //      shadow (0..1), tilt }
+    function drawFlagship(t, cx, cy, HW, o) {
+      const S = flagHull(), low = SpaceFX.low, hq = !low && save.settings.spaceQuality !== 'lite';
+      const A = o.alpha == null ? 1 : o.alpha, frac = o.frac == null ? 1 : o.frac;
+      if (A <= 0.01) return;
+      ctx.save();
+      // its shadow on the arena: the stars below it go out
+      if (o.shadow) {
+        const sg = ctx.createLinearGradient(0, cy, 0, cy + HW * 0.9);
+        sg.addColorStop(0, `rgba(0,0,0,${(0.55 * o.shadow * A).toFixed(3)})`); sg.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = sg; ctx.fillRect(-60, cy - HW * 0.2, W + 120, HW * 1.1);
+      }
+      ctx.translate(cx, cy); if (o.tilt) ctx.rotate(o.tilt); ctx.scale(HW, HW);
+      ctx.globalAlpha = A;
+      ctx.drawImage(S.c, -S.ox / S.U, -S.oy / S.U, S.cw / S.U, S.ch / S.U);
+      if (o.far) {                                                    // far off: lost in the galaxy's haze
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.fillStyle = `rgba(20,16,40,${(0.55 * o.far).toFixed(3)})`; ctx.fillRect(-1.1, -0.4, 2.2, 0.75);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      const beat = Math.pow(1 - musicBeatPhase(), 3), hurt = 1 - frac;
+      const flick = frac < 0.4 ? (Math.sin(t * 37) > -0.2 ? 1 : 0.25) : 1;
+      // running lights chasing round the rim (red on every fourth)
+      const N = 34;
+      for (let i = 0; i < N; i++) {
+        const th = Math.PI * (0.03 + 0.94 * i / (N - 1)), [x, y] = rimPt(th);
+        const on = Math.max(0, Math.sin(t * 4.2 - i * 0.55)), red = i % 4 === 0;
+        ctx.globalAlpha = A * (0.25 + 0.75 * on) * flick;
+        ctx.fillStyle = red ? '#ff3b3b' : '#7dff3b';
+        ctx.beginPath(); ctx.arc(x, y, red ? 0.0065 : 0.0045, 0, Math.PI * 2); ctx.fill();
+      }
+      // hangar glow breathing, brighter on the beat
+      ctx.globalAlpha = A * (0.18 + 0.25 * beat);
+      for (const x of [-0.5, -0.32, 0.32, 0.5]) {
+        const y = 0.085 + 0.1 * Math.sqrt(Math.max(0, 1 - (x / 0.72) * (x / 0.72))) * 0.8 + 0.004;
+        const hg = ctx.createRadialGradient(x, y, 0, x, y, 0.04);
+        hg.addColorStop(0, 'rgba(125,255,59,0.55)'); hg.addColorStop(1, 'rgba(125,255,59,0)');
+        ctx.fillStyle = hg; ctx.beginPath(); ctx.ellipse(x, y, 0.04, 0.014, 0, 0, Math.PI * 2); ctx.fill();
+      }
+      // red lights on the spines' tips, blinking slow and out of step: a warning
+      for (let i = 0; i < SPINES.length; i++) {
+        const th = SPINES[i], x = -Math.cos(th), y = Math.sin(th) * 0.135 + 0.045 + 0.03 * Math.sin(th);
+        const on = Math.sin(t * 2.2 + i * 1.7) > 0.3 ? 1 : 0.15;
+        const rg = ctx.createRadialGradient(x, y, 0, x, y, 0.018);
+        rg.addColorStop(0, `rgba(255,90,80,${(0.95 * on).toFixed(2)})`); rg.addColorStop(1, 'rgba(255,30,30,0)');
+        ctx.globalAlpha = A * flick; ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(x, y, 0.018, 0, Math.PI * 2); ctx.fill();
+      }
+      // searchlights sweeping the arena (not when far off)
+      if (hq && !o.far) {
+        for (const side of [-1, 1]) {
+          const sx = side * 0.3, sy = 0.13, ang = Math.PI / 2 + side * (0.35 + 0.25 * Math.sin(t * 0.5 + side));
+          const L = 1.6, wdt = 0.09;
+          const lg = ctx.createLinearGradient(sx, sy, sx + Math.cos(ang) * L, sy + Math.sin(ang) * L);
+          lg.addColorStop(0, `rgba(200,255,200,${(0.075 * A).toFixed(3)})`); lg.addColorStop(1, 'rgba(125,255,59,0)');
+          ctx.globalAlpha = 1; ctx.fillStyle = lg;
+          ctx.beginPath(); ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + Math.cos(ang - wdt) * L, sy + Math.sin(ang - wdt) * L); ctx.lineTo(sx + Math.cos(ang + wdt) * L, sy + Math.sin(ang + wdt) * L); ctx.closePath(); ctx.fill();
+        }
+      }
+      // the core: a turning iris in its well. Idle it breathes acid green; charging the main
+      // cannon it draws light in and goes white-hot ringed in red; hit, it flares
+      const ch = o.charge || 0, fl = o.flash || 0;
+      // the glow it throws: small at rest, swelling and going red-white as the cannon charges
+      const gr = 0.13 + 0.12 * ch + 0.02 * beat;
+      const cg = ctx.createRadialGradient(0, CORE_Y, 0, 0, CORE_Y, gr);
+      cg.addColorStop(0, ch > 0.05 ? `rgba(255,${(235 - 150 * ch) | 0},${(220 - 190 * ch) | 0},${(0.55 + 0.4 * ch).toFixed(3)})` : 'rgba(170,255,120,0.4)');
+      cg.addColorStop(0.45, ch > 0.05 ? `rgba(255,50,40,${(0.18 + 0.3 * ch).toFixed(3)})` : 'rgba(125,255,59,0.14)');
+      cg.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.globalAlpha = A; ctx.fillStyle = cg;
+      ctx.beginPath(); ctx.ellipse(0, CORE_Y, gr, gr * 0.5, 0, 0, Math.PI * 2); ctx.fill();
+      // the eye: a burning iris round a black pupil that tightens as it charges
+      ctx.lineWidth = 0.009;
+      ctx.strokeStyle = ch > 0.05 ? `rgba(255,${(200 - 140 * ch) | 0},${(160 - 130 * ch) | 0},1)` : `rgba(170,255,120,${(0.75 + 0.25 * beat).toFixed(3)})`;
+      ctx.beginPath(); ctx.ellipse(0, CORE_Y, 0.07, 0.03, 0, 0, Math.PI * 2); ctx.stroke();
+      const pg2 = ctx.createRadialGradient(0, CORE_Y, 0, 0, CORE_Y, 0.06);
+      pg2.addColorStop(0, `rgba(255,255,255,${Math.min(1, 0.55 + 0.45 * ch + fl).toFixed(3)})`); pg2.addColorStop(0.35, ch > 0.05 ? 'rgba(255,90,60,0.6)' : 'rgba(140,255,90,0.45)'); pg2.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = pg2; ctx.beginPath(); ctx.ellipse(0, CORE_Y, 0.06, 0.026, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#000'; ctx.globalAlpha = A * (1 - 0.6 * ch);
+      ctx.beginPath(); ctx.ellipse(0, CORE_Y, 0.018 * (1 - 0.5 * ch), 0.022 * (1 - 0.3 * ch), 0, 0, Math.PI * 2); ctx.fill();
+      ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = A;
+      ctx.lineWidth = 0.003;
+      for (let j = 0; j < 2; j++) {                                   // segment rings turning against each other round the iris
+        const rr = 0.085 + j * 0.017, sp = (j % 2 ? -1 : 1) * (0.5 + j * 0.3 + ch * 3);
+        ctx.strokeStyle = ch > 0.05 ? `rgba(255,90,70,${(0.45 + 0.5 * ch).toFixed(3)})` : 'rgba(170,255,140,0.45)';
+        for (let q = 0; q < 6; q++) {
+          const a0 = t * sp + q * Math.PI / 3;
+          ctx.beginPath(); ctx.ellipse(0, CORE_Y, rr, rr * 0.42, 0, a0, a0 + 0.62); ctx.stroke();
+        }
+      }
+      if (ch > 0.05) {                                                // light being drawn into the core
+        ctx.strokeStyle = `rgba(255,220,200,${(0.5 * ch).toFixed(3)})`; ctx.lineWidth = 0.003;
+        for (let q = 0; q < 14; q++) {
+          const a = q / 14 * Math.PI * 2 + t * 0.7, u = ((t * 1.6 + q * 0.37) % 1);
+          const r0 = 0.5 * (1 - u) + 0.1, r1 = r0 - 0.08;
+          ctx.beginPath(); ctx.moveTo(Math.cos(a) * r0, CORE_Y + Math.sin(a) * r0 * 0.42); ctx.lineTo(Math.cos(a) * r1, CORE_Y + Math.sin(a) * r1 * 0.42); ctx.stroke();
+        }
+      }
+      // a gun firing its part of a broadside
+      if (o.gun && o.gun.k > 0) {
+        const [gx, gy] = gunPt(o.gun.side, o.gun.i), k = o.gun.k;
+        const mg = ctx.createRadialGradient(gx, gy, 0, gx, gy, 0.07 * k);
+        mg.addColorStop(0, 'rgba(255,255,230,1)'); mg.addColorStop(0.4, 'rgba(255,170,60,0.8)'); mg.addColorStop(1, 'rgba(255,60,30,0)');
+        ctx.globalAlpha = A; ctx.fillStyle = mg; ctx.beginPath(); ctx.arc(gx, gy, 0.07 * k, 0, Math.PI * 2); ctx.fill();
+      }
+      // damage: fires (more as it weakens), smoke, red alarm strobes in the last phase
+      const nf = hurt > 0.3 ? Math.min(FIRES.length, Math.round((hurt - 0.3) / 0.7 * FIRES.length) + 1) : 0;
+      for (let i = 0; i < nf; i++) {
+        const [fx, fy] = FIRES[i], f = 0.7 + 0.3 * Math.sin(t * (9 + i) + i * 2), fr = 0.03 + 0.012 * Math.sin(t * 5 + i);
+        const fg = ctx.createRadialGradient(fx, fy, 0, fx, fy, fr * 2);
+        fg.addColorStop(0, `rgba(255,240,190,${(0.9 * f).toFixed(3)})`); fg.addColorStop(0.35, `rgba(255,120,40,${(0.6 * f).toFixed(3)})`); fg.addColorStop(1, 'rgba(255,40,20,0)');
+        ctx.globalAlpha = A; ctx.fillStyle = fg; ctx.beginPath(); ctx.arc(fx, fy, fr * 2, 0, Math.PI * 2); ctx.fill();
+      }
+      if (frac < 0.15) {
+        const st = Math.sin(t * 9) > 0 ? 1 : 0;
+        for (const [ax, ay] of [[-0.75, 0.06], [-0.25, 0.13], [0.25, 0.13], [0.75, 0.06]]) {
+          const rg = ctx.createRadialGradient(ax, ay, 0, ax, ay, 0.16);
+          rg.addColorStop(0, `rgba(255,40,40,${(0.5 * st).toFixed(3)})`); rg.addColorStop(1, 'rgba(255,0,0,0)');
+          ctx.fillStyle = rg; ctx.beginPath(); ctx.arc(ax, ay, 0.16, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      if (nf && !low) {                                               // smoke trailing up off the fires
+        for (let i = 0; i < nf; i++) {
+          const [fx, fy] = FIRES[i];
+          for (let q = 0; q < 3; q++) {
+            const u = ((t * 0.45 + q / 3 + i * 0.17) % 1), sx = fx + Math.sin(t + i + q) * 0.01 + u * 0.03, sy = fy - u * 0.16, sr = 0.02 + u * 0.05;
+            ctx.globalAlpha = A * 0.35 * (1 - u); ctx.fillStyle = '#0a0a0c';
+            ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2); ctx.fill();
+          }
+        }
+      }
+      if (fl > 0.05) {                                                // a hit flares the rim
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = A * fl * 0.5;
+        ctx.strokeStyle = '#eaffd8'; ctx.lineWidth = 0.006; ctx.beginPath(); ctx.ellipse(0, 0, 1.0, 0.135, 0, 0, Math.PI); ctx.stroke();
+      }
+      ctx.restore();
+    }
+    // the size of the hull for a boss whose core (radius r) sits at (cx, cy)
+    const flagHW = (r) => Math.max(W * 0.86, r * 4.6);
+    // the boss: called by drawBoss with the core position and size
+    function drawBoss(t, cx, cy, r, flash, frac) {
+      const HW = flagHW(r);
+      let drop = 0, sh = 1, intro = 1;
+      if (state === 'bossIntro') {
+        intro = clamp01(1 - (bossIntroUntil - t) / MOTHERSHIP_BOSS.intro);
+        const e = 1 - Math.pow(1 - intro, 3);
+        drop = -(1 - e) * (HW * 0.55 + H * 0.3); sh = e;
+      }
+      // what the attacks show on the hull
+      const a = dodge && dodge.atk;
+      let charge = 0, gun = null;
+      if (a && a.kind === 'cannon' && a.called) {
+        const s0 = a.strikes && a.strikes[0];
+        charge = a.locked ? (s0 && s0.done ? Math.max(0, 1 - (t - s0.at) / 0.4) : clamp01((t - a.lockAt) / (a.T - a.lockAt))) : 0.15;
+      }
+      if (a && a.kind === 'broadside' && a.locked) {
+        for (let i = 0; i < a.strikes.length; i++) {
+          const sk = a.strikes[i], since = t - sk.at;
+          if (since >= -0.12 && since < 0.25) { gun = { side: a.side ? 1 : -1, i: 1 + i * 2, k: since < 0 ? 0.4 : 1 - since / 0.25 }; break; }
+        }
+      }
+      // the arena darkens under it as it comes down
+      drawFlagship(t, cx, cy + drop - HW * CORE_Y, HW, { alpha: 1, flash, frac, charge, gun, shadow: sh });
+      if (state === 'bossIntro' && intro < 1) {
+        ctx.save(); ctx.fillStyle = `rgba(0,0,0,${(0.25 * Math.sin(Math.PI * intro)).toFixed(3)})`; ctx.fillRect(-60, -60, W + 120, H + 120); ctx.restore();
+      }
+    }
+    // its fall: it lists, burns end to end and sinks back into the dark
+    function drawFall(t) {
+      if (!flag || flag.down == null) return;
+      const L = t - flag.down, k = clamp01(L / VICTORY), e = k * k;
+      const lay = dodge ? dodge.lay : null;
+      const r = lay ? lay.r : Math.min(W * 0.32, H * 0.19) * MOTHERSHIP_BOSS.scale;
+      const cx = lay ? lay.bx : W / 2, cy = lay ? lay.by : H * 0.3, HW = flagHW(r) * (1 - 0.35 * e);
+      drawFlagship(t, cx + e * W * 0.05, cy - HW * CORE_Y - e * H * 0.12, HW, { alpha: 1 - clamp01((k - 0.75) / 0.25), frac: 0, tilt: 0.16 * e, shadow: 1 - k });
+      // explosions running along it
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 18; i++) {
+        const at = i * 0.13, age = L - at;
+        if (age < 0 || age > 0.7) continue;
+        const u = Math.sin(i * 12.9898) * 0.5 + 0.5, v = Math.sin(i * 78.233) * 0.5 + 0.5;
+        const x = cx + (u * 2 - 1) * HW * 0.9, y = cy - HW * CORE_Y + (v * 0.2) * HW - e * H * 0.12;
+        const rr = HW * (0.05 + 0.08 * Math.sqrt(age / 0.7)), f = 1 - age / 0.7;
+        const g = ctx.createRadialGradient(x, y, 0, x, y, rr);
+        g.addColorStop(0, `rgba(255,250,220,${f.toFixed(3)})`); g.addColorStop(0.35, `rgba(255,150,50,${(0.8 * f).toFixed(3)})`); g.addColorStop(1, 'rgba(255,50,20,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rr, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+      flash(Math.max(0, 1 - Math.abs(L - 2.35) / 0.35) * 0.9);        // the reactor goes
+    }
+
     // ---- public API
     function shouldWarp() {
       return (forced || !save.bossUnlocks.fleet) && state === 'playing' && !bossActive && !doomMode && !Hyper.active && !active();
@@ -9809,10 +10492,10 @@
     function begin(t) {
       ensureArt(); forced = false;
       phase = 'warpOut'; t0 = t; lastT = t;
-      ships = []; bolts = []; shots = []; decoys = []; flybys = []; booms = []; downed = 0; wave = 0; mother = null; faultAt = -9; nFired = nReflected = nThrough = 0;
+      ships = []; bolts = []; shots = []; decoys = []; flybys = []; booms = []; downed = 0; wave = 0; mother = null; flag = null; faultAt = -9; nFired = nReflected = nThrough = 0;
       // the galaxy it picks out of the sky: high up, off to one side
       gx = W * (fxRand() < 0.5 ? 0.25 : 0.75) + (fxRand() - 0.5) * W * 0.1; gy = H * (0.2 + fxRand() * 0.08);
-      // Big Bang is spent: it recharges as usual; the warp replaces its blast
+      // Milky Way is spent: it recharges as usual; the warp replaces its blast
       if (abActive) endAbility('travel');
       if (abilityId === 'bigBang') { abReady = false; abStagesLeft = tuningFor('bigBang').stages; abUsedThisRun = true; }
       abHoldStart = 0; abHoldProgress = 0;
@@ -9838,34 +10521,63 @@
       prevCol = bossBar.style.getPropertyValue('--boss-col');
       prevMarks = [...bossBar.querySelectorAll('.boss-phase-mark')].map((m, i) => { const o = [m.style.left, m.style.display]; m.style.left = ['66.67%', '33.33%'][i] || ''; if (i > 1) m.style.display = 'none'; return o; });
       bossBar.style.setProperty('--boss-col', ACID); bossHud.style.setProperty('--boss-col', ACID); bossBar.classList.remove('danger');
-      bossNameEl.textContent = 'ALIEN FLEET'; bossSubEl.textContent = 'WAVE 1 OF 3';
+      bossNameEl.textContent = 'ALIEN FLEET'; bossSubEl.textContent = 'ESCORTS · WAVE 1 OF 2';
       bossHud.classList.add('show');
       showToast('THE FLEET ATTACKS', ACID, 'STAY ON THE BEAT · PHANTOM STEP READY');
       if (save.settings.sfx) [110, 138.6, 164.8].forEach((f, i) => tone(f, 1.2, 'sawtooth', 0.03, i * 0.05));   // a horn
       updateAbilityHud();
     }
-    function winFight(t) {
+    // the escorts are through: the flagship comes down and the fight becomes a boss battle
+    function callMothership(t) {
+      phase = 'boss';
+      for (const sh of ships) if (!sh.dead && !sh.out) sh.out = t;     // the escorts peel away
+      bolts = []; shots = []; decoys = [];
+      restoreHud();
+      flag = Object.assign(flag || {}, { arrive: t });
+      startBossEncounter(stage, MOTHERSHIP_BOSS);
+      bossReturnStage = stage;                                         // (the run carries on from this stage)
+      bossBar.style.setProperty('--boss-col', MOTHERSHIP_BOSS.barColor);
+      showToast('THE MOTHERSHIP', '#ff3b3b', 'IT HAS FOUND YOU');
+      shake = Math.max(shake, 14); buzz([120, 60, 120, 60, 300]);
+      if (save.settings.sfx) {
+        [41, 43.6, 55].forEach((f, i) => tone(f, 2.6, 'sawtooth', 0.05, i * 0.04));                 // the horn, felt more than heard
+        [220, 207.6, 196, 185].forEach((f, i) => tone(f, 0.5, 'sawtooth', 0.022, 0.9 + i * 0.42));  // falling, wrong
+      }
+      updateAbilityHud();
+      trackEvent('fleet_mothership', { downed });
+    }
+    // called from defeatBoss: it falls (drawn by drawBack), the fleet surrenders, the reward
+    function mothershipDown(t) {
       phase = 'victory'; tWin = t;
-      for (const s of ships) if (!s.dead && !s.out) s.out = t;              // the survivors flee
+      if (flag) flag.down = t;
+      for (const sh of ships) if (!sh.dead && !sh.out) sh.out = t;
+      const first = !save.bossUnlocks.fleet;
+      save.bossUnlocks.fleet = true;
+      // the Milky Way core becomes Star-Fleet Command, in the same slot
+      if (save.equippedAbility === 'bigBang') save.equippedAbility = 'starWarrior';
+      if (prevAb && prevAb.id === 'bigBang') prevAb.id = 'starWarrior';
+      persist();
       if (abActive) endAbility('travel');
       if (prevAb) { abilityId = prevAb.id; abStagesLeft = prevAb.stages; abReady = prevAb.ready; }
       abActive = false;
-      notes = []; lastScheduledHitT = -Infinity;
-      state = 'levelup'; levelPauseUntil = Infinity;
-      const first = !save.bossUnlocks.fleet;
-      save.bossUnlocks.fleet = true; persist();
       if (DevMode && DevMode.on && !DevMode.runFlagged) DevMode.noteEarned({ boss: 'fleet' });
-      score += downed * 500; scoreEl.textContent = score;
-      bossHud.classList.remove('show');
-      bossDefeatNameEl.textContent = 'THE FLEET RETREATS';
-      bossRewardLabelEl.textContent = first ? 'SECRET POWER UNLOCKED' : 'ONSLAUGHT SURVIVED';
-      bossRewardValueEl.textContent = first ? 'STAR-WARRIOR' : downed + ' DOWNED';
+      score += downed * 500 + 6000; scoreEl.textContent = score;
+      bossDefeatNameEl.textContent = 'THE MOTHERSHIP FALLS';
+      bossRewardLabelEl.textContent = first ? 'MILKY WAY UPGRADED' : 'THE FLEET SURRENDERS';
+      bossRewardValueEl.textContent = first ? 'STAR-FLEET COMMAND' : '+' + (downed * 500 + 6000).toLocaleString();
       bossDefeatBanner.classList.add('show');
-      setTimeout(() => bossDefeatBanner.classList.remove('show'), VICTORY * 1000);
-      if (save.settings.sfx) { [262, 330, 392, 523, 659, 784].forEach((f, i) => tone(f, 0.22, 'triangle', 0.04, i * 0.08)); tone(41, 1.2, 'sine', 0.1); }
-      buzz([40, 30, 40, 30, 200]);
+      for (let i = 0; i < 4; i++) shockwaves.push({ x: bossX(), y: bossY(), r: 20 + i * 30, alpha: 1, speed: 700 + i * 160, width: 10 - i * 2, color: i % 2 ? '#ff3b3b' : ACID });
+      shake = Math.max(shake, 18);
+      buzz([60, 40, 60, 40, 60, 40, 300]);
+      if (save.settings.sfx) { [262, 330, 392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 0.24, 'triangle', 0.04, 0.5 + i * 0.08)); tone(30, 2.4, 'sawtooth', 0.08); }
       updateAbilityHud();
       trackEvent('fleet_survived', { downed, first });
+    }
+    // called from endBossEncounter once the fall has played: the jump home, the field held still
+    function warpHome(t) {
+      phase = 'warpHome'; tHome = t;
+      notes = []; lastScheduledHitT = -Infinity;
+      state = 'levelup'; levelPauseUntil = Infinity;                   // finish() lifts this
     }
     function restoreHud() {
       bossHud.style.removeProperty('--boss-col');
@@ -9880,7 +10592,7 @@
       if (state === 'levelup') endLevelPause(t);
       stageChip.classList.remove('boss-hidden');
       ships = []; bolts = []; shots = []; decoys = []; flybys = []; booms = []; mother = null;
-      if (save.bossUnlocks.fleet && prevAb) showToast('STAR-WARRIOR', '#ff8a4d', 'EQUIP IT IN SETTINGS');
+      if (save.bossUnlocks.fleet && prevAb) showToast('STAR-FLEET COMMAND', ACID, abilityId === 'starWarrior' ? 'HOLD THE SAUCER TO CALL THE FLEET' : 'YOUR MILKY WAY, UPGRADED · EQUIP IT IN SETTINGS');
       prevAb = null;
       updateAbilityHud();
     }
@@ -9888,7 +10600,8 @@
       allies = null;
       if (phase === 'off') return;
       if (prevAb) { abilityId = prevAb.id; abStagesLeft = prevAb.stages; abReady = prevAb.ready; }
-      if (phase === 'fight' || phase === 'victory') bossHud.classList.remove('show');
+      if (phase === 'fight' || phase === 'victory' || phase === 'boss') bossHud.classList.remove('show');
+      flag = null;
       phase = 'off'; prevAb = null; forced = false;
       restoreHud();
       ships = []; bolts = []; shots = []; decoys = []; flybys = []; booms = []; mother = null;
@@ -9910,28 +10623,39 @@
       lastT = t;
       hitFlash = Math.max(0, hitFlash - dt * 2.5); shieldFlash = Math.max(0, shieldFlash - dt * 3);
       if (phase === 'warpOut') { if (t >= t0 + WARP_OUT) startFight(t); return; }
-      if (phase === 'victory') { if (t >= tWin + VICTORY + WARP_HOME) finish(t); return; }
+      if (phase === 'warpHome') { if (t >= tHome + WARP_HOME) finish(t); return; }
+      if (phase === 'boss' || phase === 'victory') {                             // the boss system runs the fight; only scenery here
+        if (state !== 'paused' && phase === 'boss' && t >= nextFly) {
+          const y = H * (0.3 + fxRand() * 0.35), l = fxRand() < 0.5;
+          flybys.push({ t0: t, dur: 2.0 + fxRand() * 1.6, y0: y, y1: y + (fxRand() - 0.5) * H * 0.2, l, s: targetR * (0.1 + fxRand() * 0.12), kind: fxRand() < 0.3 ? 'disc' : 'dart', sq: (fxRand() * 3) | 0, cls: ['viper', 'raptor', 'hammer'][(fxRand() * 3) | 0], dead: false });
+          nextFly = t + 1.2 + fxRand() * 1.6;
+        }
+        flybys = flybys.filter(f => t - f.t0 < f.dur);
+        ships = ships.filter(s => !(s.out && t - s.out > 1.0) && !(s.dead && t - s.deadAt > 0.2));
+        booms = booms.filter(b => t - b.t0 < 0.8);
+        return;
+      }
       if (phase !== 'fight') return;
       if (state === 'paused') return;
       const el = t - tFight;
-      // HUD: what's left of the onslaught
-      const w = Math.min(3, 1 + Math.floor(el / WAVE));
+      // HUD: what's left of the escorts
+      const w = Math.min(2, 1 + Math.floor(el / WAVE));
       if (w !== wave) {
-        wave = w; bossSubEl.textContent = 'WAVE ' + wave + ' OF 3';
-        showToast('WAVE ' + wave, ACID, wave === 3 ? 'THE MOTHERSHIP' : 'MORE INCOMING');
+        wave = w; bossSubEl.textContent = 'ESCORTS · WAVE ' + wave + ' OF 2';
+        showToast('WAVE ' + wave, ACID, 'SOMETHING BIGGER IS COMING');
         if (!abActive) { abReady = true; updateAbilityHud(); }                   // Phantom Step recharges every wave
-        if (wave === 3) mother = { t0: t, nextBeam: nextBeat(t + 2.2), beams: [] };
+        if (wave === 2) flag = { seen: t };                                      // the flagship, far off
         if (save.settings.sfx) [98, 123.5, 146.8].forEach((f, i) => tone(f, 0.9, 'sawtooth', 0.026, i * 0.04));
       }
       const fill = document.getElementById('bossBarFill');
       if (fill) fill.style.width = (Math.max(0, 1 - el / FIGHT) * 100).toFixed(1) + '%';
-      if (el >= FIGHT) { winFight(t); return; }
+      if (el >= FIGHT) { callMothership(t); return; }
       // spawning
-      const gap = wave === 1 ? 2.3 : wave === 2 ? 1.6 : 1.15;
+      const gap = wave === 1 ? 2.1 : 1.45;
       if (t >= nextSpawn && el < FIGHT - 2.5) { spawnAttacker(t); nextSpawn = t + gap; }
       if (t >= nextFly) {                                                          // ambient flybys, far behind
         const y = H * (0.12 + fxRand() * 0.45), l = fxRand() < 0.5;
-        flybys.push({ t0: t, dur: 2.4 + fxRand() * 2.2, y0: y, y1: y + (fxRand() - 0.5) * H * 0.3, l, s: targetR * (0.12 + fxRand() * 0.16), kind: fxRand() < 0.3 ? 'disc' : 'dart', dead: false });
+        flybys.push({ t0: t, dur: 2.4 + fxRand() * 2.2, y0: y, y1: y + (fxRand() - 0.5) * H * 0.3, l, s: targetR * (0.12 + fxRand() * 0.16), kind: fxRand() < 0.3 ? 'disc' : 'dart', sq: (fxRand() * 3) | 0, cls: ['viper', 'raptor', 'hammer'][(fxRand() * 3) | 0], dead: false });
         nextFly = t + 0.5 + fxRand() * 1.1;
       }
       flybys = flybys.filter(f => t - f.t0 < f.dur && !(f.dead && t - f.deadAt > 0.1));
@@ -10052,9 +10776,9 @@
         flash(Math.max(0, 1 - Math.abs(L - 2.82) / 0.3));               // arrival: a burst of light, not a grey wash
         return;
       }
-      if (phase === 'victory' && t - tWin > VICTORY) {
+      if (phase === 'warpHome') {
         // WARP HOME: the arena falls away behind you, then the old sky comes back
-        const z = Math.min(1, (t - tWin - VICTORY) / WARP_HOME);
+        const z = Math.min(1, (t - tHome) / WARP_HOME);
         const cover = z < 0.82 ? 1 : Math.max(0, (1 - z) / 0.18);
         ctx.save(); ctx.globalAlpha = cover; ctx.fillStyle = '#020108'; full(); ctx.restore();
         ctx.save(); ctx.globalAlpha = cover; warpStreaks(W * 0.5, H * 0.4, Math.max(0.05, 1 - z), true); ctx.restore();
@@ -10067,44 +10791,18 @@
       for (const f of flybys) {
         if (f.dead) continue;
         const k = (t - f.t0) / f.dur, x = f.l ? -60 + (W + 120) * k : W + 60 - (W + 120) * k, y = f.y0 + (f.y1 - f.y0) * k;
-        hull(x, y, f.s, f.l ? 0.08 : Math.PI - 0.08, 0.55, 0, f.kind);
+        hull(x, y, f.s, f.l ? 0.08 : Math.PI - 0.08, 0.55, 0, f.kind, f.sq, f.kind === 'disc' ? 'disc' : f.cls, (f.l ? 1 : -1) * 0.35);
       }
-      if (mother) {
-        const k = Math.min(1, (t - mother.t0) / 2.5), lv = phase === 'victory' ? Math.min(1, (t - tWin) / 1.8) : 0;
-        const e = (1 - Math.pow(1 - k, 3)) * (1 - lv);                       // it pulls out when the fleet retreats
-        const [mx, my] = motherXY(t), ms = Math.max(W, H) * 0.36;
-        ctx.save(); ctx.translate(mx, my - (1 - e) * ms * 0.5 - lv * lv * ms * 0.6);
-        // hull
-        const mg = ctx.createLinearGradient(0, -ms * 0.2, 0, ms * 0.14);
-        mg.addColorStop(0, '#05070a'); mg.addColorStop(0.7, '#141a20'); mg.addColorStop(1, '#232c33');
-        ctx.fillStyle = mg; ctx.globalAlpha = 0.94 * e;
-        ctx.beginPath(); ctx.moveTo(-ms, -ms * 0.05); ctx.lineTo(-ms * 0.6, ms * 0.04); ctx.lineTo(-ms * 0.3, ms * 0.1); ctx.lineTo(ms * 0.3, ms * 0.1); ctx.lineTo(ms * 0.6, ms * 0.04); ctx.lineTo(ms, -ms * 0.05);
-        ctx.lineTo(ms, -ms * 0.4); ctx.lineTo(-ms, -ms * 0.4); ctx.closePath(); ctx.fill();
-        // underside trim and ribs
-        ctx.globalAlpha = 0.5 * e; ctx.strokeStyle = ACID; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(-ms, -ms * 0.05); ctx.lineTo(-ms * 0.6, ms * 0.04); ctx.lineTo(-ms * 0.3, ms * 0.1); ctx.lineTo(ms * 0.3, ms * 0.1); ctx.lineTo(ms * 0.6, ms * 0.04); ctx.lineTo(ms, -ms * 0.05); ctx.stroke();
-        ctx.globalAlpha = 0.18 * e; ctx.lineWidth = 1;
-        for (let i = -5; i <= 5; i++) { ctx.beginPath(); ctx.moveTo(i * ms * 0.17, ms * (0.07 - Math.abs(i) * 0.012)); ctx.lineTo(i * ms * 0.2, -ms * 0.3); ctx.stroke(); }
-        // running lights along the belly
-        ctx.globalCompositeOperation = 'lighter';
-        for (let i = -12; i <= 12; i++) {
-          const lx = i * ms * 0.065, ly = ms * (0.085 - Math.abs(i) * 0.0048);
-          ctx.globalAlpha = e * (0.35 + 0.65 * Math.max(0, Math.sin(t * 5 - Math.abs(i) * 0.5)));
-          ctx.fillStyle = i % 4 ? ACID : '#ff3b3b'; ctx.beginPath(); ctx.arc(lx, ly, 2.2, 0, Math.PI * 2); ctx.fill();
-        }
-        // the beam emitter, charging before each shot
-        const next = mother.beams.find(bm => !bm.done && t >= bm.t0) || null;
-        const ch = next ? Math.min(1, (t - next.t0) / (next.land - next.t0)) : 0.15 + 0.1 * Math.sin(t * 3);
-        const er = ms * 0.07 * (1 + ch);
-        const cg = ctx.createRadialGradient(0, ms * 0.1, 0, 0, ms * 0.1, er * 2.2);
-        cg.addColorStop(0, 'rgba(255,255,255,0.95)'); cg.addColorStop(0.25, `rgba(160,255,110,${0.6 + 0.4 * ch})`); cg.addColorStop(1, 'rgba(125,255,59,0)');
-        ctx.globalAlpha = e; ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(0, ms * 0.1, er * 2.2, 0, Math.PI * 2); ctx.fill();
-        ctx.restore();
+      // the flagship: far off and coming while the escorts fight; its fall at the end
+      if (flag && phase === 'fight' && flag.seen != null) {
+        const k = clamp01((t - flag.seen) / WAVE), HWf = Math.max(W, H) * (0.1 + 0.14 * k);
+        drawFlagship(t, W * 0.5 + Math.sin(t * 0.2) * W * 0.02, Math.max(H * 0.1, 70) + k * H * 0.03, HWf, { alpha: Math.min(1, (t - flag.seen) / 2) * 0.95, far: 1 - 0.5 * k });
       }
+      if (phase === 'victory') drawFall(t);
     }
     // in front of the rings: attackers, decoys, fire, your shots, explosions
     function drawFront(t) {
-      if (phase !== 'fight' && phase !== 'victory') return;
+      if (phase !== 'fight' && phase !== 'victory' && phase !== 'boss') return;
       ctx.save();
       const b = beatLen();
       // decoy rings: alien rings closing on the OFF-beats. Don't tap them.
@@ -10124,15 +10822,17 @@
         if (s.dead) continue;
         const [x, y] = shipPos(s, t);
         const ang = s.out ? -Math.PI / 2 : Math.atan2(tgt.y - y, tgt.x - x);
+        if (s.prevAng != null) { const d = ((ang - s.prevAng + Math.PI * 3) % (Math.PI * 2)) - Math.PI; s.bankV += (Math.max(-1, Math.min(1, d * 12)) - s.bankV) * 0.12; }
+        s.prevAng = ang;
         const charge = !s.fired && t > s.fireAt - b * 1.2 ? Math.min(1, (t - (s.fireAt - b * 1.2)) / (b * 1.2)) : 0;
-        hull(x, y, targetR * (s.kind === 'disc' ? 0.82 : 0.74), s.kind === 'disc' ? Math.sin(t * 2) * 0.1 : ang, s.out ? Math.max(0, 1 - (t - s.out)) : 1, charge, s.kind);
+        hull(x, y, targetR * (s.kind === 'disc' ? 0.82 : 0.74), s.kind === 'disc' ? Math.sin(t * 2) * 0.1 : ang, s.out ? Math.max(0, 1 - (t - s.out)) : 1, charge, s.kind, s.sq, s.cls, s.bankV);
         if (t - s.hurt < 0.18) {                                             // a shot just chipped its armour
           const k = 1 - (t - s.hurt) / 0.18, hr = targetR * 0.6;
           const hg = ctx.createRadialGradient(x, y, 0, x, y, hr);
           hg.addColorStop(0, `rgba(220,255,255,${0.8 * k})`); hg.addColorStop(1, 'rgba(120,240,255,0)');
           ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = hg; ctx.beginPath(); ctx.arc(x, y, hr, 0, Math.PI * 2); ctx.fill(); ctx.restore();
         }
-        if (charge > 0) { ctx.save(); ctx.strokeStyle = `rgba(125,255,59,${0.25 * charge})`; ctx.setLineDash([4, 6]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tgt.x, tgt.y); ctx.stroke(); ctx.restore(); }
+        if (charge > 0) { ctx.save(); ctx.strokeStyle = hexToRgba(SQUADS[s.sq || 0].laser, 0.3 * charge); ctx.setLineDash([4, 6]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(tgt.x, tgt.y); ctx.stroke(); ctx.restore(); }
       }
       // the mothership's beam
       if (mother) for (const bm of mother.beams) {
@@ -10154,7 +10854,7 @@
         else if (bo.state === 'reflect') { const k = Math.min(1, 1 - (bo.back - t) / 0.22); const [sx, sy] = bo.s && !bo.s.dead ? shipPos(bo.s, t) : [bo.x0, bo.y0]; x = bo.rx + (sx - bo.rx) * k; y = bo.ry + (sy - bo.ry) * k; tx = bo.rx; ty = bo.ry; }
         else continue;
         const dx = x - tx, dy = y - ty, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l;
-        ctx.strokeStyle = bo.state === 'reflect' ? 'rgba(120,240,255,0.8)' : 'rgba(125,255,59,0.75)'; ctx.lineWidth = 9;
+        ctx.strokeStyle = bo.state === 'reflect' ? 'rgba(120,240,255,0.8)' : hexToRgba(SQUADS[(bo.s && bo.s.sq) || 0].laser, 0.8); ctx.lineWidth = 9;
         ctx.beginPath(); ctx.moveTo(x - ux * 34, y - uy * 34); ctx.lineTo(x, y); ctx.stroke();
         ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - ux * 22, y - uy * 22); ctx.lineTo(x, y); ctx.stroke();
       }
@@ -10182,49 +10882,250 @@
       if (hitFlash > 0) { ctx.save(); ctx.fillStyle = `rgba(255,40,80,${0.28 * hitFlash})`; full(); ctx.restore(); }
     }
 
-    // ---- STAR-WARRIOR: the fleet you beat now fights for you (boss fights only) ----
+    // ---- STAR-FLEET COMMAND (was STAR-WARRIOR): the fleet you beat now fights for you ----
     // Hold in a boss fight: for 12 s the Alien Fleet warps in, in three waves 4 s apart, all over
     // the screen. Each ship takes a station round the boss and the squadron fires plasma at it on
     // every beat; every ring you hit calls a volley from every ship on station; the mothership
     // joins the last wave and beams the boss on the downbeat. Damage draws on the activation's
     // boss cap. The rings are untouched: you still play every note.
-    const ALLY_GAP = 4;
+    // Anywhere else (escort): fewer ships take station in an arc over the craft and shoot each ring
+    // down on its beat (the ability loop scores them PERFECT and calls escortShot for the bolt).
+    // If a boss fight begins while they escort, they re-form round the boss.
+    // ---- THE FLEET'S SHIPS (Nov 13 v2): real 3D models, three squadrons, four classes ----
+    // Dennel: "make them look BAD ASS": every ship is a lit, faceted 3D model (the game's own mesh
+    // renderer) that banks into its turns and climbs toward the camera, in one of three squadron
+    // liveries, each with its own laser colour:
+    //   VIPER WING  (acid green)   CRIMSON WING (red)   AZURE WING (blue)
+    // and four classes: VIPER fighters (swept deltas, twin engines), RAPTOR interceptors (forward-
+    // swept wings, long nose), HAMMER gunships (broad wings, wingtip cannons, three engines) and
+    // the saucer DISCs. Body space: nose +x, wings along y, the hull's top toward the camera (+z).
+    const SQUADS = [
+      { name: 'VIPER WING', hull: '#a9b6c2', wing: '#4fd12a', edge: '#9dff6a', glow: '#c8ffa0', laser: '#7dff3b' },
+      { name: 'CRIMSON WING', hull: '#b9a9ae', wing: '#e8283a', edge: '#ff5a66', glow: '#ffc09a', laser: '#ff3448' },
+      { name: 'AZURE WING', hull: '#a6b4c3', wing: '#2a86ff', edge: '#6ccbff', glow: '#c0ecff', laser: '#36b4ff' }
+    ];
+    const SHIP_CLASSES = ['viper', 'raptor', 'hammer', 'disc'];
+    function hullMesh(nose, tail, mx, w, up, down) {                      // a faceted fuselage: two pyramids on a diamond waist
+      const V = [[nose, 0, 0], [tail, 0, 0], [mx, -w, 0], [mx, 0, up], [mx, w, 0], [mx, 0, -down]], F = [];
+      for (let i = 0; i < 4; i++) { const a = 2 + i, b = 2 + ((i + 1) % 4); F.push({ v: [0, a, b] }); F.push({ v: [1, b, a] }); }
+      for (const f of F) f.n = faceNormal(V, f.v);
+      return { V, F };
+    }
+    const mirror = (pts) => pts.map(([x, y]) => [x, -y]).reverse();
+    function shipParts(cls) {
+      return meshOnce('fleetShip_' + cls, () => {
+        if (cls === 'disc') {
+          const V = [[0, 0, 0.17], [0, 0, -0.12]], F = [], n = 12;
+          for (let i = 0; i < n; i++) { const a = i / n * Math.PI * 2; V.push([Math.cos(a) * 0.85, Math.sin(a) * 0.85, 0]); }
+          for (let i = 0; i < n; i++) { const j = (i + 1) % n; F.push({ v: [0, 2 + i, 2 + j] }); F.push({ v: [1, 2 + j, 2 + i] }); }
+          for (const f of F) f.n = faceNormal(V, f.v);
+          return { body: { V, F }, wings: [], engines: [[-0.6, 0], [0.6, 0], [0, -0.6], [0, 0.6]], nose: [0, 0, -0.1], cockpit: [0, 0, 0.2], tips: [[0.85, 0], [-0.85, 0]], guns: [[0.6, -0.3], [0.6, 0.3]] };
+        }
+        if (cls === 'raptor') {
+          const wl = [[-0.32, -0.07], [0.22, -0.72], [0.1, -0.78], [-0.5, -0.12]];
+          return { body: hullMesh(1.25, -0.62, -0.05, 0.13, 0.11, 0.08),
+            wings: [extrude(wl, 0.022), extrude(mirror(wl), 0.022), extrude([[0.7, -0.05], [0.5, -0.24], [0.42, -0.05]], 0.015), extrude(mirror([[0.7, -0.05], [0.5, -0.24], [0.42, -0.05]]), 0.015)],
+            engines: [[-0.62, 0]], nose: [1.25, 0, 0], cockpit: [0.5, 0, 0.09], tips: [[0.16, -0.76], [0.16, 0.76]], guns: [[1.1, 0]] };
+        }
+        if (cls === 'hammer') {
+          const wl = [[0.25, -0.2], [0.15, -0.86], [-0.32, -0.86], [-0.42, -0.2]], gun = [[0.62, -0.84], [0.62, -0.92], [-0.2, -0.92], [-0.2, -0.84]];
+          return { body: hullMesh(0.82, -0.72, 0.0, 0.25, 0.19, 0.14),
+            wings: [extrude(wl, 0.04), extrude(mirror(wl), 0.04), extrude(gun, 0.045), extrude(mirror(gun), 0.045)],
+            engines: [[-0.72, 0], [-0.42, -0.5], [-0.42, 0.5]], nose: [0.82, 0, 0], cockpit: [0.3, 0, 0.16], tips: [[0.62, -0.88], [0.62, 0.88]], guns: [[0.62, -0.88], [0.62, 0.88]] };
+        }
+        const wl = [[0.18, -0.1], [-0.42, -0.78], [-0.6, -0.74], [-0.46, -0.1]];    // viper
+        return { body: hullMesh(1.0, -0.75, 0.05, 0.16, 0.12, 0.1),
+          wings: [extrude(wl, 0.026), extrude(mirror(wl), 0.026), extrude([[-0.35, -0.03], [-0.68, -0.32], [-0.74, -0.3], [-0.55, -0.03]], 0.02), extrude(mirror([[-0.35, -0.03], [-0.68, -0.32], [-0.74, -0.3], [-0.55, -0.03]]), 0.02)],
+          engines: [[-0.75, -0.12], [-0.75, 0.12]], nose: [1.0, 0, 0], cockpit: [0.38, 0, 0.1], tips: [[-0.58, -0.76], [-0.58, 0.76]], guns: [[0.95, 0]] };
+      });
+    }
+    const shipPt = (p, P) => proj3(rot3(p, P.yaw, P.pitch, P.roll), P.S);
+    // x, y: screen centre; S: size (px for 1 body unit); hd: heading on screen (rad); bank, climb
+    // (rad); sq: squadron; charge 0..1 (a shot gathering at the guns); hurt 0..1 (a flash)
+    function drawShip(x, y, S, hd, bank, climb, cls, sq, alpha, charge, hurt) {
+      if (alpha <= 0.01 || S < 1) return;
+      const sc = SQUADS[sq % 3], M = shipParts(cls), low = SpaceFX.low;
+      const disc = cls === 'disc';
+      const P = { yaw: climb, pitch: disc ? 0.9 + bank * 0.4 : bank, roll: disc ? hd * 0.15 : hd, S };
+      ctx.save(); ctx.translate(x, y); ctx.globalAlpha *= alpha;
+      ctx.globalCompositeOperation = 'lighter';
+      // an underglow in the squadron's colour: the silhouette stands out against deep space
+      if (!low) {
+        const ug = ctx.createRadialGradient(0, 0, 0, 0, 0, S * 1.25);
+        ug.addColorStop(0, hexToRgba(sc.edge, 0.28)); ug.addColorStop(0.5, hexToRgba(sc.edge, 0.1)); ug.addColorStop(1, hexToRgba(sc.edge, 0));
+        ctx.fillStyle = ug; ctx.beginPath(); ctx.arc(0, 0, S * 1.25, 0, Math.PI * 2); ctx.fill();
+      }
+      // engines first (behind the hull): a hot core and a trail streaming back along the heading
+      const fl = 0.75 + 0.25 * Math.sin(performance.now() / 45 + x * 0.1);
+      for (const [ex, ey] of M.engines) {
+        const [px, py] = shipPt([ex, ey, 0], P);
+        const tl = S * (disc ? 0.25 : 0.9 + 0.5 * fl), bx = disc ? px : px - Math.cos(hd) * tl, by = disc ? py : py - Math.sin(hd) * tl;
+        const eg = ctx.createLinearGradient(px, py, bx, by);
+        eg.addColorStop(0, 'rgba(255,255,255,0.95)'); eg.addColorStop(0.25, hexToRgba(sc.glow, 0.8)); eg.addColorStop(1, hexToRgba(sc.edge, 0));
+        ctx.strokeStyle = eg; ctx.lineCap = 'round'; ctx.lineWidth = Math.max(1.5, S * (disc ? 0.12 : 0.16));
+        ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(bx + 0.01, by + 0.01); ctx.stroke();
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      // the hull: wings, then the fuselage over them, lit by the key light, edged in the squadron's colour
+      const lw = Math.max(0.8, Math.min(2, S * 0.032));
+      for (const w of M.wings) drawMesh(w, P, { tint: sc.wing, edge: sc.edge, lw, alpha: 0.98, edgeAlpha: 0.7 });
+      drawMesh(M.body, P, { tint: sc.hull, edge: sc.edge, lw, alpha: 0.98, edgeAlpha: disc ? 0.45 : 0.6 });
+      ctx.globalCompositeOperation = 'lighter';
+      // the cockpit glint, the wingtip running lights, and the guns charging
+      const [cx, cy, cz] = shipPt(M.cockpit, P);
+      if (cz > -0.05) {
+        const cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, S * 0.16);
+        cg.addColorStop(0, 'rgba(255,255,255,0.95)'); cg.addColorStop(0.4, hexToRgba(sc.glow, 0.7)); cg.addColorStop(1, hexToRgba(sc.edge, 0));
+        ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, S * 0.16, 0, Math.PI * 2); ctx.fill();
+      }
+      const blink = Math.sin(performance.now() / 160 + sq * 2) > 0;
+      M.tips.forEach(([tx, ty], i) => {
+        const [px, py] = shipPt([tx, ty, 0], P);
+        ctx.fillStyle = i ? (blink ? '#ffffff' : sc.edge) : (blink ? sc.edge : '#ff4040');
+        ctx.beginPath(); ctx.arc(px, py, Math.max(1.2, S * 0.045), 0, Math.PI * 2); ctx.fill();
+      });
+      if (charge > 0) for (const [gx, gy] of M.guns) {
+        const [px, py] = shipPt([gx, gy, 0], P), r = S * (0.12 + 0.3 * charge);
+        const g = ctx.createRadialGradient(px, py, 0, px, py, r);
+        g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.35, hexToRgba(sc.laser, 0.85)); g.addColorStop(1, hexToRgba(sc.laser, 0));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(px, py, r, 0, Math.PI * 2); ctx.fill();
+      }
+      if (hurt > 0.02) {
+        const g = ctx.createRadialGradient(0, 0, 0, 0, 0, S * 0.9);
+        g.addColorStop(0, `rgba(230,250,255,${(0.8 * hurt).toFixed(3)})`); g.addColorStop(1, 'rgba(160,230,255,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, S * 0.9, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.restore();
+    }
+    // where a ship's guns are on screen (for lasers leaving the right place)
+    function shipGun(x, y, S, hd, bank, cls) {
+      const M = shipParts(cls), P = { yaw: 0, pitch: cls === 'disc' ? 0.9 : bank, roll: cls === 'disc' ? hd * 0.15 : hd, S };
+      const [gx, gy] = M.guns[0], [px, py] = shipPt([gx, gy, 0], P);
+      return [x + px, y + py];
+    }
+    // a laser bolt: a white-hot core in a coloured sheath, moving from a to b over its flight
+    function drawLaser(x0, y0, x1, y1, u, col, w) {
+      const L = Math.hypot(x1 - x0, y1 - y0) || 1, len = Math.min(L, Math.max(60, L * 0.5));
+      const hx = x0 + (x1 - x0) * u, hy = y0 + (y1 - y0) * u, tx = hx - (x1 - x0) / L * len, ty = hy - (y1 - y0) / L * len;
+      const sx = u * L < len ? x0 : tx, sy = u * L < len ? y0 : ty;
+      ctx.strokeStyle = hexToRgba(col, 0.3); ctx.lineWidth = (w || 1) * 12; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(hx, hy); ctx.stroke();
+      ctx.strokeStyle = col; ctx.lineWidth = (w || 1) * 5; ctx.stroke();
+      ctx.strokeStyle = '#ffffff'; ctx.lineWidth = (w || 1) * 2; ctx.stroke();
+      // a hot head on the bolt, so it reads as a shot and not an engine trail
+      const hr = 9 * (w || 1), g = ctx.createRadialGradient(hx, hy, 0, hx, hy, hr);
+      g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, hexToRgba(col, 0.9)); g.addColorStop(1, hexToRgba(col, 0));
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(hx, hy, hr, 0, Math.PI * 2); ctx.fill();
+      // the muzzle flash at the gun, for the first part of the flight
+      if (u < 0.3) {
+        const k = 1 - u / 0.3, mr = 16 * (w || 1) * k, m = ctx.createRadialGradient(x0, y0, 0, x0, y0, Math.max(1, mr));
+        m.addColorStop(0, `rgba(255,255,255,${k.toFixed(3)})`); m.addColorStop(1, hexToRgba(col, 0));
+        ctx.fillStyle = m; ctx.beginPath(); ctx.arc(x0, y0, Math.max(1, mr), 0, Math.PI * 2); ctx.fill();
+      }
+    }
+    // a ring shot apart: its circle breaks into arcs that fly outward in the laser's colour
+    function drawShatter(sh, t) {
+      const k = (t - sh.t0) / 0.42; if (k >= 1 || k < 0) return;
+      const e = 1 - Math.pow(1 - k, 2), n = 8;
+      ctx.strokeStyle = sh.col; ctx.lineCap = 'round';
+      for (let i = 0; i < n; i++) {
+        const a0 = sh.a + i / n * Math.PI * 2 + 0.12, a1 = a0 + Math.PI * 2 / n - 0.24 - 0.2 * e;
+        const off = sh.r * 0.55 * e * (1 + 0.6 * Math.cos(a0 + 0.3 - sh.a));          // the side it was hit on flies furthest
+        const cx = sh.x + Math.cos(a0 + 0.3) * off, cy = sh.y + Math.sin(a0 + 0.3) * off;
+        ctx.globalAlpha = 1 - k; ctx.lineWidth = Math.max(1, 5 * (1 - k));
+        ctx.beginPath(); ctx.arc(cx, cy, sh.r * (1 + 0.15 * e), a0, Math.max(a0 + 0.05, a1)); ctx.stroke();
+      }
+      const fx = sh.x + Math.cos(sh.a) * sh.r, fy = sh.y + Math.sin(sh.a) * sh.r, fr = sh.r * 0.6 * (1 - k);
+      const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, Math.max(1, fr));
+      g.addColorStop(0, `rgba(255,255,255,${(1 - k).toFixed(3)})`); g.addColorStop(1, hexToRgba(sh.col, 0));
+      ctx.globalAlpha = 1; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(fx, fy, Math.max(1, fr), 0, Math.PI * 2); ctx.fill();
+    }
+
+    const ALLY_GAP = 3.2;
     let allies = null;
+    // Stations spread across the screen: a loose formation over the play field (never down on the
+    // craft, never up in the HUD). In a boss fight they bend round the boss, further out and wider.
     function allyStation(i, n, wave) {
-      const bx = bossX(), by = bossY(), br = bossR();
-      // an arc over and beside the boss (never down by the saucer, never up in the HUD)
-      const a = -Math.PI * 1.08 + (i + 0.5) / n * Math.PI * 1.16 + (wave - 1) * 0.12;
-      const rr = br * (1.3 + 0.35 * ((i + wave) % 2));
-      const wide = W > H * 1.1, kx = wide ? 2.1 : 1.3, ky = wide ? 0.6 : 0.85;   // a wider, flatter arc on landscape screens
-      let x = Math.max(targetR * 0.8, Math.min(W - targetR * 0.8, bx + Math.cos(a) * rr * kx));
-      let y = Math.max(Math.max(H * 0.2, 150), Math.min(by + br * 0.35, by + Math.sin(a) * rr * ky));
-      const dx = x - tgt.x, dy = y - tgt.y, d = Math.hypot(dx, dy), keep = targetR * 2.4;
-      if (d < keep) { x = tgt.x + dx / (d || 1) * keep; y = Math.min(y, tgt.y - keep * 0.6); }
-      return [x, y];
+      const top = Math.max(H * 0.2, 150), bot = Math.max(top + 40, tgt.y - targetR * 2.0);
+      if (allies && !allies.escort && bossActive) {
+        const bx = bossX(), by = bossY(), br = bossR();
+        const a = -Math.PI * 1.1 + (i + 0.5) / n * Math.PI * 1.2 + (wave - 1) * 0.1;
+        const wide = W > H * 1.1, rr = br * (1.45 + 0.4 * ((i + wave) % 2));
+        let x = bx + Math.cos(a) * rr * (wide ? 2.2 : 1.45), y = by + Math.sin(a) * rr * (wide ? 0.7 : 0.9);
+        x = Math.max(targetR * 0.7, Math.min(W - targetR * 0.7, x)); y = Math.max(top, Math.min(bot, y));
+        return [x, y];
+      }
+      const cols = Math.max(3, n), u = (i + 0.5) / cols, row = (i + wave) % 3;
+      const x = W * (0.08 + 0.84 * u) + Math.sin(i * 2.3 + wave) * W * 0.04;
+      const y = top + (bot - top) * (0.12 + 0.36 * row + 0.08 * Math.sin(i * 1.7));
+      return [Math.max(targetR * 0.7, Math.min(W - targetR * 0.7, x)), y];
+    }
+    // a strafing run: in off one side, a long banking pass across the field, out the other
+    function strafePath(s, t) {
+      const fromL = s.dir > 0, y0 = H * (0.18 + 0.4 * s.ry), y1 = H * (0.2 + 0.42 * s.ry2);
+      s.p0 = [fromL ? -W * 0.18 : W * 1.18, y0];
+      s.p2 = [fromL ? W * 1.18 : -W * 0.18, y1];
+      s.p1 = [W * (0.5 + (fxRand() - 0.5) * 0.3), Math.min(tgt.y - targetR * 2.6, Math.max(H * 0.25, (y0 + y1) / 2 + H * (0.12 + 0.12 * fxRand())))];
+      s.r0 = t; s.r1 = t + 2.6 + fxRand() * 1.0;
     }
     function allyWave(t, w) {
-      const n = w === 0 ? 4 : 6;
+      const n = 4;
       for (let i = 0; i < n; i++) {
-        const to = allyStation(i, n, w);
-        // they warp in out of nowhere, all over the screen, then dive to their stations
+        const sq = (w + i) % 3, cls = SHIP_CLASSES[(i * 3 + w) % 4];
+        const strafe = i === n - 1 || (w === 2 && i === 1);                    // some fly passes instead of holding a station
         const from = [W * (0.08 + 0.84 * fxRand()), H * (0.12 + 0.5 * fxRand())];
-        allies.ships.push({ kind: (i + w) % 3 === 2 ? 'disc' : 'dart', from, to, t0: t + i * 0.09, arrive: t + i * 0.09 + 0.75,
-          ph: fxRand() * 6.28, wave: w, out: 0, hurt: -9 });
+        const s = { cls, sq, depth: 0.82 + 0.36 * ((i * 7 + w * 3) % 5) / 4, from, to: allyStation(i, n, w), t0: t + i * 0.08, arrive: t + i * 0.08 + 0.75,
+          ph: fxRand() * 6.28, wave: w, out: 0, hurt: -9, strafe, x: from[0], y: from[1], hd: -Math.PI / 2, bank: 0, cool: 0, moveAt: t + 3 + fxRand() * 2, idx: i, n };
+        if (strafe) { s.dir = fxRand() < 0.5 ? 1 : -1; s.ry = fxRand(); s.ry2 = fxRand(); strafePath(s, t + i * 0.08 + 0.3); s.p0 = from.slice(); }
+        allies.ships.push(s);
       }
-      if (w === 2) allies.mother = { t0: t, nextBeam: nextBeat(t + 1.2) };
+      if (w === 2 && !allies.escort) allies.mother = { t0: t, nextBeam: nextBeat(t + 1.2) };
       if (save.settings.sfx) { tone(523, 0.12, 'square', 0.02); tone(784, 0.16, 'square', 0.018, 0.08); tone(1046, 0.2, 'triangle', 0.016, 0.16); }
     }
-    function allyPos(s, t) {
-      if (t < s.t0) return null;
-      if (s.out) { const k = Math.min(1, (t - s.out) / 0.6); return [s.to[0], s.to[1] - k * k * H * 0.9]; }
-      const k = Math.min(1, (t - s.t0) / (s.arrive - s.t0)), e = 1 - Math.pow(1 - k, 3);
-      const x = s.from[0] + (s.to[0] - s.from[0]) * e, y = s.from[1] + (s.to[1] - s.from[1]) * e;
-      return [x + Math.sin(t * 2.1 + s.ph) * 5, y + Math.cos(t * 1.7 + s.ph) * 4];
+    // where each ship is (and which way it points, and how hard it banks), advanced every frame
+    function allyMove(s, t, dt) {
+      if (t < s.t0) return false;
+      let x, y;
+      if (s.out) {                                                            // leaving: a climbing turn up and away
+        if (t < s.out) { x = s.x; y = s.y; }
+        else { if (!s.o0) s.o0 = [s.x, s.y]; const k = Math.min(1, (t - s.out) / 0.7); x = s.o0[0] + (s.o0[0] < W / 2 ? -1 : 1) * k * k * W * 0.3; y = s.o0[1] - k * k * H * 0.5; s.climb = -k * 0.9; }
+      }
+      else if (s.strafe && t >= s.r0) {
+        if (t >= s.r1) { s.dir = -s.dir; s.ry = fxRand(); s.ry2 = fxRand(); strafePath(s, t + 0.5 + fxRand() * 0.9); }
+        if (t < s.r0) { x = s.x; y = s.y; }
+        else { const k = (t - s.r0) / (s.r1 - s.r0); [x, y] = bez(s.p0, s.p1, s.p2, k); }
+      } else if (s.strafe) { x = s.x; y = s.y; }
+      else {
+        if (t >= s.moveAt && t >= s.arrive) {                                  // break station and take another
+          s.from = [s.x, s.y]; s.to = allyStation((s.idx + 1 + ((s.ph * 10) | 0)) % (s.n + 2), s.n + 2, s.wave); s.t0m = t; s.arrive = t + 0.9; s.moveAt = t + 3.5 + fxRand() * 2.5;
+        }
+        const t0 = s.t0m || s.t0, k = Math.min(1, (t - t0) / Math.max(0.05, s.arrive - t0)), e = k * k * (3 - 2 * k);
+        x = s.from[0] + (s.to[0] - s.from[0]) * e + Math.sin(t * 1.4 + s.ph) * 7; y = s.from[1] + (s.to[1] - s.from[1]) * e + Math.cos(t * 1.1 + s.ph) * 5;
+      }
+      const dx = x - s.x, dy = y - s.y, sp = Math.hypot(dx, dy) / Math.max(1e-3, dt);
+      let want = s.hd;
+      if (sp > 40) want = Math.atan2(dy, dx);
+      else if (!s.out) want = s.aim != null ? s.aim : -Math.PI / 2;                 // hovering: nose toward what it shoots
+      let d = ((want - s.hd + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+      const turn = Math.max(-1, Math.min(1, d * 6)) * Math.min(1, dt * 7);
+      s.hd += d * Math.min(1, dt * 7);
+      s.bank += (Math.max(-1.1, Math.min(1.1, turn * 9)) - s.bank) * Math.min(1, dt * 6);   // lean into the turn
+      if (!s.out) s.climb = 0.25 * Math.sin(t * 0.9 + s.ph);
+      s.x = x; s.y = y;
+      return true;
     }
-    const docked = (t) => allies.ships.filter(s => !s.out && t >= s.arrive);
+    const onScreen = (s) => s.x > 10 && s.x < W - 10 && s.y > 10 && s.y < H - 10;
+    const docked = (t) => allies.ships.filter(s => !s.out && t >= s.arrive && !s.strafe);
+    function laserTo(s, x, y, t, land, col, big) {
+      const sz = targetR * 0.64 * s.depth, [gx, gy] = shipGun(s.x, s.y, sz, s.hd, s.bank, s.cls);
+      allies.lasers.push({ x0: gx, y0: gy, x1: x, y1: y, t0: t, land, col: col || SQUADS[s.sq].laser, w: big ? 1.3 : 1 });
+      s.aim = Math.atan2(y - s.y, x - s.x); s.firedAt = t;
+    }
     function allyShot(t, s, dmg, big) {
-      const p = allyPos(s, t); if (!p) return;
-      allies.bolts.push({ x0: p[0], y0: p[1], t0: t, land: t + (big ? 0.28 : 0.36), dmg, big, ox: (fxRand() - 0.5) * 0.5, oy: (fxRand() - 0.5) * 0.4 });
+      if (!bossActive) return;
+      const br = bossR(), ox = (fxRand() - 0.5) * 0.5, oy = (fxRand() - 0.5) * 0.4;
+      const bx = bossX() + ox * br, by = bossY() + oy * br;
+      allies.bolts.push({ t0: t, land: t + 0.12, dmg, big, ox, oy });
+      laserTo(s, bx, by, t, t + 0.12, null, big);
     }
     function allyHit(dmg, x, y, big) {
       const d = Math.min(dmg, Math.max(0, abBossDmgLeft));
@@ -10232,8 +11133,8 @@
       createBurst(x, y, ACID, big ? 14 : 6, big ? 1.1 : 0.8);
       if (big) shake = Math.max(shake, 3);
     }
-    function summon(t) {
-      allies = { t0: t, ships: [], bolts: [], booms: [], wave: -1, nextFire: nextBeat(t + 0.8), mother: null, beams: [], volleyAt: -9, leaving: 0, rr: 0 };
+    function summon(t, escort) {
+      allies = { t0: t, ships: [], bolts: [], lasers: [], shatters: [], wave: -1, nextFire: nextBeat(t + 0.8), mother: null, beams: [], volleyAt: -9, leaving: 0, rr: 0, escort: !!escort, lastT: t };
       if (save.settings.sfx) { [110, 138.6, 164.8, 220].forEach((f, i) => tone(f, 1.0, 'sawtooth', 0.026, i * 0.06)); tone(55, 0.9, 'sine', 0.08); }
       shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR * 0.6, alpha: 0.9, speed: 900, width: 6, color: ACID });
     }
@@ -10243,122 +11144,155 @@
       for (const s of allies.ships) if (!s.out) s.out = t + fxRand() * 0.25;
       if (save.settings.sfx) [784, 659, 523].forEach((f, i) => tone(f, 0.12, 'triangle', 0.02, i * 0.07));
     }
-    // a ring hit while the fleet is on station: every ship fires
+    // the rings: as each one closes in, a ship on screen lines up and fires so its laser meets the
+    // circle on the beat (the ability loop scores it PERFECT at that moment; ringShot shatters it)
+    function aimAtRings(t) {
+      const A = allies;
+      const ready = A.ships.filter((s) => !s.out && t >= s.t0 + 0.35 && onScreen(s));
+      if (!ready.length) return;
+      for (const n of notes) {
+        if (n.hit || n.missed || n.__fleet) continue;
+        const lead = n.hitTime - t;
+        if (lead > 0.3 || lead < 0.02) continue;
+        // the strafers on screen first (they are the show), then whoever hasn't fired for longest
+        const order = ready.slice().sort((a, b) => (b.strafe - a.strafe) || ((a.firedAt || -9) - (b.firedAt || -9)));
+        const pick = order[0], r = targetR * 1.02;
+        const fire = (sh) => {
+          const ang = Math.atan2(sh.y - n.ty, sh.x - n.tx), hx = n.tx + Math.cos(ang) * r, hy = n.ty + Math.sin(ang) * r;
+          const fly = Math.min(lead, Math.max(0.08, Math.hypot(hx - sh.x, hy - sh.y) / 1700));
+          laserTo(sh, hx, hy, n.hitTime - fly, n.hitTime, null, false);
+          return ang;
+        };
+        n.__fleet = { col: SQUADS[pick.sq].laser, a: fire(pick) };
+        // crossfire: often a second ship, from another squadron, hits the same ring
+        const second = order.find((sh) => sh !== pick && sh.sq !== pick.sq);
+        if (second && ((n.hitTime * 7.3) % 1) < 0.4) fire(second);
+      }
+    }
+    // called by the ability loop when the fleet's ring is scored
+    function ringShot(n) {
+      if (!allies) return;
+      const f = n.__fleet || { col: SQUADS[(allies.rr++) % 3].laser, a: -Math.PI / 2 };
+      allies.shatters.push({ x: n.tx, y: n.ty, r: targetR * 1.02, col: f.col, a: f.a, t0: clockNow() - startTime });
+      if (allies.shatters.length > 24) allies.shatters.shift();
+      if (!allies.escort && bossActive && state === 'bossBattle') volley();      // a boss fight: every ring shot calls a volley
+      if (save.settings.sfx) tone(1320 + ((allies.rr * 37) % 5) * 110, 0.05, 'square', 0.009);
+    }
+    // a ring hit (by you or the fleet) while the fleet fights a boss: every ship on station fires
     function volley() {
-      if (!allies || allies.leaving) return;
+      if (!allies || allies.leaving || allies.escort) return;
       const t = clockNow() - startTime;
       if (t - allies.volleyAt < 0.12) return;
       allies.volleyAt = t;
       const ds = docked(t);
       ds.forEach((s, i) => allyShot(t + i * 0.02, s, 3 / Math.max(1, ds.length), true));
-      if (ds.length && save.settings.sfx) tone(1568, 0.05, 'square', 0.01);
     }
+    function escortShot() {}                                                     // (kept for callers: the fleet aims ahead now, see aimAtRings)
     function updateAllies(dt, t) {
-      const A = allies;
+      const A = allies, fdt = Math.max(0.001, Math.min(0.1, t - A.lastT)); A.lastT = t;
       if (A.leaving) {
-        if (t - A.leaving > 1.0 && !A.bolts.length) allies = null;
-      } else if (!bossActive || !(state === 'bossBattle' || state === 'paused')) {
-        dismiss(t);                                                      // the boss fell (or the fight ended): they leave
+        if (t - A.leaving > 1.2 && !A.bolts.length) { allies = null; return; }
       } else {
         const w = Math.min(2, Math.floor((t - A.t0) / ALLY_GAP));
         while (A.wave < w) { A.wave++; allyWave(t, A.wave); }
-        // the squadron's steady fire, on the beat: two ships at a time, round-robin
-        if (t >= A.nextFire) {
-          const ds = docked(t);
-          for (let k = 0; k < Math.min(2, ds.length); k++) { const s = ds[(A.rr++) % ds.length]; allyShot(t, s, 2, false); }
-          A.nextFire = nextBeat(A.nextFire + beatLen() * 0.5);
-          if (ds.length && save.settings.sfx) tone(880, 0.05, 'square', 0.008);
+        if (A.escort && bossActive && state === 'bossBattle') {                 // a boss fight began: re-form round it
+          A.escort = false;
+          for (const s of A.ships) if (!s.out && !s.strafe) { s.from = [s.x, s.y]; s.t0m = t; s.arrive = t + 0.8; s.to = allyStation(s.idx, s.n, s.wave); }
+        } else if (!A.escort && (!bossActive || !(state === 'bossBattle' || state === 'paused'))) {
+          dismiss(t);                                                           // the boss fell (or the fight ended): they leave
         }
-        if (A.mother && t >= A.mother.nextBeam) {
-          A.beams.push({ t0: t, land: t + beatLen() * 0.5 });
-          A.mother.nextBeam = nextBeat(t + beatLen() * 3.5);
-          if (save.settings.sfx) tone(98, beatLen() * 0.5, 'sawtooth', 0.02);
+        if (!A.leaving && state !== 'paused') {
+          aimAtRings(t);
+          if (!A.escort && t >= A.nextFire) {                                   // the squadron's steady fire at the boss, two at a time
+            const ds = docked(t);
+            for (let k = 0; k < Math.min(2, ds.length); k++) { const s = ds[(A.rr++) % ds.length]; allyShot(t, s, 2, false); }
+            A.nextFire = nextBeat(A.nextFire + beatLen() * 0.5);
+          }
+          if (A.mother && t >= A.mother.nextBeam) {
+            A.beams.push({ t0: t, land: t + beatLen() * 0.5 });
+            A.mother.nextBeam = nextBeat(t + beatLen() * 3.5);
+            if (save.settings.sfx) tone(98, beatLen() * 0.5, 'sawtooth', 0.02);
+          }
         }
       }
+      for (const s of A.ships) allyMove(s, t, fdt);
       for (const b of A.bolts) if (!b.done && t >= b.land) {
         b.done = true;
         const br = bossR();
         allyHit(b.dmg, bossX() + b.ox * br, bossY() + b.oy * br, b.big);
       }
       A.bolts = A.bolts.filter(b => !b.done || t - b.land < 0.15);
+      A.lasers = A.lasers.filter((l) => t - l.land < 0.12);
+      A.shatters = A.shatters.filter((s) => t - s.t0 < 0.45);
       for (const bm of A.beams) if (!bm.done && t >= bm.land) { bm.done = true; allyHit(8, bossX(), bossY(), true); shake = Math.max(shake, 7); }
       A.beams = A.beams.filter(bm => !bm.done || t - bm.land < 0.4);
     }
-    const allyMotherXY = (t) => [W * 0.5 + Math.sin(t * 0.4) * W * 0.05, Math.max(H * 0.17, 125)];
-    // behind the boss: the mothership hangs high over the arena
+    const allyMotherXY = (t) => [W * 0.5 + Math.sin(t * 0.4) * W * 0.05, Math.max(H * 0.14, 110)];
+    // behind the boss: the flagship itself, far up over the arena, on your side now
     function drawAlliesBack(t) {
       const A = allies; if (!A || !A.mother) return;
       const lv = A.leaving ? Math.min(1, (t - A.leaving) / 0.9) : 0, k = Math.min(1, (t - A.mother.t0) / 1.2);
       const e = (1 - Math.pow(1 - k, 3)) * (1 - lv);
       if (e <= 0) return;
-      const [mx, my0] = allyMotherXY(t), ms = Math.max(W, H) * 0.3, my = my0 - (1 - e) * ms * 0.4;
-      ctx.save(); ctx.translate(mx, my); ctx.globalAlpha = 0.9 * e;
-      const mg = ctx.createLinearGradient(0, -ms * 0.2, 0, ms * 0.12);
-      mg.addColorStop(0, '#05070a'); mg.addColorStop(1, '#232c33');
-      ctx.fillStyle = mg;
-      ctx.beginPath(); ctx.moveTo(-ms, -ms * 0.05); ctx.lineTo(-ms * 0.6, ms * 0.04); ctx.lineTo(-ms * 0.3, ms * 0.1); ctx.lineTo(ms * 0.3, ms * 0.1); ctx.lineTo(ms * 0.6, ms * 0.04); ctx.lineTo(ms, -ms * 0.05);
-      ctx.lineTo(ms, -ms * 0.4); ctx.lineTo(-ms, -ms * 0.4); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = ACID; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.55 * e; ctx.stroke();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let i = -10; i <= 10; i++) { ctx.globalAlpha = e * (0.35 + 0.65 * Math.max(0, Math.sin(t * 5 - Math.abs(i) * 0.5))); ctx.fillStyle = i % 4 ? ACID : '#7df9ff'; ctx.beginPath(); ctx.arc(i * ms * 0.075, ms * (0.085 - Math.abs(i) * 0.0055), 2, 0, Math.PI * 2); ctx.fill(); }
-      ctx.restore();
+      const [mx, my] = allyMotherXY(t), HW = Math.max(W, H) * 0.32;
+      drawFlagship(t, mx, my - (1 - e) * HW * 0.4 - HW * CORE_Y * 0.6, HW, { alpha: 0.92 * e, far: 0.35 });
     }
-    // in front of the boss, behind the rings: the squadron and its fire
+    // in front of the boss, behind the rings: the squadrons, their lasers and the rings they shatter
     function drawAllies(t) {
       const A = allies; if (!A) return;
       ctx.save();
-      const bx = bossX(), by = bossY(), br = bossR();
-      // the mothership's beam
+      // the flagship's beam at the boss
       if (A.mother) for (const bm of A.beams) {
-        const [mx, my] = allyMotherXY(t), ey = my + Math.max(W, H) * 0.3 * 0.1;
+        const [mx, my] = allyMotherXY(t), ey = my + Math.max(W, H) * 0.32 * 0.05;
         const k = bm.done ? Math.max(0, 1 - (t - bm.land) / 0.4) : Math.min(1, (t - bm.t0) / (bm.land - bm.t0)) * 0.35;
         ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
-        ctx.strokeStyle = `rgba(125,255,59,${0.6 * k})`; ctx.lineWidth = (bm.done ? 26 : 4) * k + 2; ctx.beginPath(); ctx.moveTo(mx, ey); ctx.lineTo(bx, by); ctx.stroke();
+        ctx.strokeStyle = `rgba(125,255,59,${0.6 * k})`; ctx.lineWidth = (bm.done ? 26 : 4) * k + 2; ctx.beginPath(); ctx.moveTo(mx, ey); ctx.lineTo(bossX(), bossY()); ctx.stroke();
         if (bm.done) { ctx.strokeStyle = `rgba(255,255,255,${0.9 * k})`; ctx.lineWidth = 6 * k + 1; ctx.stroke(); }
         ctx.restore();
       }
-      // the ships: a warp flash where they appear, then they take station facing the boss
-      for (const s of A.ships) {
-        const p = allyPos(s, t); if (!p) continue;
-        const [x, y] = p;
+      // the ships, far ones first: a warp flash where they appear, then the 3D model
+      const order = A.ships.filter((s) => t >= s.t0).sort((a, b) => a.depth - b.depth);
+      for (const s of order) {
         if (t - s.t0 < 0.25) {
           const k = (t - s.t0) / 0.25, fr = targetR * (0.9 - 0.6 * k);
           const g = ctx.createRadialGradient(s.from[0], s.from[1], 0, s.from[0], s.from[1], fr);
-          g.addColorStop(0, `rgba(240,255,230,${1 - k})`); g.addColorStop(1, 'rgba(125,255,59,0)');
+          g.addColorStop(0, `rgba(240,255,240,${1 - k})`); g.addColorStop(1, hexToRgba(SQUADS[s.sq].edge, 0));
           ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(s.from[0], s.from[1], fr, 0, Math.PI * 2); ctx.fill(); ctx.restore();
         }
-        const ang = s.out ? -Math.PI / 2 : Math.atan2(by - y, bx - x);
-        const alpha = s.out ? Math.max(0, 1 - (t - s.out) / 0.6) : Math.min(1, (t - s.t0) / 0.15);
-        hull(x, y, targetR * (s.kind === 'disc' ? 0.62 : 0.56), s.kind === 'disc' ? Math.sin(t * 2 + s.ph) * 0.1 : ang, alpha, 0, s.kind);
+        const alpha = s.out ? Math.max(0, 1 - (t - s.out) / 0.7) : Math.min(1, (t - s.t0) / 0.15);
+        const charge = s.firedAt != null && t - s.firedAt < 0.12 ? 1 - (t - s.firedAt) / 0.12 : 0;
+        drawShip(s.x, s.y, targetR * 0.64 * s.depth * (s.cls === 'disc' ? 0.9 : 1), s.hd, s.bank, s.climb || 0, s.cls, s.sq, alpha * (0.8 + 0.2 * s.depth), charge, 0);
       }
-      // plasma, ship to boss
+      // lasers, and the rings they break
       ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
-      for (const b of A.bolts) {
-        if (b.done) {
-          const k = 1 - (t - b.land) / 0.15, hx = bx + b.ox * br, hy = by + b.oy * br;
-          ctx.fillStyle = `rgba(200,255,150,${0.7 * k})`; ctx.beginPath(); ctx.arc(hx, hy, (b.big ? 18 : 10) * (1.4 - k), 0, Math.PI * 2); ctx.fill();
+      for (const l of A.lasers) {
+        if (t < l.t0) continue;
+        const u = Math.min(1, (t - l.t0) / Math.max(0.02, l.land - l.t0));
+        if (t > l.land) {                                                      // the impact spark
+          const k = 1 - (t - l.land) / 0.12, g = ctx.createRadialGradient(l.x1, l.y1, 0, l.x1, l.y1, 16 * l.w);
+          g.addColorStop(0, `rgba(255,255,255,${k.toFixed(3)})`); g.addColorStop(1, hexToRgba(l.col, 0));
+          ctx.fillStyle = g; ctx.beginPath(); ctx.arc(l.x1, l.y1, 16 * l.w, 0, Math.PI * 2); ctx.fill();
           continue;
         }
-        const k = Math.max(0, Math.min(1, (t - b.t0) / (b.land - b.t0)));
-        const tx = bx + b.ox * br, ty = by + b.oy * br;
-        const x = b.x0 + (tx - b.x0) * k, y = b.y0 + (ty - b.y0) * k;
-        const dx = tx - b.x0, dy = ty - b.y0, l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, len = b.big ? 30 : 22;
-        ctx.strokeStyle = 'rgba(125,255,59,0.75)'; ctx.lineWidth = b.big ? 8 : 5;
-        ctx.beginPath(); ctx.moveTo(x - ux * len, y - uy * len); ctx.lineTo(x, y); ctx.stroke();
-        ctx.strokeStyle = '#ffffff'; ctx.lineWidth = b.big ? 3 : 2;
-        ctx.beginPath(); ctx.moveTo(x - ux * len * 0.6, y - uy * len * 0.6); ctx.lineTo(x, y); ctx.stroke();
+        drawLaser(l.x0, l.y0, l.x1, l.y1, u, l.col, l.w);
       }
+      for (const sh of A.shatters) drawShatter(sh, t);
       ctx.restore();
     }
 
     return {
       get active() { return active(); }, get inFight() { return inFight(); }, get phase() { return phase; },
       get alliesOn() { return !!allies; }, get allyCount() { return allies ? allies.ships.filter(s => !s.out).length : 0; },
-      summon, dismiss, volley, drawAllies, drawAlliesBack,
+      get escorting() { return !!(allies && allies.escort && !allies.leaving); },
+      get shooting() { return !!(allies && !allies.leaving); },
+      _allies: () => allies,                                             // (read-only, for tests)
+      summon, dismiss, volley, escortShot, ringShot, drawAllies, drawAlliesBack,
       get downed() { return downed; }, get wave() { return wave; },
       get stats() { return { fired: nFired, reflected: nReflected, through: nThrough, downed }; },
       shouldWarp, begin, update, drawBack, drawFront, onHit, fault, cancel,
+      drawBoss, mothershipDown, warpHome,
       devArm() { forced = true; }, prewarm,
+      _skipEscorts() { if (phase === 'fight') tFight -= FIGHT; },        // (tests and dev: straight to the Mothership)
       _ships: () => ships, _bolts: () => bolts, _galaxy: () => [gx, gy]
     };
   })();
@@ -10370,7 +11304,7 @@
   // and STAGE 100, green when done and red when not: it only opens with both green. Opened: the
   // PROJECT ZERO dossier (ILLINOIS // 2016), the creator's footage in an evidence viewer over its
   // own original score, then ZERO FORM: a craft made to look like the light in the footage, with
-  // SECOND LIFE (once per run, when energy hits zero the orb collapses to a point instead of
+  // SECOND LIFE, passive (once per run, when energy hits zero the orb opens and a new one takes its place instead of
   // dying, clears the screen, refills energy and keeps the combo).
   // The reward is derived from the two clearances and never depends on the media playing. The
   // footage and score are separate files next to index.html, requested only when the case opens.
@@ -10419,18 +11353,69 @@
     }
     c.closePath();
   }
+  // Second Life, as in the footage (about 20-23 s in): the light flares, then OPENS into a glowing
+  // ring with a dark, hollow middle that widens as the ring spreads and breaks into arcs and fades.
+  // Out of the hollow middle a new point of light is born and swells into a whole orb in its place
+  // (drawn by drawZeroOrb at a growing scale from 0.55 s).
+  const ZERO_REBIRTH = 2.1;
+  function drawZeroOpening(c, t, x, y, R, L) {
+    const low = !!(SpaceFX && SpaceFX.low);
+    c.save(); c.translate(x, y);
+    c.globalCompositeOperation = 'lighter';
+    if (L < 0.35) {
+      // 1. the flare: the old orb swells and burns bright, its heart going dark
+      const u = L / 0.35, r = R * (1 + 0.18 * u);
+      const halo = zeroHaloSprite();
+      c.globalAlpha = 0.6 + 0.4 * u; c.drawImage(halo, -r * 3.4, -r * 3.4, r * 6.8, r * 6.8);
+      const g = c.createRadialGradient(0, 0, 0, 0, 0, r);
+      g.addColorStop(0, `rgba(120,60,60,${(0.9 - 0.6 * u).toFixed(3)})`); g.addColorStop(0.45, 'rgba(255,226,214,1)'); g.addColorStop(0.75, 'rgba(255,190,170,0.9)'); g.addColorStop(1, 'rgba(255,150,130,0)');
+      c.globalAlpha = 1; c.fillStyle = g; zeroBlob(c, r, 0.05 + 0.05 * u, t, 0.7); c.fill();
+    } else {
+      // 2. it opens: a ring with a hollow middle, spreading, thinning, breaking into arcs
+      const v = Math.min(1, (L - 0.35) / 1.25), e = 1 - Math.pow(1 - v, 2);
+      const ro = R * (1.18 + 1.5 * e), ri = ro * (0.32 + 0.5 * e), mid = (ro + ri) / 2, A = Math.pow(1 - v, 1.3);
+      const halo = zeroHaloSprite();
+      c.globalAlpha = 0.55 * A; c.drawImage(halo, -ro * 2.2, -ro * 2.2, ro * 4.4, ro * 4.4);
+      const g = c.createRadialGradient(0, 0, ri, 0, 0, ro);
+      g.addColorStop(0, 'rgba(255,180,160,0)'); g.addColorStop(0.3, 'rgba(255,236,226,0.95)'); g.addColorStop(0.55, 'rgba(242,190,180,0.85)');
+      g.addColorStop(0.8, 'rgba(206,120,112,0.5)'); g.addColorStop(1, 'rgba(176,90,90,0)');
+      c.strokeStyle = g; c.lineWidth = ro - ri; c.lineCap = 'round';
+      const n = 6, gap = v < 0.35 ? 0 : (v - 0.35) / 0.65 * 0.42;      // whole at first, then arcs drifting apart
+      c.globalAlpha = A;
+      if (gap <= 0) { c.beginPath(); c.arc(0, 0, mid, 0, Math.PI * 2); c.stroke(); }
+      else for (let i = 0; i < n; i++) {
+        const a0 = i / n * Math.PI * 2 + t * 0.4 + gap, a1 = a0 + Math.PI * 2 / n - gap * 2;
+        c.beginPath(); c.arc(0, 0, mid * (1 + gap * 0.25), a0, a1); c.stroke();
+      }
+      if (!low && v < 0.7) {                                           // sparks thrown off the rim
+        c.fillStyle = 'rgba(255,230,210,0.9)';
+        for (let i = 0; i < 14; i++) {
+          const a = i / 14 * Math.PI * 2 + i * 0.37, d = ro * (1 + 0.6 * v) + (i % 3) * R * 0.1;
+          c.globalAlpha = A * (0.5 + 0.5 * Math.sin(i * 2.1 + t * 9));
+          c.beginPath(); c.arc(Math.cos(a) * d, Math.sin(a) * d, Math.max(1, R * 0.035), 0, Math.PI * 2); c.fill();
+        }
+      }
+    }
+    c.restore();
+  }
   function drawZeroOrb(c, t, x, y, R, p, still) {
     const low = !!(SpaceFX && SpaceFX.low);
     const thump = still ? 0 : Math.pow(1 - musicBeatPhase(), 3);
     zeroFlash = Math.max(0, zeroFlash - 0.035);
-    let s = 1;
-    if (zeroCollapse && !still) {                        // Second Life: collapse to a point, then re-form
+    let s = 1, born = 0;
+    if (zeroCollapse && !still) {                        // Second Life: the orb opens; a new one comes out of it
       const L = (clockNow() - startTime) - zeroCollapse.t0;
-      if (L > 1.7) zeroCollapse = null;
-      else s = L < 0.35 ? 1 - L / 0.35 : L < 0.6 ? 0 : (L - 0.6) / 1.1;
-      s = Math.max(0.03, Math.min(1, s));
+      if (L > ZERO_REBIRTH) zeroCollapse = null;
+      else {
+        drawZeroOpening(c, t, x, y, R, L);
+        if (L < 0.55) return;                            // only the old orb, opening, so far
+        const u = Math.min(1, (L - 0.55) / 0.9);
+        s = Math.max(0.03, u * (1 + 0.14 * Math.sin(Math.PI * u)));          // it swells out of the centre, overshoots a touch, settles
+        born = Math.max(0, 1 - (L - 0.55) / 0.5);                             // white-hot as it is born
+      }
     }
     const flick = 0.86 + 0.14 * zeroNoise(t * 7.1) * zeroNoise(t * 2.3 + 1.1);
+    if (born > 0) zeroFlash = Math.max(zeroFlash, born);
     const r = R * s * (1 + 0.04 * Math.sin(t * 1.7) + 0.06 * thump + 0.08 * Math.min(1, p || 0) + 0.12 * zeroFlash);
     c.save(); c.translate(x, y);
     c.globalCompositeOperation = 'lighter';
@@ -10505,7 +11490,7 @@
     shockwaves.push({ x: tgt.x, y: tgt.y, r: targetR * 0.2, alpha: 1, speed: 1400, width: 12, color: '#ffcf8a' });
     shake = Math.max(shake, 12); bgPulse = 1;
     buzz([80, 40, 120, 40, 200]);
-    showToast('SECOND LIFE', '#ffcf8a', 'THE ORB REFUSES TO DIE');
+    showToast('SECOND LIFE', '#ffcf8a', 'THE ORB OPENS · A NEW ONE TAKES ITS PLACE');
     if (save.settings.sfx) { [880, 659, 440, 330, 220].forEach((f, i) => tone(f, 0.16, 'sine', 0.03, i * 0.05)); tone(41, 1.2, 'sine', 0.12, 0.3); [262, 392, 523, 784].forEach((f, i) => tone(f, 0.25, 'triangle', 0.03, 0.7 + i * 0.07)); }
     syncSecondLifePip();
     trackEvent('second_life', { stage });
@@ -10912,7 +11897,8 @@
     vantaPrism:       { pools: [['split']], hit: 14 },
     eclipseSovereign: { pools: [['gaze', 'gaze', 'sweep'], ['gaze', 'sweep', 'gaze', 'sweep']], hit: 14 },
     metronox:         { pools: [['slow', 'quick']], hit: 14 },
-    nullstar:         { pools: [['pull', 'crush', 'pull', 'signal'], ['pull', 'feint', 'split', 'pull', 'sweep', 'gaze']], hit: 16 }
+    nullstar:         { pools: [['pull', 'crush', 'pull', 'signal'], ['pull', 'feint', 'split', 'pull', 'sweep', 'gaze']], hit: 16 },
+    mothership:       { pools: [['broadside', 'tractor', 'cannon'], ['cannon', 'broadside', 'tractor', 'broadside', 'cannon', 'tractor']], hit: 14 }
   };
   const dodgePair = (s, side) => s === 1 ? [1, side] : [s, 2 - s];           // your spot and one more: the safe one is a step away
   const dodgeBut = (safe) => [0, 1, 2].filter((x) => x !== safe);
@@ -10933,7 +11919,18 @@
       build: (a) => a.side ? [{ k: 0, danger: [1] }, { k: 2, danger: [0, 2] }] : [{ k: 0, danger: [0, 2] }, { k: 2, danger: [1] }] },
     slow:   { lockB: 6, unit: 2, label: 'THE PENDULUM', shape: 'clock', build: (a, s) => [{ k: 0, danger: dodgePair(s, a.side) }] },
     quick:  { lockB: 2, unit: 0.5, label: 'THE PENDULUM', shape: 'clock', build: (a, s) => [{ k: 0, danger: [s] }] },
-    pull:   { lockB: 4, pullB: 2, label: 'COLLAPSE', shape: 'ring', build: () => [{ k: 0, danger: [1] }] }
+    pull:   { lockB: 4, pullB: 2, label: 'COLLAPSE', shape: 'ring', build: () => [{ k: 0, danger: [1] }] },
+    // THE MOTHERSHIP:
+    //   broadside  its gun deck fires a rolling barrage along the row, one spot per beat (left to
+    //              right or back): stay ahead of it, or step into the smoke it has just left.
+    //   cannon     the main cannon charges for six beats, then burns two spots: yours and one more.
+    //              The heaviest hit in the fleet.
+    //   tractor    a tractor beam drags the UFO under the side gun two beats before it fires:
+    //              break for the centre.
+    broadside: { lockB: 4, closeB: 1, label: 'BROADSIDE', shape: 'square', span: () => 2,
+      build: (a) => (a.side ? [2, 1, 0] : [0, 1, 2]).map((i, k) => ({ k, danger: [i] })) },
+    cannon:  { lockB: 6, label: 'MAIN CANNON', shape: 'ring', hitMul: 1.5, build: (a, s) => [{ k: 0, danger: dodgePair(s, a.side) }] },
+    tractor: { lockB: 4, pullB: 2, pullTo: (a) => a.side, pullCol: '#7dff3b', label: 'TRACTOR BEAM', shape: 'ring', build: (a) => [{ k: 0, danger: [a.side] }] }
   };
   function dodgePlan(t) {
     const b = Conductor.beatDur(), cfg = DODGE_BOSSES[activeBoss.id];
@@ -10965,12 +11962,12 @@
     a.danger = a.strikes[0].danger;                            // the first strike's spots (what the Sovereign's eye follows)
   }
   // gravity (Nullstar): the UFO is moved for you
-  function dodgeDrag(to, t) {
+  function dodgeDrag(to, t, col) {
     const p = dodge.sts[to];
     dodge.st = to;
     tgtAnim = { fromX: tgt.x, fromY: tgt.y, toX: p.x, toY: p.y, start: t, dur: 0.32 };
-    shockwaves.push({ x: p.x, y: p.y, r: targetR * 0.4, alpha: 0.7, speed: 520, width: 5, color: '#b026ff' });
-    createBurst(p.x, p.y, '#b026ff', 18, 1.1);
+    shockwaves.push({ x: p.x, y: p.y, r: targetR * 0.4, alpha: 0.7, speed: 520, width: 5, color: col || '#b026ff' });
+    createBurst(p.x, p.y, col || '#b026ff', 18, 1.1);
     if (save.settings.sfx) tone(70, 0.4, 'sine', 0.09);
     buzz(40);
   }
@@ -10989,7 +11986,7 @@
   function dodgeHit(a) {
     if (guardBlock('hit')) return;                              // Black Prism takes it
     dodge.hits++;
-    energy = Math.max(0, energy - ((DODGE_BOSSES[activeBoss.id] || {}).hit || DODGE.hitEnergy));
+    energy = Math.max(0, energy - Math.round(((DODGE_BOSSES[activeBoss.id] || {}).hit || DODGE.hitEnergy) * (a.K.hitMul || 1)));
     energyBar.style.width = energy + '%';
     dodgeTierDrop();
     showToast('HIT', '#ffd76b', a.K.label);
@@ -11095,7 +12092,7 @@
         a.revealed = true; s0.danger = a.danger = K.reveal(a, dodge.st); s0.from = a.T - K.revealB * a.b;
         if (save.settings.sfx) { tone(1175, 0.09, 'triangle', 0.03); tone(1568, 0.12, 'triangle', 0.03, 0.07); }
       }
-      if (K.pullB && !a.pulled && t >= a.T - K.pullB * a.b) { a.pulled = true; if (dodge.st !== 1) dodgeDrag(1, t); }
+      if (K.pullB && !a.pulled && t >= a.T - K.pullB * a.b) { a.pulled = true; const to = K.pullTo ? K.pullTo(a) : 1; if (dodge.st !== to) dodgeDrag(to, t, K.pullCol); }
       const k = Math.floor((t - a.lockAt) / (a.unit * a.b) + 0.02);       // it ticks on its own count
       if (k !== a.pulse) {
         a.pulse = k;
@@ -11121,6 +12118,9 @@
     else if (k === 'slow') { tone(220, 0.5, 'triangle', 0.045); }
     else if (k === 'quick') { tone(1760, 0.03, 'square', 0.02); tone(1760, 0.03, 'square', 0.02, 0.07); tone(1760, 0.03, 'square', 0.02, 0.14); tone(1760, 0.03, 'square', 0.02, 0.21); }
     else if (k === 'pull') { tone(98, 0.7, 'sine', 0.07); tone(65, 0.9, 'sine', 0.07, 0.15); }
+    else if (k === 'broadside') { [0, 0.09, 0.18, 0.27].forEach((d) => tone(196, 0.07, 'square', 0.03, d)); tone(49, 0.5, 'sawtooth', 0.04, 0.3); }
+    else if (k === 'cannon') { tone(41, 1.6, 'sawtooth', 0.05); [110, 147, 196, 262, 349].forEach((f, i) => tone(f, 0.22, 'sawtooth', 0.02, 0.2 + i * 0.18)); }
+    else if (k === 'tractor') { tone(330, 0.9, 'sine', 0.035); tone(331.5, 0.9, 'sine', 0.035); tone(82, 0.9, 'triangle', 0.05, 0.1); }
   }
 
   // ---- drawing: the row the UFO rides, the telegraphs, the impacts ----
@@ -11186,7 +12186,7 @@
             if (after < 0.34) {
               const f = Math.pow(1 - after / 0.34, 2);
               ctx.globalAlpha = f; ctx.fillStyle = '#ffffff'; dodgeShape(p.x, p.y, dr * (1 + 0.5 * (1 - f)), K.shape); ctx.fill();
-              if (a.kind !== 'sweep' && a.kind !== 'crush' && a.kind !== 'feint') dodgeBeam(ex, ey, p, dr * 0.9, f * 0.9, DODGE.danger);
+              if (a.kind !== 'sweep' && a.kind !== 'crush' && a.kind !== 'feint' && a.kind !== 'broadside') dodgeBeam(ex, ey, p, dr * (a.kind === 'cannon' ? 1.5 : 0.9), f * 0.9, a.kind === 'cannon' ? '#ff5a3d' : DODGE.danger);
             }
           } else if (live) {
             // where: a soft shape on the spot. when: a reticle that closes on it and arrives with the impact
@@ -11295,6 +12295,35 @@
           ctx.beginPath(); ctx.moveTo(dir * bw, -bl); ctx.quadraticCurveTo(dir * bw * 2.6, 0, dir * bw, bl); ctx.lineTo(-dir * bw * 0.4, bl * 0.7); ctx.quadraticCurveTo(dir * bw * 0.9, 0, -dir * bw * 0.4, -bl * 0.7); ctx.closePath(); ctx.fill();
           ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
           ctx.restore();
+        }
+      } else if (a.kind === 'tractor' && !(after0 > 0.3)) {
+        // the Mothership's tractor beam: a green cone from the core onto the spot it will drag you
+        // to, rings of force sliding down it; it holds you there until the gun fires
+        const i = a.locked ? a.strikes[0].danger[0] : a.side, p = sts[i], kk = a.locked ? k0 : 0.25;
+        const nx = -(p.y - ey), ny = p.x - ex, nl = Math.hypot(nx, ny) || 1, w0 = targetR * 0.2, w1 = targetR * (0.95 + 0.12 * Math.sin(t * 12));
+        ctx.globalCompositeOperation = 'lighter';
+        const cg = ctx.createLinearGradient(ex, ey, p.x, p.y);
+        cg.addColorStop(0, `rgba(125,255,59,${(0.1 + 0.2 * kk).toFixed(3)})`); cg.addColorStop(1, `rgba(190,255,150,${(0.18 + 0.3 * kk).toFixed(3)})`);
+        ctx.globalAlpha = 1; ctx.fillStyle = cg;
+        ctx.beginPath(); ctx.moveTo(ex + nx / nl * w0, ey + ny / nl * w0); ctx.lineTo(p.x + nx / nl * w1, p.y + ny / nl * w1);
+        ctx.lineTo(p.x - nx / nl * w1, p.y - ny / nl * w1); ctx.lineTo(ex - nx / nl * w0, ey - ny / nl * w0); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#b8ff8a'; ctx.lineWidth = 2;
+        for (let j = 0; j < 4; j++) {
+          const u = ((t * 1.3 + j / 4) % 1), x = ex + (p.x - ex) * u, y = ey + (p.y - ey) * u, w = w0 + (w1 - w0) * u;
+          ctx.globalAlpha = (0.15 + 0.45 * kk) * Math.sin(Math.PI * u);
+          ctx.beginPath(); ctx.ellipse(x, y, w, w * 0.28, Math.atan2(ny, nx), 0, Math.PI * 2); ctx.stroke();
+        }
+      } else if (a.kind === 'broadside' && a.locked) {
+        // the gun deck's shells: each one streaks in from the side the barrage comes from
+        ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+        const gx = a.side ? W * 0.9 : W * 0.1, gy = bossY() - bossR() * 0.35;
+        for (const sk of a.strikes) {
+          const since = t - sk.at;
+          if (since < -0.16 || since > 0.05) continue;
+          const p = sts[sk.danger[0]], u = clamp01((since + 0.16) / 0.16);
+          const x = gx + (p.x - gx) * u, y = gy + (p.y - gy) * u, tx = gx + (p.x - gx) * Math.max(0, u - 0.25), ty = gy + (p.y - gy) * Math.max(0, u - 0.25);
+          ctx.globalAlpha = 0.9; ctx.strokeStyle = '#ffb070'; ctx.lineWidth = 7; ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(x, y); ctx.stroke();
+          ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2.5; ctx.stroke();
         }
       }
     }
@@ -11407,7 +12436,7 @@
 
   function bangDetonate(note, t) {
     note.hit = true;
-    awardAbilityPerfect(note.tx, note.ty, '#ffe9a8', 'BIG BANG', true);
+    awardAbilityPerfect(note.tx, note.ty, '#ffe9a8', 'MILKY WAY', true);
     if (bossActive && state === 'bossBattle' && abBossDmgLeft > 0) {
       const dmg = Math.min(BOSS_DMG.perfect * 2, abBossDmgLeft);   // a star bolt hits twice as hard as a tap
       abBossDmgLeft -= dmg;
@@ -11432,7 +12461,7 @@
     for (const note of notes) {
       if (note.hit || note.missed) continue;
       note.hit = true;
-      awardAbilityPerfect(note.tx, note.ty, '#ffe9a8', 'BIG BANG', true);
+      awardAbilityPerfect(note.tx, note.ty, '#ffe9a8', 'MILKY WAY', true);
     }
     energy = Math.min(100, energy + 50);
     energyBar.style.width = energy + '%';
@@ -11443,7 +12472,7 @@
     createBurst(ox, oy, '#5ae6ff', 40, 1.6);
     shake = Math.max(shake, 14);
     buzz([40, 30, 80, 30, 140]);
-    showToast('BIG BANG', '#ffe9a8', '+50 ENERGY');
+    showToast('MILKY WAY', '#ffe9a8', '+50 ENERGY');
     if (bossActive && state === 'bossBattle') {
       // the beam of creation: the heaviest single hit in the game
       const dmg = Math.round((60 + bossMaxHealth * 0.07) * (save.overclock ? 1.5 : 1));
@@ -11836,6 +12865,13 @@
       for (const note of notes) {
         if (note.hit || note.missed) continue;
         if (t >= note.hitTime + audioOffset() + 0.035) phantomDodge(note, t, false);
+      }
+    } else if (abilityId === 'starWarrior' && Fleet.shooting) {
+      // Star-Fleet Command: the fleet shoots every ring down on its beat (its lasers are fired ahead
+      // so they meet the circle then); in a boss fight each one also calls a volley at the boss
+      for (const note of notes) {
+        if (note.hit || note.missed) continue;
+        if (t >= note.hitTime - 0.01) { note.hit = true; awardAbilityPerfect(note.tx, note.ty, (note.__fleet && note.__fleet.col) || '#7dff3b', 'FLEET', true); Fleet.ringShot(note); }
       }
     } else if (abilityId === 'bigBang') {
       // Every ring detonates on its own beat, so the star keeps time with the song.
@@ -12537,6 +13573,9 @@
       if (e.code === 'Escape') { e.preventDefault(); Mapper.hide(); return; }
       return;                       // mapper swallows keys while open
     }
+    if (Hyper.cardOpen && (e.code === 'Enter' || e.code === 'Space' || e.code === 'NumpadEnter')) {
+      e.preventDefault(); if (!e.repeat) Hyper.cardGo(); return;
+    }
     if ((e.code === 'Escape' || e.code === 'KeyP') && !e.repeat) {
       if (inRunState()) { e.preventDefault(); pauseGame('button'); return; }
       if (state === 'paused') { e.preventDefault(); requestResume(); return; }
@@ -12642,6 +13681,7 @@
     focus: 'Paused because the game lost focus.',
     audio: 'Paused because the audio was interrupted.',
     freeze: 'Paused because the game stalled for a moment.',
+    hypertut: '',
   };
   // iOS Safari can leave the context saying 'running' while its clock has stopped
   // (Siri, and after the screen is locked and woken). The state never changes, so
@@ -12742,6 +13782,7 @@
   }
   function requestResume() {
     if (state !== 'paused' || !pauseInfo || pauseInfo.countdownStart) return;
+    Hyper.closeCard();                  // the Hyperdrive card goes with any resume (Continue, Esc, P)
     disarmQuit();
     ensureAudio();
     kickAudio();                        // inside the tap: iOS needs a user gesture
@@ -16444,7 +17485,12 @@
 
     // intro scale-in / defeat scale-out (collapsing-star for eclipse)
     let scale = 1, alpha = 1, extraSpin = 0;
-    if (state === 'bossIntro' && ecl && activeBoss.kind === 'eclipse') {
+    if (activeBoss.kind === 'mothership') {
+      // the flagship is too big to scale in: it comes down out of the dark (Fleet.drawBoss)
+      if (state === 'bossDefeat') return;               // its fall is drawn by the Fleet
+      ctx.save(); Fleet.drawBoss(t, cx, cy, r, bossHitFlash, bossHealth / Math.max(1, bossMaxHealth)); ctx.restore();
+      return;
+    } else if (state === 'bossIntro' && ecl && activeBoss.kind === 'eclipse') {
       // its own arrival (drawEclipseSovereign): no scale-in
     } else if (state === 'bossIntro') {
       const k = Math.max(0, Math.min(1, 1 - (bossIntroUntil - t) / (activeBoss.intro || 1.5)));

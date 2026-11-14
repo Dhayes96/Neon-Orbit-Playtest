@@ -1,14 +1,15 @@
-// The Alien Fleet + STAR-WARRIOR (Dennel, Nov 12):
-//  - Until the fleet has been beaten, BIG BANG warps the craft to the Milky Way (a galaxy in the
-//    sky is locked on, the camera dives into it) instead of igniting. There the Alien Fleet attacks
-//    in three waves; the player has Phantom Step for the fight. Every hit fires at the fleet;
-//    enemy fire that lands while you're on the beat is reflected, fire that lands right after a
-//    miss gets through. Survive and STAR-WARRIOR unlocks, then the craft warps home and the run
-//    carries on. After that, Big Bang is the normal Big Bang again.
-//  - STAR-WARRIOR (reworked, Dennel Nov 12 evening) is a boss-fight power: hold to summon the fleet
-//    you beat for 12 s. Waves of fighters warp in all over the screen, take station round the boss and
-//    fire on the beat; every ring you hit calls a volley; the mothership joins the last wave. It hurts
-//    the boss (up to its cap) and never plays a ring for you. Outside a boss fight it waits ("BOSS").
+// The Alien Fleet + STAR-FLEET COMMAND (Dennel, Nov 12; reworked Nov 13):
+//  - Until the fleet has been beaten, MILKY WAY (the Nullstar core, once Big Bang) warps the craft to
+//    the Milky Way instead of igniting. There the Alien Fleet attacks: two waves of escorts (every
+//    hit fires at them; enemy fire that lands while you're on the beat is reflected, fire right after
+//    a miss gets through), then THE MOTHERSHIP comes down and fights as a boss (mothership-boss.spec.js
+//    covers its attacks). The player has Phantom Step for the whole thing. When the Mothership falls,
+//    the Milky Way core becomes STAR-FLEET COMMAND in the same slot, then the craft warps home.
+//  - STAR-FLEET COMMAND: hold to call the fleet for 12 s: three squadrons (green, red, blue lasers)
+//    of 3D fighters, interceptors, gunships and saucers spread over the screen, some holding a
+//    station, some strafing on and off screen, and they shoot every incoming ring down on its beat
+//    (all PERFECT; their lasers meet the circle then). In a boss fight they also fire on the boss on
+//    the beat, every ring they (or you) hit calls a volley, and the flagship joins the last wave.
 const { test, expect } = require('@playwright/test');
 const { execFileSync } = require('child_process');
 const fs = require('fs');
@@ -39,65 +40,75 @@ async function start(page, ability, unlocks) {
 }
 const gameT = (page) => page.evaluate(() => clockNow() - startTime);
 
-test('Big Bang warps to the Alien Fleet until it is beaten; surviving unlocks STAR-WARRIOR', async ({ page }) => {
-  test.setTimeout(150000);
+test('Milky Way warps to the Alien Fleet: two waves of escorts, then the Mothership as a boss; its fall makes Milky Way STAR-FLEET COMMAND', async ({ page }) => {
+  test.setTimeout(180000);
   const errors = await start(page, 'bigBang', BOSSES);
+  expect(await page.evaluate(() => ABILITIES.bigBang.name)).toBe('Milky Way');
   await page.waitForTimeout(2500);
   await page.evaluate(() => { abReady = true; activateAbility(); });
   const warp = await page.evaluate(() => ({ phase: Fleet.phase, state, live: notes.filter((n) => !n.hit && !n.missed).length, bang: abActive, ready: abReady }));
-  expect(warp, 'Big Bang starts the jump instead of igniting').toEqual({ phase: 'warpOut', state: 'levelup', live: 0, bang: false, ready: false });
+  expect(warp, 'Milky Way starts the jump instead of igniting').toEqual({ phase: 'warpOut', state: 'levelup', live: 0, bang: false, ready: false });
 
   await page.waitForFunction(() => Fleet.phase === 'fight', null, { timeout: 8000 });
   const fight = await page.evaluate(() => ({
     state, ability: abilityId, ready: abReady, hud: bossHud.classList.contains('show'),
     name: bossNameEl.textContent, sub: bossSubEl.textContent, chipHidden: stageChip.classList.contains('boss-hidden')
   }));
-  expect(fight).toEqual({ state: 'playing', ability: 'phantomStep', ready: true, hud: true, name: 'ALIEN FLEET', sub: 'WAVE 1 OF 3', chipHidden: true });
+  expect(fight).toEqual({ state: 'playing', ability: 'phantomStep', ready: true, hud: true, name: 'ALIEN FLEET', sub: 'ESCORTS · WAVE 1 OF 2', chipHidden: true });
 
-  // the fight: sample waves, ships, fire, kills
+  // the escorts: sample waves, ships, fire, kills
   const samples = [];
   while (await page.evaluate(() => Fleet.phase === 'fight')) {
     samples.push(await page.evaluate(() => ({ wave: Fleet.wave, ships: Fleet._ships().length, bolts: Fleet._bolts().length, downed: Fleet.downed, stage, energy: Math.round(energy), sub: bossSubEl.textContent })));
     await page.waitForTimeout(500);
-    if (samples.length > 100) break;
+    if (samples.length > 70) break;
   }
+  const esc = await page.evaluate(() => ({ downed: Fleet.downed, stats: Fleet.stats }));
+  // the Mothership comes down
+  await page.waitForFunction(() => state === 'bossBattle', null, { timeout: 12000 });
+  const boss = await page.evaluate(() => ({ phase: Fleet.phase, id: activeBoss.id, name: bossNameEl.textContent, ability: abilityId, dodge: !!dodge, hp: bossHealth, max: bossMaxHealth, stage }));
+  await page.waitForTimeout(6000);
+  const hurt = await page.evaluate(() => bossHealth);
+  // ...and falls
+  await page.evaluate(() => { damageBoss(bossHealth + 1, true, true); });
+  await page.waitForFunction(() => Fleet.phase === 'victory', null, { timeout: 3000 });
   const won = await page.evaluate(() => ({
-    phase: Fleet.phase, unlocked: save.bossUnlocks.fleet,
-    saved: JSON.parse(localStorage.getItem('rhythmVoidSave.v1')).bossUnlocks.fleet,
-    banner: bossRewardValueEl.textContent, downed: Fleet.downed, ability: abilityId, stats: Fleet.stats
+    unlocked: save.bossUnlocks.fleet, saved: JSON.parse(localStorage.getItem('rhythmVoidSave.v1')).bossUnlocks.fleet,
+    eqSaved: JSON.parse(localStorage.getItem('rhythmVoidSave.v1')).equippedAbility,
+    label: bossRewardLabelEl.textContent, banner: bossRewardValueEl.textContent, ability: abilityId
   }));
-  await page.waitForFunction(() => Fleet.phase === 'off', null, { timeout: 8000 });
+  await page.waitForFunction(() => Fleet.phase === 'off', null, { timeout: 12000 });
   await page.waitForTimeout(300);
   const home = await page.evaluate(() => ({
-    state, ability: abilityId, ready: abReady, stagesLeft: abStagesLeft, want: tuningFor('bigBang').stages,
-    hud: bossHud.classList.contains('show'), chipHidden: stageChip.classList.contains('boss-hidden'),
-    chip: abilityStatus.classList.contains('show')
+    state, ability: abilityId, name: ABILITIES[abilityId].name, hud: bossHud.classList.contains('show'), chipHidden: stageChip.classList.contains('boss-hidden'),
+    boss: bossActive, stage
   }));
   const qa = await page.evaluate(() => window.__fl);
   const hits = qa.toasts.filter((x) => x.text === 'HIT');
-  const beat = await page.evaluate(() => 60 / Math.max(60, bpm));
-  const unexplained = hits.filter((h) => !qa.faults.some((f) => h.t - f.t >= -0.01 && h.t - f.t < beat * 1.1));
-  writeResult('fleet-fight', { samples, won, home, hits, faults: qa.faults });
+  writeResult('fleet-fight', { samples, esc, boss, hurt, won, home, hits, faults: qa.faults });
 
-  expect([...new Set(samples.map((s) => s.wave))].sort(), 'three waves').toEqual([1, 2, 3]);
-  expect(samples.some((s) => s.sub === 'WAVE 3 OF 3')).toBe(true);
+  expect([...new Set(samples.map((s) => s.wave))].sort(), 'two waves of escorts').toEqual([1, 2]);
+  expect(samples.some((s) => s.sub === 'ESCORTS · WAVE 2 OF 2')).toBe(true);
   expect(Math.max(...samples.map((s) => s.ships)), 'attackers fly in').toBeGreaterThan(0);
-  expect(won.stats.fired, 'they attack (armoured: a ship survives a couple of your shots)').toBeGreaterThan(4);
-  expect(won.stats.reflected, 'fire that lands while you are on the beat is reflected').toBeGreaterThan(2);
-  expect(won.downed, 'hits on the beat shoot ships down').toBeGreaterThan(5);
-  // (the autoplayer is near-perfect; a rare real miss under load is allowed, but fire only ever
-  // gets through right after one)
-  expect(hits.length, 'staying on the beat reflects the fleet\'s fire').toBeLessThanOrEqual(qa.faults.length);
-  expect(unexplained, 'fire only gets through right after a slip').toEqual([]);
-  expect(qa.faults.length, 'the autoplayer stays on the beat').toBeLessThan(4);
+  expect(esc.stats.fired, 'they attack').toBeGreaterThan(3);
+  expect(esc.stats.reflected, 'fire that lands while you are on the beat is reflected').toBeGreaterThan(1);
+  expect(esc.downed, 'hits on the beat shoot ships down').toBeGreaterThan(3);
   expect(new Set(samples.map((s) => s.stage)).size, 'no stage progress in there').toBe(1);
-  expect(won).toMatchObject({ phase: 'victory', unlocked: true, saved: true, banner: 'STAR-WARRIOR', ability: 'bigBang' });
-  expect(home).toEqual({ state: 'playing', ability: 'bigBang', ready: false, stagesLeft: home.want, want: home.want, hud: false, chipHidden: false, chip: true });
-  expect(home.want, 'Big Bang recharging from the jump').toBeGreaterThan(0);
+  expect(boss).toMatchObject({ phase: 'boss', id: 'mothership', name: 'THE MOTHERSHIP', ability: 'phantomStep', dodge: true, stage: samples[0].stage });
+  expect(hurt, 'the rings you hit hurt the Mothership').toBeLessThan(boss.max);
+  expect(won).toEqual({ unlocked: true, saved: true, eqSaved: 'starWarrior', label: 'MILKY WAY UPGRADED', banner: 'STAR-FLEET COMMAND', ability: 'starWarrior' });
+  expect(home).toEqual({ state: 'playing', ability: 'starWarrior', name: 'Star-Fleet Command', hud: false, chipHidden: false, boss: false, stage: samples[0].stage });
 
-  // beaten: Big Bang is Big Bang again
+  // and now, outside a boss fight, the fleet flies escort and shoots every ring down on its beat
+  await page.evaluate(() => { window.__fl.auto = false; });
+  const p0 = await page.evaluate(() => ({ perfects, misses: runStats.misses }));
   await page.evaluate(() => { abReady = true; activateAbility(); });
-  expect(await page.evaluate(() => ({ phase: Fleet.phase, bang: abActive && abilityId === 'bigBang' }))).toEqual({ phase: 'off', bang: true });
+  expect(await page.evaluate(() => ({ phase: Fleet.phase, on: abActive, escorting: Fleet.escorting }))).toEqual({ phase: 'off', on: true, escorting: true });
+  await page.waitForTimeout(6000);
+  const p1 = await page.evaluate(() => ({ perfects, misses: runStats.misses, ships: Fleet.allyCount }));
+  expect(p1.perfects - p0.perfects, 'the escort shoots the rings down (PERFECT)').toBeGreaterThan(4);
+  expect(p1.misses, 'nothing missed while it escorts').toBe(p0.misses);
+  expect(p1.ships, 'the escort is on station').toBeGreaterThanOrEqual(3);
   expect(errors).toEqual([]);
 });
 
@@ -129,15 +140,11 @@ test('Fleet fire gets through only right after a slip; Phantom Step dodges it', 
   expect(errors).toEqual([]);
 });
 
-test('STAR-WARRIOR waits for a boss, then the fleet fights for you for 12 s (and never plays a ring)', async ({ page }) => {
+test('STAR-FLEET COMMAND in a boss fight: the fleet fights for you for 12 s and shoots the rings down', async ({ page }) => {
   test.setTimeout(90000);
   const errors = await start(page, 'starWarrior', { ...BOSSES, fleet: true });
   await page.evaluate(() => { window.__fl.auto = false; setInterval(() => { energy = 100; }, 100); });
   await page.waitForTimeout(1500);
-  // charged in normal play: it waits, and a hold does nothing
-  const waiting = await page.evaluate(() => { abReady = true; updateAbilityHud(); activateAbility();
-    return { can: canActivateAbility(), on: abActive, chip: abilityStatusText.textContent, craft: typeof drawStarOrb }; });
-  expect(waiting).toEqual({ can: false, on: false, chip: 'STAR BOSS', craft: 'undefined' });
   await page.evaluate(() => {
     window.__dmg = [];
     const orig = window.damageBoss;
@@ -146,8 +153,9 @@ test('STAR-WARRIOR waits for a boss, then the fleet fights for you for 12 s (and
   });
   await page.waitForFunction(() => state === 'bossBattle', null, { timeout: 20000 });
   await page.waitForTimeout(800);
+  await page.evaluate(() => { abReady = true; updateAbilityHud(); });
   const live = await page.evaluate(() => ({ can: canActivateAbility(), chip: abilityStatusText.textContent }));
-  expect(live).toEqual({ can: true, chip: 'STAR HOLD' });
+  expect(live).toEqual({ can: true, chip: 'FLEET HOLD' });
   const before = await page.evaluate(() => ({ h: bossHealth, misses: runStats.misses, perfects, t: clockNow() - startTime }));
   await page.evaluate(() => activateAbility());
   const samples = [];
@@ -161,18 +169,19 @@ test('STAR-WARRIOR waits for a boss, then the fleet fights for you for 12 s (and
   expect(errors).toEqual([]);
   const at = (sec) => samples.find((s) => s.t - before.t >= sec) || samples[samples.length - 1];
   expect(at(2).ships, 'the first wave is on station').toBeGreaterThanOrEqual(4);
-  expect(at(6).ships, 'the second wave joins').toBeGreaterThanOrEqual(8);
-  expect(at(10).ships, 'and the third').toBeGreaterThanOrEqual(12);
+  expect(at(5).ships, 'the second wave joins').toBeGreaterThanOrEqual(8);
+  expect(at(9).ships, 'and the third').toBeGreaterThanOrEqual(12);
   expect(at(11).on, 'still running at 11 s').toBe(true);
   expect(at(12.6).on, 'over after 12 s').toBe(false);
   expect(after.allies, 'and they leave').toBe(false);
   expect(dmg, 'the fleet hurts the boss').toBeGreaterThan(30);
   expect(dmg, 'within the power\'s cap').toBeLessThanOrEqual(after.cap + 0.01);
-  expect(after.perfects, 'it never plays a ring for you').toBe(before.perfects);
-  expect(after.misses, 'unplayed rings are still missed').toBeGreaterThan(before.misses);
+  expect(after.perfects - before.perfects, 'the fleet shoots the rings down').toBeGreaterThan(6);
+  const during = samples.filter((s) => s.on).length;
+  expect(during).toBeGreaterThan(18);
 });
 
-test('STAR-WARRIOR: hits call volleys; the fleet leaves when the boss falls', async ({ page }) => {
+test('STAR-FLEET COMMAND: hits call volleys; the fleet leaves when the boss falls', async ({ page }) => {
   test.setTimeout(60000);
   const errors = await start(page, 'starWarrior', { ...BOSSES, fleet: true });
   await page.evaluate(() => { setInterval(() => { energy = 100; }, 100); hitsTotal = stageHitsNeeded(20, diff); stageUp(20); });
@@ -199,24 +208,69 @@ test('STAR-WARRIOR: hits call volleys; the fleet leaves when the boss falls', as
   expect(end.allies, 'the fleet leaves when the boss falls').toBe(false);
 });
 
+test('STAR-FLEET COMMAND: three squadrons and four classes, spread out, strafers on and off screen, lasers that meet each ring on its beat', async ({ page }) => {
+  test.setTimeout(60000);
+  const errors = await start(page, 'starWarrior', { ...BOSSES, fleet: true });
+  await page.evaluate(() => { window.__fl.auto = false; setInterval(() => { energy = 100; }, 100); });
+  await page.waitForTimeout(1200);
+  await page.evaluate(() => {
+    window.__las = []; window.__pos = [];
+    abReady = true; activateAbility();
+    setInterval(() => {
+      const A = Fleet._allies(); if (!A) return;
+      for (const l of A.lasers) if (!l.__seen) { l.__seen = 1; window.__las.push({ col: l.col, land: l.land, x1: l.x1, y1: l.y1 }); }
+      window.__pos.push(A.ships.filter((s) => !s.out).map((s) => ({ x: s.x, y: s.y, strafe: s.strafe, sq: s.sq, cls: s.cls, bank: s.bank })));
+    }, 50);
+  });
+  await page.waitForTimeout(11000);
+  const r = await page.evaluate(() => {
+    const ships = [].concat(...window.__pos);
+    return { las: window.__las, ships, perfects, misses: runStats.misses, w: W, h: H, tx: tgt.x, ty: tgt.y, tr: targetR };
+  });
+  const sq = new Set(r.ships.map((s) => s.sq)), cls = new Set(r.ships.map((s) => s.cls)), cols = new Set(r.las.map((l) => l.col));
+  expect([...sq].sort(), 'three squadrons').toEqual([0, 1, 2]);
+  expect(cls.size, 'four classes of ship').toBe(4);
+  expect(cols.size, 'green, red and blue lasers').toBe(3);
+  const xs = r.ships.filter((s) => !s.strafe).map((s) => s.x);
+  expect(Math.max(...xs) - Math.min(...xs), 'the stations spread across the screen').toBeGreaterThan(r.w * 0.5);
+  const st = r.ships.filter((s) => s.strafe);
+  expect(st.some((s) => s.x < 0 || s.x > r.w) && st.some((s) => s.x > r.w * 0.3 && s.x < r.w * 0.7), 'strafers fly on and off screen').toBe(true);
+  expect(Math.max(...r.ships.map((s) => Math.abs(s.bank))), 'they bank into their turns').toBeGreaterThan(0.2);
+  expect(r.las.length, 'lasers at the rings').toBeGreaterThan(8);
+  expect(r.perfects, 'every ring shot down').toBeGreaterThan(8);
+  expect(r.misses, 'none missed while the fleet is up').toBe(0);
+  expect(errors).toEqual([]);
+});
+
 test('Saves, settings and the CrazyGames build', async ({ page }) => {
-  // an old save (no fleet key, Star-Warrior equipped without it) loads safely
+  // an old save (no fleet key, the fleet power equipped without it) loads safely
   const errors = await boot(page, { save: { equippedAbility: 'starWarrior', bossUnlocks: BOSSES } });
   expect(await page.evaluate(() => ({ fleet: save.bossUnlocks.fleet, eq: save.equippedAbility }))).toEqual({ fleet: false, eq: 'none' });
-  // the loadout keeps it secret until earned
+  // before the fleet falls: Milky Way in the list, Star-Fleet Command not at all
   await page.evaluate(() => refreshSettings());
-  const locked = await page.evaluate(() => [...document.querySelectorAll('#abilityGrid .ability-swatch')].map((b) => b.textContent).find((t) => t.includes('beyond the Big Bang')));
-  expect(locked).toContain('???');
+  const names = () => page.evaluate(() => [...document.querySelectorAll('#abilityGrid .ability-swatch')].map((b) => b.textContent));
+  let list = await names();
+  expect(list.some((t) => t.includes('Milky Way'))).toBe(true);
+  expect(list.some((t) => /Big Bang|Star-Fleet|Star-Warrior/.test(t))).toBe(false);
+  // after: Star-Fleet Command in its place
   await page.evaluate(() => { save.bossUnlocks.fleet = true; refreshSettings(); });
-  const open = await page.evaluate(() => [...document.querySelectorAll('#abilityGrid .ability-swatch')].map((b) => b.textContent).find((t) => t.includes('Alien Fleet')));
-  expect(open).toContain('Star-Warrior');
+  list = await names();
+  expect(list.some((t) => t.includes('Star-Fleet Command') && t.includes('The Mothership'))).toBe(true);
+  expect(list.some((t) => /Milky Way|Big Bang|Star-Warrior/.test(t))).toBe(false);
   expect(errors).toEqual([]);
+  // a save that beat the fleet with Milky Way still equipped loads with Star-Fleet Command
+  // (the harness seeds its save on every load, so this one is put back after it)
+  await page.evaluate(() => sessionStorage.setItem('__keep', JSON.stringify(Object.assign({}, save, { equippedAbility: 'bigBang', bossUnlocks: Object.assign({}, save.bossUnlocks, { fleet: true }) }))));
+  await page.addInitScript(() => { const k = sessionStorage.getItem('__keep'); if (k) localStorage.setItem('rhythmVoidSave.v1', k); });
+  await page.reload(); await page.waitForFunction(() => typeof save === 'object' && save.bossUnlocks);
+  expect(await page.evaluate(() => save.equippedAbility)).toBe('starWarrior');
 
   // the CrazyGames build keeps the fleet and drops the dev warp button with the rest of dev mode
   const GAME = path.resolve(process.env.GAME_DIR || path.resolve(__dirname, '../..'));
   execFileSync(process.execPath, [path.join(GAME, 'tools', 'build-crazygames.mjs')], { cwd: GAME });
   const cg = fs.readFileSync(path.join(GAME, 'dist', 'crazygames', 'index.html'), 'utf8');
   expect(cg).toContain('const Fleet = (() =>');
-  expect(cg).toContain('function summon(t) {');
+  expect(cg).toContain('function summon(t, escort) {');
+  expect(cg).toContain('const MOTHERSHIP_BOSS = {');
   expect(cg).not.toContain('data-dev="fleet"');
 });
