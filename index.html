@@ -9963,6 +9963,7 @@
       scene(t) { return active && (t - t0) < HYPER_DUR - HYPER_OUT * 0.45; },
       _geo: () => geo(),                                  // (read-only, for the layout tests)
       _holeR: () => lastRs,                               // (read-only: the black hole's shadow radius last drawn)
+      _span: () => [t0, lastEnd],                         // (read-only: when the last flight started and ended, game time)
       syncButtons,
       warpWant() { return active ? 1 : 0; }
     };

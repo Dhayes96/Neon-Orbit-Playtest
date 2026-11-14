@@ -121,7 +121,8 @@ for (const low of [false, true]) {
     expect(r4, 'the hole is there from the start').toBeGreaterThan(15);
     expect(r22 / r4, 'and it grows as we fall toward it').toBeGreaterThan(1.6);
     await page.waitForFunction(() => !Hyper.active, null, { timeout: 30000 });
-    const len = await gameT(page) - t0;
+    const [a0, a1] = await page.evaluate(() => Hyper._span());           // the game's own start and end (no polling lag)
+    const len = a1 - a0;
     expect(len, 'about 30 seconds').toBeGreaterThan(29.5);
     expect(len).toBeLessThan(33);
     expect(fxErrors(errors), 'no drawing error').toEqual([]);
