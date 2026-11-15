@@ -44,48 +44,62 @@ test('Hyperdrive opens the ASTEROID FIELD: 30 s, free of the ring game, and back
   expect(real(errors)).toEqual([]);
 });
 
-test('a different place each Hyperdrive: the Asteroid Field, the Living Nebula, the Alien Ruins, and round again', async ({ page }) => {
-  test.setTimeout(60000);
+test('a different place each Hyperdrive: seven of them in turn (the Crossroads of Time last), and round again', async ({ page }) => {
+  test.setTimeout(90000);
   const errors = await fly(page);
   const seen = [await page.evaluate(() => Flight.title)];
-  for (let n = 0; n < 3; n++) {
+  for (let n = 0; n < 7; n++) {
     await page.evaluate(() => { Flight.end(); Hyper.cancel(); Hyper.request(); });      // (as a finished flight leaves it; cancel clears the 90 s cooldown)
     await page.waitForFunction(() => Hyper.active && Flight.on, null, { timeout: 15000 });
     seen.push(await page.evaluate(() => Flight.title));
   }
-  expect(seen).toEqual(['ASTEROID FIELD', 'LIVING NEBULA', 'ALIEN RUINS', 'ASTEROID FIELD']);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('rhythmVoidSave.v1')).flightN)).toBe(3);
+  expect(seen).toEqual(['ASTEROID FIELD', 'THE DEEP OCEAN', 'LIVING NEBULA', 'ANCIENT EGYPT', 'ALIEN RUINS', 'PREHISTORIC EARTH', 'CROSSROADS OF TIME', 'ASTEROID FIELD']);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('rhythmVoidSave.v1')).flightN)).toBe(7);
   expect(real(errors)).toEqual([]);
 });
 
-// what each place must send in a flight (hazards by kind), with a pilot on the safe point never hit
-const PLACES = { asteroids: { rock: 12 }, nebula: { arc: 6, cell: 2 }, ruins: { beam: 3, sheet: 1, pulse: 1 } };
-for (const [env, need] of Object.entries(PLACES)) {
-  test(`the safe point in the ${env}: every hazard of a whole flight stays off it (bars, sweeps and pulses included)`, async ({ page }) => {
+// what each place must send in a flight (hazards by kind; 'bolt' / 'ptero' are the shots of the ones fighting
+// back), with a pilot on the safe point never hit, and the scenery that is its own
+const PLACES = {
+  asteroids: { need: { rock: 12, bolt: 3 }, foe: 'raider', deco: ['rock'] },
+  nebula: { need: { arc: 6, cell: 2, bolt: 3 }, foe: 'manta', deco: ['puff', 'spire'], decoLow: ['puff'] },     // (the star-forming pillars are not drawn on Low graphics)
+  ruins: { need: { beam: 3, sheet: 1, pulse: 1, bolt: 3 }, foe: 'sentinel', deco: ['gate', 'pillar'] },
+  ocean: { need: { jelly: 8, eel: 3, mine: 2, surge: 1, bolt: 3 }, foe: 'angler', deco: ['coral', 'kelp'] },
+  egypt: { need: { lintel: 3, column: 2, block: 6, bolt: 3 }, foe: 'scarab', deco: ['obelisk', 'palm'] },
+  prehistoric: { need: { bone: 3, meteor: 3, lava: 5, ptero: 2 }, foe: 'ptero', deco: ['fern', 'ribs', 'trunk'] },
+  crossroads: { need: { hand: 3, era: 5, rift: 1, bolt: 3 }, foe: 'echo', deco: ['gear', 'portal'] }
+};
+for (const [env, P] of Object.entries(PLACES)) {
+  const need = P.need;
+  test(`the safe point in the ${env}: every hazard of a whole flight stays off it (bars, sweeps, pulses and their shots included)`, async ({ page }) => {
     test.setTimeout(90000);
     const errors = await boot(page, { save: { level: 60, flightDone: true } });
     await page.evaluate((env) => { Flight._env(env); startGame(false); }, env);
     await page.waitForFunction(() => state === 'playing');
     await page.waitForTimeout(500);
     await page.evaluate(() => {
-      window.__min = 1e9; window.__seen = new Set(); window.__n = {}; window.__deco = {};
+      window.__min = 1e9; window.__seen = new Set(); window.__n = {}; window.__deco = {}; window.__foes = {};
       setInterval(() => { if (!Hyper.active || !Flight.main || state !== 'playing') return; const t = clockNow() - startTime, [x, y] = Flight._safe(t); Flight._set({ gx: x, gy: y, snap: true });
         const s = Flight._s();
+        for (const f of s.foes) if (!window.__seen.has(f)) { window.__seen.add(f); window.__foes[f.kind] = (window.__foes[f.kind] || 0) + 1; }
         for (const o of s.rocks) {
-          if (!window.__seen.has(o)) { window.__seen.add(o); const k = o.hz || 'rock', into = o.deco ? window.__deco : o.k === 'L' ? window.__n : null; if (into) into[k] = (into[k] || 0) + 1; }
+          if (!window.__seen.has(o)) { window.__seen.add(o); const k = o.era ? 'era' : o.hz || 'rock', into = o.deco ? window.__deco : o.k === 'L' ? window.__n : null; if (into) into[k] = (into[k] || 0) + 1; if (o.era && o.hz) window.__n[o.hz] = (window.__n[o.hz] || 0) + 1; }
           if (o.k === 'L' && !o.deco && (!o.aim || o.locked) && t >= o.arrive - s.win && t <= o.arrive + (o.hold || 0) + s.win) { const d = Flight._dist(o, t, s.cx, s.cy) - o.hr - s.chr; if (d < window.__min) window.__min = d; }
         } }, 4);
       Hyper.request();
     });
     await page.waitForFunction(() => Hyper.active && Flight.on, null, { timeout: 15000 });
     await page.waitForFunction(() => !Hyper.active, null, { timeout: 45000 });
-    const r = await page.evaluate(() => ({ min: window.__min, n: window.__n, deco: window.__deco, crashes: Hyper.stats.crashes, blasted: Hyper.stats.blasted, lights: Hyper.stats.rings, st: state }));
+    const r = await page.evaluate(() => ({ min: window.__min, n: window.__n, deco: window.__deco, foes: window.__foes, crashes: Hyper.stats.crashes, blasted: Hyper.stats.blasted, lights: Hyper.stats.rings, downed: Hyper.stats.foes, st: state }));
+    if (process.env.FLIGHT_LOG) console.log(env, JSON.stringify(r));
     expect(r.crashes).toBe(0);
     for (const [k, n] of Object.entries(need)) expect(r.n[k] || 0, `${k} hazards come`).toBeGreaterThanOrEqual(n);
     expect(r.min, 'never closer than a quarter of a unit (the craft is 0.32)').toBeGreaterThan(0.25);
     expect(r.blasted, 'the guns broke things by themselves').toBeGreaterThan(8);
     expect(r.lights, 'lights along the open way').toBeGreaterThan(5);
-    expect(Object.keys(r.deco).sort().join(), 'scenery of its own').toBe(env === 'asteroids' ? 'rock' : env === 'nebula' ? 'puff' : 'gate,pillar');
+    expect(r.foes[P.foe] || 0, `${P.foe}s fight back`).toBeGreaterThanOrEqual(5);
+    expect(r.downed, 'the guns took some of them down').toBeGreaterThanOrEqual(3);
+    expect([P.deco.join(), (P.decoLow || P.deco).join()], 'scenery of its own').toContain(Object.keys(r.deco).sort().join());
     if (env === 'ruins') { expect(r.deco.gate).toBeGreaterThanOrEqual(3); expect(r.deco.pillar).toBeGreaterThan(10); }
     expect(r.st).toBe('playing');
     expect(real(errors)).toEqual([]);
@@ -214,8 +228,8 @@ test('pause and resume mid-flight: nothing changes while paused, the flight stil
   expect(real(errors)).toEqual([]);
 });
 
-for (const env of ['asteroids', 'nebula', 'ruins']) {
-  test(`quality in the ${env}: Ultra, High, Lite and Low graphics fly the same field (same hazards, sizes, places and timing; only the scenery differs)`, async ({ page }) => {
+for (const env of Object.keys(PLACES)) {
+  test(`quality in the ${env}: Ultra, High, Lite and Low graphics fly the same field (same hazards, foes, sizes, places and timing; only the scenery differs)`, async ({ page }) => {
     test.setTimeout(150000);
     const runs = [];
     for (const [sq, low] of [['ultra', false], ['high', false], ['lite', false], ['high', true]]) {
@@ -225,17 +239,20 @@ for (const env of ['asteroids', 'nebula', 'ruins']) {
       const r = await page.evaluate(async () => {
         startTime = clockNow() - 100.5;
         const t = 100.5; Hyper.request(); Hyper.start(t); Flight._seed(4242);
-        const s = Flight._s(), list = [], seen = new Set(); let deco = 0;
-        for (let tt = t; tt < t + 30; tt += 1 / 60) { Flight.update(1 / 60, tt); for (const o of Flight._s().rocks) if (!seen.has(o)) { seen.add(o); if (o.deco && o.hz !== 'gate') deco++; else list.push([o.k, o.hz || '', Math.round(o.arrive * 100), Math.round(o.r * 100), Math.round(o.x * 100), Math.round(o.y * 100), Math.round(o.vx * 100), o.seg ? o.seg.map((v) => Math.round(v * 100)).join() : '', Math.round((o.hold || 0) * 100)]); } }
-        return { q: s.q, list, deco, G: [s.G.X, s.G.Yu, s.G.Yd, s.chr] };
+        const s = Flight._s(), list = [], foes = [], seen = new Set(); let deco = 0;
+        for (let tt = t; tt < t + 30; tt += 1 / 60) { Flight.update(1 / 60, tt); const S = Flight._s();
+          for (const f of S.foes) if (!seen.has(f)) { seen.add(f); foes.push([f.kind, Math.round(f.born * 100), Math.round(f.hx * 100), Math.round(f.hy * 100), f.hp]); }
+          for (const o of S.rocks) if (!seen.has(o)) { seen.add(o); if (o.deco && o.hz !== 'gate' && o.hz !== 'ribs') deco++; else list.push([o.k, o.hz || '', Math.round(o.arrive * 100), Math.round(o.r * 100), Math.round(o.x * 100), Math.round(o.y * 100), Math.round(o.vx * 100), o.seg ? o.seg.map((v) => Math.round(v * 100)).join() : '', Math.round((o.hold || 0) * 100)]); } }
+        return { q: s.q, list, foes, downed: Hyper.stats.foes, deco, G: [s.G.X, s.G.Yu, s.G.Yd, s.chr] };
       });
       runs.push(r);
       expect(real(errors)).toEqual([]);
     }
     expect(runs.map((r) => r.q)).toEqual([3, 2, 1, 0]);
     expect(runs[0].list.length).toBeGreaterThan(40);
-    for (const r of runs.slice(1)) { expect(r.list).toEqual(runs[0].list); expect(r.G).toEqual(runs[0].G); }
-    expect(runs[0].deco, 'more scenery at higher quality').toBeGreaterThan(runs[3].deco * (env === 'ruins' ? 1.5 : 3));
+    expect(runs[0].foes.length, 'they fight back at every quality').toBeGreaterThanOrEqual(4);
+    for (const r of runs.slice(1)) { expect(r.list).toEqual(runs[0].list); expect(r.foes).toEqual(runs[0].foes); expect(r.downed).toBe(runs[0].downed); expect(r.G).toEqual(runs[0].G); }
+    expect(runs[0].deco, 'more scenery at higher quality').toBeGreaterThan(runs[3].deco * ({ asteroids: 3, nebula: 3, ocean: 2.5 }[env] || 1.5));
   });
 }
 
@@ -267,13 +284,115 @@ for (const [W, H] of [[844, 390], [800, 450], [907, 510], [390, 844], [1280, 720
       const wait = (ms) => new Promise((r) => setTimeout(r, ms)), G = Flight._s().G, out = [];
       const hud = Math.max(...[...document.querySelectorAll('.hud .stat, #stagePill, #pauseBtn')].map((e) => e.getBoundingClientRect()).filter((b) => b.width).map((b) => b.bottom));
       for (const [gx, gy] of [[0, 0], [-G.X, -G.Yu], [G.X, -G.Yu], [-G.X, G.Yd], [G.X, G.Yd]]) { Flight._set({ gx, gy, snap: true }); await wait(60); const s = Flight._s(); out.push([s.sx, s.sy]); }
-      return { out, hud, half: targetR * G.cs, W, H, room: [G.X * 2, G.Yu + G.Yd], bar: document.getElementById('energyBar').getBoundingClientRect().top };
+      return { out, hud, half: targetR * G.cs, W, H, room: [G.X * 2, G.Yu + G.Yd], Yu: G.Yu, bar: document.getElementById('energyBar').getBoundingClientRect().top };
     });
     for (const [x, y] of r.out) {
       expect(x - r.half * 0.9, 'inside the left edge').toBeGreaterThanOrEqual(0); expect(x + r.half * 0.9, 'inside the right edge').toBeLessThanOrEqual(r.W);
       expect(y - r.half * 0.5, 'below the header').toBeGreaterThanOrEqual(r.hud); expect(y + r.half * 0.6, 'above the energy bar').toBeLessThanOrEqual(r.bar);
     }
     expect(r.room[0], 'room to fly, side to side').toBeGreaterThanOrEqual(2.4); expect(r.room[1], 'and up and down').toBeGreaterThanOrEqual(0.9);
+    // no low ceiling: at the top of the field the craft is up by the HUD (or the field is as tall as it gets)
+    expect(r.out[1][1] - r.half * 0.62 - r.hud < r.half * 1.2 || r.Yu >= 4.19, `the craft climbs to the header (${Math.round(r.out[1][1])} px, header ${Math.round(r.hud)} px)`).toBe(true);
+    expect(r.out[0][1] - r.out[1][1], 'it climbs a good way above where it starts').toBeGreaterThan(r.H * 0.25);
     expect(real(errors)).toEqual([]);
   });
 }
+
+// Dennel, Nov 15: "maybe the player is fighting other 'fleet' members or other beings during these hyper drive
+// segments. Instead of just shooting asteroids."
+test('the ones that fight back: one holds ahead, gathers a shot for a beat and fires where you are; sit still and it hits, keep moving and it misses; the guns take it first, for points and lights', async ({ page }) => {
+  test.setTimeout(90000);
+  const errors = await fly(page);
+  await page.waitForFunction(() => Flight.main);
+  await page.evaluate(() => Flight._quiet(true));
+  const r = await page.evaluate(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms)), now = () => clockNow() - startTime, out = {};
+    const s0 = Flight._s(), side = Flight._safe(now() + 2)[0] > 0 ? -1 : 1, X = side * s0.G.X * 0.8;   // (away from the safe point: a shot is never aimed onto it)
+    Flight._set({ gx: X, gy: 0, snap: true });
+    const f = Flight._foe('raider', { hp: 999 });
+    const shot = () => Flight._s().rocks.find((o) => o.from && !o.__seen);
+    // 1: it charges for a beat, then fires where the craft is; the craft sits still
+    let b = null; for (let k = 0; k < 120 && !b; k++) { await wait(50); b = shot(); }
+    b.__seen = true; out.charged = f.shots >= 1; out.aimed = Math.hypot(b.x - X, b.y) < 0.05; out.warn = b.arrive - now();
+    const c0 = Hyper.stats.crashes; await wait((b.arrive - now()) * 1000 + 250); out.still = Hyper.stats.crashes - c0;
+    // 2: the next one: the craft moves off as soon as it is fired
+    await wait(1600); Flight._set({ gx: X, gy: 0, snap: true, shield: 3 });
+    b = null; for (let k = 0; k < 120 && !b; k++) { await wait(20); b = shot(); }
+    b.__seen = true; Flight._set({ gx: X - side * 1.3, gy: 0.3 }); const c1 = Hyper.stats.crashes; await wait((b.arrive - now()) * 1000 + 250); out.moved = Hyper.stats.crashes - c1;
+    // 3: the guns: they shoot it first; it goes down for points and drops lights
+    const pts = Hyper.stats.points, o0 = Flight._s().orbs.length; f.hp = Math.min(f.hp, 3);
+    for (let k = 0; k < 80 && !f.dead; k++) await wait(50);
+    out.down = f.dead; out.downed = Hyper.stats.foes; out.pts = Hyper.stats.points - pts; out.lights = Flight._s().orbs.length - o0;
+    return Object.assign(out, { st: state, breaks: window.__breaks });
+  });
+  expect(r).toMatchObject({ charged: true, aimed: true, still: 1, moved: 0, down: true, downed: 1, st: 'playing', breaks: 0 });
+  expect(r.warn, 'its shot is in the air long enough to see').toBeGreaterThanOrEqual(0.8);
+  expect(r.pts).toBeGreaterThanOrEqual(400); expect(r.lights).toBeGreaterThanOrEqual(2);
+  expect(real(errors)).toEqual([]);
+});
+
+// Dennel, Nov 15: "Give players the option to toggle on auto-shoot on or off."
+test('auto-fire off: the guns wait for you; a press fires one bolt, one on the beat fires three and scores; switch it in the pause menu (saved), and the guns fire themselves again', async ({ page }) => {
+  test.setTimeout(90000);
+  const errors = await fly(page, { settings: { flightAutoFire: false } });
+  await page.waitForFunction(() => Flight.main);
+  await page.evaluate(() => Flight._quiet(true));
+  const r = await page.evaluate(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms)), now = () => clockNow() - startTime, out = {};
+    Flight._foe('raider', { hp: 999 });
+    let most = 0; for (let k = 0; k < 40; k++) { await wait(50); most = Math.max(most, Flight._s().shots.length); }
+    out.idle = most;                                                       // two seconds: no shot of its own
+    const { beat0, bdur } = Flight._s(), mid = () => { const t = now(); return beat0 + (Math.floor((t - beat0) / bdur) + 1.5) * bdur; };
+    const at = (t) => Flight._s().shots.filter((s) => s.t0 === t).length;
+    let t = mid(); await wait((t - now()) * 1000); t = now();
+    out.off = Flight.fire(t); out.offBolts = at(t); out.offBeat = Hyper.stats.onBeat;
+    await wait(300); const tb = beat0 + Math.ceil((now() - beat0) / bdur) * bdur; await wait((tb - now()) * 1000);
+    out.on = Flight.fire(tb); out.onBolts = at(tb); out.onBeat = Hyper.stats.onBeat;
+    out.cool = Flight.fire(tb + 0.05);                                    // (one press at a time)
+    return out;
+  });
+  expect(r).toMatchObject({ idle: 0, off: true, offBolts: 1, offBeat: 0, on: true, onBolts: 3, onBeat: 1, cool: false });
+  // Space fires when auto-fire is off
+  const f0 = await page.evaluate(() => Hyper.stats.fired);
+  await page.waitForTimeout(250); await page.keyboard.press('Space');
+  expect(await page.evaluate(() => Hyper.stats.fired)).toBe(f0 + 1);
+  // the pause menu has the switch mid-flight; it is saved, and the guns fire on the beat again
+  await page.evaluate(() => pauseGame('test'));
+  const pb = page.locator('#pauseFireBtn');
+  await expect(pb).toBeVisible(); await expect(pb).toHaveText('Auto-fire: Off');
+  await pb.click();
+  await expect(pb).toHaveText('Auto-fire: On');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('rhythmVoidSave.v1')).settings.flightAutoFire)).toBe(true);
+  await page.evaluate(() => requestResume());
+  await page.waitForFunction(() => state === 'playing', null, { timeout: 10000 });
+  await page.waitForFunction(() => Flight._s().shots.length > 0, null, { timeout: 5000 });
+  expect(real(errors)).toEqual([]);
+});
+
+test('auto-fire off on a touch screen: a FIRE button under the right thumb, a tap that does not drag fires too, and a drag still only flies', async ({ page }) => {
+  test.setTimeout(90000);
+  await page.setViewportSize({ width: 844, height: 390 });
+  const errors = await fly(page, { settings: { flightAutoFire: false } });
+  await page.waitForFunction(() => Flight.main);
+  await page.evaluate(() => Flight._quiet(true));
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (type, x, y, id = 1) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id }] });
+  const fired = () => page.evaluate(() => Hyper.stats.fired);
+  // a tap on the glass (no drag) fires, and switches the hints to touch
+  let f0 = await fired(); await touch('touchStart', 200, 200); await page.waitForTimeout(60); await touch('touchEnd', 0, 0); await page.waitForTimeout(260);
+  expect(await fired()).toBe(f0 + 1);
+  // the button shows, bottom right, clear of the energy bar
+  const btn = page.locator('#flightFire'); await expect(btn).toBeVisible();
+  const bb = await btn.boundingBox(), bar = await page.evaluate(() => document.getElementById('energyBar').getBoundingClientRect().top);
+  expect(bb.x + bb.width).toBeGreaterThan(844 * 0.8); expect(bb.y + bb.height).toBeLessThanOrEqual(bar + 2);
+  f0 = await fired(); await touch('touchStart', bb.x + bb.width / 2, bb.y + bb.height / 2); await page.waitForTimeout(40); await touch('touchEnd', 0, 0); await page.waitForTimeout(260);
+  expect(await fired()).toBe(f0 + 1);
+  // a drag flies and does not fire
+  f0 = await fired(); const sx0 = await page.evaluate(() => Flight._s().sx);
+  await touch('touchStart', 150, 250); for (let i = 1; i <= 6; i++) { await touch('touchMove', 150 + i * 10, 250); await page.waitForTimeout(16); } await touch('touchEnd', 0, 0); await page.waitForTimeout(400);
+  expect(await fired()).toBe(f0); expect(await page.evaluate(() => Flight._s().sx) - sx0).toBeGreaterThan(40);
+  // with auto-fire on, there is no button
+  await page.evaluate(() => { save.settings.flightAutoFire = true; Flight.syncFire(); });
+  await page.waitForTimeout(100); expect(await btn.isVisible()).toBe(false);
+  expect(real(errors)).toEqual([]);
+});

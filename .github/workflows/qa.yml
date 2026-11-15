@@ -85,7 +85,7 @@ jobs:
       - name: The Mothership (Alien Fleet boss; Broadside, Tractor Beam, Main Cannon)
         if: ${{ !cancelled() }}
         run: npx playwright test tests/mothership-boss.spec.js --project=desktop-chrome
-      - name: Free flight (Hyperdrive's Asteroid Field, Living Nebula and Alien Ruins; steering, shield, safe point, quality parity)
+      - name: Free flight (Hyperdrive's seven places, the ones that fight back, auto-fire on/off; steering, shield, safe point, quality parity)
         if: ${{ !cancelled() }}
         run: npx playwright test tests/flight.spec.js --project=desktop-chrome
       - name: The boss finale (the Eclipse Sovereign's flight arena)
