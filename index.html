@@ -8881,14 +8881,20 @@
   // Dennel's brief: "Replace the tunnel with distinct, beautiful space-flight encounters. I want to
   // feel like I'm piloting my UFO through space." The 150 streak still opens Hyperdrive; what it
   // opens is now an encounter you fly through freely (the old tunnel stays behind Hyper._classic).
+  //  - The view (Dennel, Nov 14, after the first top-down pass: "It seems 2D... I want it to feel like
+  //    a 3D render with the camera view similar to what it was in Hyperdrive"): a chase camera behind
+  //    the craft, flying into the screen. Everything has a depth: rocks come out of the distance in
+  //    perspective, pass the craft on the beat and sweep by the camera. The craft is free in x and y,
+  //    and the camera follows it part of the way, so the whole field shifts as you fly.
   //  - Steering: drag anywhere (relative: the craft never snaps under the finger), the mouse, or
   //    WASD / the arrows. A stiff critically damped follow: no drift after you stop.
   //  - Weapons: the craft aims by itself and fires on the song's beat at what can be broken (small
   //    debris, cyan-veined crystal rocks). Large rocks cannot be shot: fly round them.
   //  - Damage: a separate flight shield of 3. A hit costs one and gives 1.5 s of protection; with the
   //    shield gone a hit costs 8 energy (floor 1). Never the combo, and a flight never ends the run.
-  //  - Fairness: every large rock is checked against a safe line (safeX) that wanders slower than the
-  //    craft can fly; a rock that would close it is moved or dropped. The line is never drawn.
+  //  - Fairness: every large rock is checked against a safe point (safeAt) that wanders slower than
+  //    the craft can fly; a rock that would close it is moved or dropped. It is never drawn. Each
+  //    large rock shows a ring on the craft's plane, where it will pass, for its last 1.25 s.
   //  - Art: rocks, the planet and the haze are ray-marched once on the GPU into sprite sheets at a
   //    size set by the Space quality (Ultra / High / Lite) and Low graphics; play is Canvas 2D.
   //    The baking happens on the menu (and at pauses and level-ups), never while rings are judged.
@@ -8899,17 +8905,17 @@
     const IN = 2.8, OUT = 2.0, SHIELD = 3, PROTECT = 1.5, CLEAR = 3.6, STEER_AT = 1.1;
     const TITLES = { asteroids: 'ASTEROID FIELD' };
     const TIERS = [
-      { L: 128, LN: 6, LT: 3, M: 72, MN: 6, S: 40, SN: 4, P: 256, C: 0, dust: 26, far: 0 },
-      { L: 176, LN: 8, LT: 3, M: 96, MN: 6, S: 48, SN: 6, P: 384, C: 256, dust: 50, far: 6 },
-      { L: 256, LN: 8, LT: 4, M: 128, MN: 8, S: 64, SN: 6, P: 512, C: 384, dust: 90, far: 10 },
-      { L: 320, LN: 12, LT: 4, M: 160, MN: 8, S: 80, SN: 6, P: 768, C: 512, dust: 140, far: 14 }
+      { L: 128, LN: 6, LT: 3, M: 72, MN: 6, S: 40, SN: 4, P: 256, C: 0, dust: 40 },
+      { L: 176, LN: 8, LT: 3, M: 96, MN: 6, S: 48, SN: 6, P: 384, C: 256, dust: 80 },
+      { L: 256, LN: 8, LT: 4, M: 128, MN: 8, S: 64, SN: 6, P: 512, C: 384, dust: 130 },
+      { L: 320, LN: 12, LT: 4, M: 160, MN: 8, S: 80, SN: 6, P: 768, C: 512, dust: 190 }
     ];
     let on = false, t0 = 0, dur = 30, env = 'asteroids', flights = 0, seed = 1, first = false;
-    let cx = 0, cy = 0, vx = 0, vy = 0, gx = 0, gy = 0, bank = 0, ox = 0, oy = 0, fromX = 0, fromY = 0, exitFrom = null;
-    let rocks = [], orbs = [], shots = [], pops = [], trail = [], dust = [], far = [], fore = [], haze = [];
+    let cx = 0, cy = 0, vx = 0, vy = 0, gx = 0, gy = 0, bank = 0, fromX = 0, fromY = 0, exitFrom = null;   // the craft, in world units on its plane
+    let rocks = [], orbs = [], shots = [], pops = [], dust = [], haze = [];
     let shield = SHIELD, protectUntil = -9, coreT0 = -9, coreUntil = -9, coreCol = '#ffffff', lastHit = -9;
     let stats = { rings: 0, dodged: 0, crashes: 0, points: 0, blasted: 0 };
-    let beat0 = 0, bdur = 0.5, lastBeat = -1, aim = null, steered = false, nextFore = 0, giantAt = -1, p1 = 0, p2 = 0;
+    let beat0 = 0, bdur = 0.5, lastBeat = -1, aim = null, steered = false, giantAt = -1, p1 = 0, p2 = 0, P0 = [0, 0, 1];
     const keys = { l: 0, r: 0, u: 0, d: 0 }; let drag = null, mouse = null;
     const RM = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
     const hash = (n) => { n = (n ^ 61) ^ (n >>> 16); n = (n + (n << 3)) | 0; n = n ^ (n >>> 4); n = Math.imul(n, 0x27d4eb2d); n = n ^ (n >>> 15); return (n >>> 0) / 4294967296; };
@@ -9006,13 +9012,7 @@ void main(){
       g.restore();
       return { cv: c, tile: px, n: 1, cols: 1, x: false };
     }
-    function derive(out) {
-      // far rocks: the small sheets, sunk into the blue distance; the near silhouettes: a large sheet, darkened
-      const tint = (sh, col, sc) => { const c = mk(Math.max(8, Math.round(sh.cv.width * sc)), Math.max(8, Math.round(sh.cv.height * sc))), g = c.getContext('2d'); g.drawImage(sh.cv, 0, 0, c.width, c.height); g.globalCompositeOperation = 'source-atop'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height); return { cv: c, tile: sh.tile * sc, n: sh.n, cols: sh.cols, x: false }; };
-      out.far = out.S.concat(out.M).map((sh) => tint(sh, 'rgba(14,20,58,0.6)', 1));
-      out.dark = out.L.slice(0, 2).map((sh) => tint(sh, 'rgba(3,4,14,0.74)', 0.5));
-      return out;
-    }
+    function derive(out) { return out; }
     function fallbackArt() {
       const out = { L: [], M: [], S: [], planet: null, cloud: [], how: 'drawn' };
       for (let i = 0; i < 3; i++) out.L.push(fbRock('L', 128, 11 + i * 7));
@@ -9073,115 +9073,126 @@ void main(){
     }
     function prewarm(force) { const Q = q(); if (baking || (bakedQ === Q && !force)) return; if (bakeHow === 'software-gl' && !force) return; bake(Q, !!force); }
 
-    // ---------- the field ----------
+    // ---------- the view: a chase camera behind the craft, and a field with depth ----------
+    const FOLLOW = 0.55, ZU = 2, ZFAR = 15, ZNEAR = 0.75, CHR = 0.32, WIN = 0.09;
     function geo() {
-      const si = safeInsets(), U = targetR * 0.5;
-      return { U, hr: U * 0.6, x0: si.left + U * 1.4, x1: W - si.right - U * 1.4, y0: si.top + Math.max(H * 0.15, 96), y1: H - si.bottom - U * 1.9,
-        hx: W / 2, hy: H - si.bottom - Math.max(U * 3.2, H * 0.24), V: Math.max(H, 520) * 0.3, lo: si.left + U, hi: W - si.right - U, si };
+      const si = safeInsets(), F = Math.min(W, H * 0.62) * 0.62, ppu = F / ZU, short = W > H && H < 520;
+      const cs = short ? 0.8 : W < 520 ? 0.95 : 1.12, k = (1 - FOLLOW) * ppu;           // k: screen px the craft moves per world unit
+      const vy = si.top + H * (short ? 0.3 : 0.34), hy = H - si.bottom - Math.max(targetR * cs * 1.9, H * 0.2);
+      const X = lim((W / 2 - Math.max(si.left, si.right) - targetR * cs * 1.25) / k, 1.2, 3.2);
+      const Yu = lim((hy - (si.top + H * 0.27)) / k, 0.5, 1.5), Yd = lim((H - si.bottom - targetR * cs * 1.2 - hy) / k, 0.2, 0.9);
+      return { si, F, ppu, cs, k, vx: W / 2, vy, hy, X, Yu, Yd, CH: (hy - vy) * ZU / F, top: si.top + Math.max(H * 0.15, 96), U: targetR * 0.5 };
     }
-    // the line that is always open: it wanders, slower than the craft flies
-    function safeX(t, G) {
-      const A = Math.max(0, (G.hi - G.lo) / 2 - G.U * 1.6) * 0.82, a = t - t0;
-      return (G.lo + G.hi) / 2 + A * (0.62 * Math.sin(0.55 * a + p1) + 0.38 * Math.sin(1.27 * a + p2));
+    // the camera sits behind and above the craft and follows it part of the way
+    function proj(G, x, y, z) { const s = G.F / z; return [G.vx + (x - cx * FOLLOW) * s, G.vy + (y - cy * FOLLOW + G.CH) * s, s]; }
+    const zOf = (o, t) => ZU + (o.arrive - t) * o.sp;
+    const lat = (o, t) => [o.x + o.vx * (t - o.arrive), o.y + o.vy * (t - o.arrive)];
+    // the point that is always open: it wanders, slower than the craft flies
+    function safeAt(t, G) {
+      const a = t - t0;
+      return [G.X * 0.8 * (0.62 * Math.sin(0.55 * a + p1) + 0.38 * Math.sin(1.27 * a + p2)), (G.Yd - G.Yu) / 2 + (G.Yu + G.Yd) / 4 * Math.sin(0.8 * a + p2)];
     }
     function clear(o, G) {
-      const R = o.r / 0.6;
-      for (let tau = 0; tau < 9; tau += 0.08) {
-        const y = o.y + o.vy * tau, x = o.x + o.vx * tau;
-        if (y - R > H + 40 || x + R < -60 || x - R > W + 60) break;
-        if (Math.abs(y - G.hy) < o.hr + G.hr + G.U * 0.5 && Math.abs(x - safeX(o.born + tau, G)) < o.hr + G.hr + G.U * 0.9) return false;
+      for (let tau = -0.2; tau <= 0.201; tau += 0.05) {
+        const [x, y] = lat(o, o.arrive + tau), [sx, sy] = safeAt(o.arrive + tau, G);
+        if (Math.hypot(x - sx, y - sy) < o.hr + CHR + 0.3) return false;
       }
       return true;
     }
-    function addRock(k, x, r, vxk, vyk, n, t, G, opt) {
-      const R = r / 0.6, A = art(), kinds = A[k].length;
-      const o = Object.assign({ k, x, y: -R - 6, vx: vxk * G.V, vy: vyk * G.V, r, hr: r * 0.78, ty: Math.floor(hash(seed + n * 613 + 5) * kinds) % kinds,
-        th: hash(seed + n * 733) * 6.283, spin: (hash(seed + n * 877) - 0.5) * (k === 'L' ? 0.7 : 2.2), hp: k === 'M' ? 3 : 1, inc: 0, born: t, dead: false, passed: false, hitT: -9 }, opt || {});
-      if (k === 'L') {
-        let ok = clear(o, G);
-        for (let j = 1; !ok && j <= 6; j++) { const x0 = o.x; for (const d of [1, -1]) { o.x = x0 + d * j * G.U * 1.4; if (o.x > G.lo - R && o.x < G.hi + R && clear(o, G)) { ok = true; break; } } if (!ok) o.x = x0; }
+    function addRock(k, x, y, r, arrive, n, t, G, opt) {
+      const A = art(), kinds = A[k].length;
+      const o = Object.assign({ k, x, y, vx: 0, vy: 0, r, hr: r * 0.78, arrive, sp: (ZFAR - ZU) / Math.max(0.5, arrive - t), born: t, deco: false,
+        ty: Math.floor(hash(seed + n * 613 + 5) * kinds) % kinds, th: hash(seed + n * 733) * 6.283, spin: (hash(seed + n * 877) - 0.5) * (k === 'L' ? 0.7 : 2.2),
+        hp: k === 'M' ? 3 : 1, inc: 0, dead: false, passed: false, hitT: -9 }, opt || {});
+      if (k === 'L' && !o.deco) {
+        let ok = clear(o, G); const x0 = o.x, y0 = o.y;
+        for (let j = 1; !ok && j <= 6; j++) for (const [dx, dy] of [[1, 0], [-1, 0], [0, -1], [0, 1]]) {
+          o.x = x0 + dx * j * 0.45; o.y = y0 + dy * j * 0.45;
+          if (Math.abs(o.x) <= G.X + 1 && o.y >= -G.Yu - 0.7 && o.y <= G.Yd + 0.7 && clear(o, G)) { ok = true; break; }
+        }
         if (!ok) return null;                                // it would close the way through: it is not sent
       }
       rocks.push(o); return o;
     }
-    function addOrb(x, y, vyk, G) { orbs.push({ x, y, vy: vyk * G.V, r: G.U * 0.34, got: false, t0: -9 }); }
+    function addOrb(x, y, arrive, t) { orbs.push({ x, y, arrive, sp: (ZFAR - ZU) / Math.max(0.5, arrive - t), got: false, t0: -9 }); }
     function spawnBeat(i, t, G) {
-      const a = t - t0;
-      if (a < (first ? IN + 1.6 : IN - 0.2) || a > dur - OUT - CLEAR) return;
-      const d = clamp01((a - IN) / (dur - OUT - CLEAR - IN)), h = (n) => hash(seed + i * 7919 + n * 104729), span = G.hi - G.lo;
-      const ls = W < 520 ? 0.82 : 1;                         // a narrow screen: the large rocks a little smaller, so the field stays roomy
-      // large rocks: one at a time early, rows with a way through later, a drifter from the side, one giant
-      if (i === giantAt) addRock('L', safeX(t + 3, G) > W / 2 ? G.lo + span * 0.2 : G.lo + span * 0.8, G.U * 4.4 * ls, 0, 0.55, i * 11, t, G);
+      const nb = Math.max(4, Math.round(3.6 / bdur)), arrive = t + nb * bdur, aa = arrive - t0;      // everything passes the craft on a beat
+      if (aa < (first ? IN + 3 : IN + 1.4) || aa > dur - OUT - 0.3) return;
+      const d = clamp01((aa - IN - 1.4) / (dur - OUT - IN - 1.7)), h = (n) => hash(seed + i * 7919 + n * 104729);
+      const rx = (u) => (u * 2 - 1) * (G.X + 0.4), ry = (u) => -G.Yu - 0.2 + u * (G.Yu + G.Yd + 0.4);
+      // large rocks: one at a time early, clusters with a way through later, a drifter across, one giant
+      if (i === giantAt) addRock('L', safeAt(arrive, G)[0] > 0 ? -G.X * 0.5 : G.X * 0.5, -0.25, 1.7, arrive, i * 11, t, G);
       else if (i % 4 === 0 && d > 0.3) {
-        const n = W > H ? 4 : 3;
-        for (let j = 0; j < n; j++) if (h(10 + j) < 0.42 + 0.38 * d) addRock('L', G.lo + span * (j + 0.5 + (h(20 + j) - 0.5) * 0.5) / n, G.U * (1.7 + h(30 + j) * 1.3) * ls, (h(40 + j) - 0.5) * 0.12, 0.95 + h(50 + j) * 0.2, i * 11 + j, t, G);
-      } else if (h(1) < 0.4 + 0.45 * d) addRock('L', G.lo + span * h(2), G.U * (1.6 + h(3) * 1.7) * ls, (h(4) - 0.5) * 0.3, 0.85 + h(5) * 0.4, i * 11, t, G);
-      if (d > 0.5 && i % 8 === 5) {
-        const side = h(8) < 0.5 ? -1 : 1, r = G.U * (1.8 + h(9) * 0.9), R = r / 0.6;
-        addRock('L', side < 0 ? -R : W + R, r, -side * 0.72, 0.42, i * 11 + 7, t + bdur * 2, G, { y: G.si.top + H * (0.14 + 0.2 * h(12)), side, born: t + bdur * 2, warnFrom: t });
-      }
+        for (let j = 0; j < 3; j++) if (h(10 + j) < 0.45 + 0.4 * d) addRock('L', (j - 1) * G.X * 0.85 + (h(20 + j) - 0.5) * 0.8, ry(h(25 + j)), 0.55 + h(30 + j) * 0.4, arrive, i * 11 + j, t, G);
+      } else if (h(1) < 0.42 + 0.45 * d) addRock('L', rx(h(2)), ry(h(3)), 0.55 + h(4) * 0.5, arrive, i * 11, t, G);
+      if (d > 0.5 && i % 8 === 5) { const side = h(8) < 0.5 ? -1 : 1; addRock('L', rx(h(9)), ry(h(12)), 0.6 + h(13) * 0.3, arrive, i * 11 + 7, t, G, { vx: side * 1.1 }); }
       // what can be broken: debris most beats, a crystal rock now and then
-      const ns = h(6) < 0.78 ? (h(7) < 0.4 + 0.3 * d ? 2 : 1) : 0;
-      for (let j = 0; j < ns; j++) addRock('S', G.lo + span * h(60 + j), G.U * (0.4 + h(62 + j) * 0.22), (h(64 + j) - 0.5) * 0.5, 0.7 + h(66 + j) * 0.6, i * 11 + 20 + j, t, G);
-      if (i % 6 === 3) addRock('M', G.lo + span * (0.2 + 0.6 * h(70)), G.U * 1.05, (h(71) - 0.5) * 0.2, 0.75, i * 11 + 30, t, G);
-      // light to gather: an arc that crosses the open line
-      if (i % 8 === 1) {
-        const xc = lim(safeX(t + G.hy / G.V, G) + (h(80) - 0.5) * span * 0.4, G.lo + G.U * 2, G.hi - G.U * 2), ph = h(81) * 6.283;
-        for (let j = 0; j < 5; j++) addOrb(lim(xc + Math.sin(j / 4 * 3.6 + ph) * G.U * 2.2, G.lo, G.hi), -G.U - j * G.U * 1.5, 1, G);
+      const ns = h(6) < 0.8 ? (h(7) < 0.4 + 0.3 * d ? 2 : 1) : 0;
+      for (let j = 0; j < ns; j++) addRock('S', rx(h(60 + j)) * 0.9, ry(h(62 + j)), 0.17 + h(64 + j) * 0.09, arrive + (j ? bdur / 2 : 0), i * 11 + 20 + j, t, G);
+      if (i % 6 === 3) addRock('M', rx(0.25 + 0.5 * h(70)), ry(0.2 + 0.6 * h(71)), 0.45, arrive, i * 11 + 30, t, G);
+      // lights to gather: a trail along the open way
+      if (i % 8 === 1) { const ph = h(81) * 6.283; for (let j = 0; j < 5; j++) { const ta = arrive + j * bdur / 2, [sx, sy] = safeAt(ta, G); addOrb(lim(sx + Math.sin(j * 0.9 + ph) * 0.5, -G.X, G.X), lim(sy + Math.cos(j * 0.9 + ph) * 0.25, -G.Yu, G.Yd), ta, t); } }
+      // scenery: rocks off to the sides, above and below, at every depth (never in the way; more of them at higher quality)
+      const nd = q() + 1;
+      for (let j = 0; j < nd; j++) {
+        const w = h(90 + j), side = h(91 + j) < 0.5 ? -1 : 1, r = 0.6 + h(96 + j) * h(96 + j) * 2;
+        const x = w < 0.4 ? side * (G.X + 1.4 + r + h(92 + j) * 5) : (h(92 + j) * 2 - 1) * (G.X + 4);                      // off to a side, or
+        const y = w < 0.4 ? -3.6 + h(94 + j) * 6 : w < 0.75 ? -G.Yu - 1.8 - r - h(94 + j) * 3 : G.Yd + 1.1 + r + h(94 + j) * 2;   // overhead, or passing underneath
+        addRock('L', x, y, r, arrive + h(98 + j) * bdur, i * 11 + 40 + j, t, G, { deco: true });
       }
     }
-    function gain(pts, x, y, txt, col) {
+    function gain(pts, sx, sy, txt, col) {
       const p = Math.round(pts * mult()); score += p; stats.points += p; scoreEl.textContent = score;
-      if (txt !== null) pops.push({ x, y, t0: clockNow() - startTime, txt: txt || ('+' + p), col: col || '#7df9ff' });
+      if (txt !== null) pops.push({ x: sx, y: sy, t0: clockNow() - startTime, txt: txt || ('+' + p), col: col || '#7df9ff' });
     }
     function breakRock(o, t, G) {
       if (o.dead) return;
       o.dead = true; stats.blasted++;
-      gain(o.k === 'M' ? 600 : 100, o.x, o.y - o.r, o.k === 'M' ? undefined : null);
-      createBurst(o.x + ox, o.y + oy, '#7df9ff', o.k === 'M' ? 30 : 12, o.k === 'M' ? 1.4 : 1.0);
-      if (o.k === 'M') { createBurst(o.x + ox, o.y + oy, '#ffffff', 14, 1.8); for (let j = 0; j < 3; j++) addOrb(o.x + (j - 1) * G.U * 0.9, o.y - Math.abs(j - 1) * G.U * 0.4, 0.8, G); }
+      const [x, y] = lat(o, t), z = Math.max(ZNEAR, zOf(o, t)), [sx, sy, s] = proj(G, x, y, z);
+      gain(o.k === 'M' ? 600 : 100, sx, sy - o.r * s, o.k === 'M' ? undefined : null);
+      createBurst(sx, sy, '#7df9ff', o.k === 'M' ? 30 : 12, o.k === 'M' ? 1.4 : 1.0);
+      if (o.k === 'M') { createBurst(sx, sy, '#ffffff', 14, 1.8); for (let j = 0; j < 3; j++) addOrb(lim(x + (j - 1) * 0.45, -G.X, G.X), lim(y, -G.Yu, G.Yd), Math.max(t + 0.5, o.arrive) + j * 0.12, t - (ZFAR - z) / o.sp); }
       if (save.settings.sfx) tone(o.k === 'M' ? 392 : 1320 + Math.floor(hash(stats.blasted) * 5) * 110, o.k === 'M' ? 0.16 : 0.035, o.k === 'M' ? 'triangle' : 'square', o.k === 'M' ? 0.04 : 0.014);
     }
     function onBeat(i, t, G) {
       spawnBeat(i, t, G);
       const a = t - t0;
       if (a < STEER_AT || a > dur - OUT) return;
-      // the guns: two bolts a beat (three in Supernova and above), each at the nearest thing that can break
+      // the guns: two bolts a beat (three in Supernova and above), each at the nearest thing ahead that can break
       const n = feverLevel >= 2 ? 3 : 2;
-      const c = rocks.filter((o) => o.k !== 'L' && !o.dead && o.born <= t && o.hp > o.inc && o.y > -o.r && o.y < H + o.r && o.x > -o.r && o.x < W + o.r)
-        .sort((u, v) => Math.hypot(u.x - cx, u.y - cy) - Math.hypot(v.x - cx, v.y - cy));
+      const c = rocks.filter((o) => !o.deco && o.k !== 'L' && !o.dead && o.hp > o.inc && zOf(o, t) > ZU + 0.5 && zOf(o, t) < ZFAR * 0.85).sort((u, v) => u.arrive - v.arrive);
       aim = c[0] || null;
       for (let j = 0; j < n; j++) {
-        const o = c.find((r) => r.hp > r.inc), sx = cx + (j - (n - 1) / 2) * G.U * 0.7, sy = cy - G.U * 0.35;
-        if (o) { o.inc++; shots.push({ x: sx, y: sy, o, t0: t, th: t + lim(Math.hypot(o.x - sx, o.y - sy) / 1500, 0.07, 0.2) }); }
-        else if (j === 0) shots.push({ x: sx, y: sy, o: null, tx: cx, ty: cy - H * 0.5, t0: t, th: t + 0.2 });
+        const o = c.find((r) => r.hp > r.inc), off = (j - (n - 1) / 2) * targetR * G.cs * 0.5;
+        if (o) { o.inc++; shots.push({ off, o, t0: t, th: t + 0.16 }); }
+        else if (j === 0) shots.push({ off, o: null, t0: t, th: t + 0.2 });
       }
       if (save.settings.sfx) tone(i % 4 === 0 ? 990 : 880, 0.035, 'square', 0.011);
     }
-    function hit(o, t, G) {
+    function hit(o, t, G, x, y) {
       stats.crashes++; lastHit = t; protectUntil = t + PROTECT;
-      const dx = cx - o.x, dy = cy - o.y, dl = Math.hypot(dx, dy) || 1;
-      vx += dx / dl * 620; vy += dy / dl * 620; gx = lim(gx + dx / dl * G.U * 1.2, G.x0, G.x1); gy = lim(gy + dy / dl * G.U * 1.2, G.y0, G.y1);
+      const dx = cx - x, dy = cy - y, dl = Math.hypot(dx, dy) || 1;
+      vx += dx / dl * 5; vy += dy / dl * 5; gx = lim(gx + dx / dl * 0.5, -G.X, G.X); gy = lim(gy + dy / dl * 0.5, -G.Yu, G.Yd);
       if (shield > 0) { shield--; showToast(shield ? 'SHIELD HIT' : 'SHIELD DOWN', '#ff9a7a', shield ? shield + ' LEFT' : 'HITS COST ENERGY NOW'); }
       else { energy = Math.max(1, energy - 8); energyBar.style.width = energy + '%'; showToast('HULL HIT', '#ff3864', '−8 ENERGY'); }
-      if (!RM) shake = Math.max(shake, 7);
-      createBurst(cx + ox, cy + oy, '#ff8a5c', 34, 1.4);
-      shockwaves.push({ x: cx + ox, y: cy + oy, r: G.U, alpha: 0.9, speed: 520, width: 5, color: '#ff8a5c' });
+      if (!RM) shake = Math.max(shake, 8);
+      createBurst(P0[0], P0[1], '#ff8a5c', 34, 1.4);
+      shockwaves.push({ x: P0[0], y: P0[1], r: G.U, alpha: 0.9, speed: 520, width: 5, color: '#ff8a5c' });
       if (save.settings.sfx) { tone(70, 0.3, 'sawtooth', 0.07); tone(140, 0.18, 'square', 0.04); }
       buzz([60, 30, 60]);
     }
-    // the equipped core, as one burst: everything breakable goes, the big rocks are shoved off, 2.5 s untouchable
+    // the equipped core, as one burst: everything breakable ahead goes, the big rocks are shoved off, 2.5 s untouchable
     function core(t, cfg) {
       if (!on || t - t0 < STEER_AT || t - t0 > dur - OUT) return false;
       const G = geo();
       coreT0 = t; coreUntil = t + 2.5; coreCol = (cfg && cfg.col) || '#ffffff';
       for (const o of rocks) {
-        if (o.born > t || o.dead) continue;
-        if (o.k !== 'L') { if (o.y > -o.r && o.y < H + o.r) breakRock(o, t, G); }
-        else { const dx = o.x - cx, dy = o.y - cy, dl = Math.hypot(dx, dy) || 1; if (dl < G.U * 9) { o.vx += dx / dl * G.V * 0.9; o.vy += dy / dl * G.V * 0.5; } }
+        if (o.dead || o.deco || o.born > t) continue;
+        if (o.k !== 'L') breakRock(o, t, G);
+        else if (o.arrive - t < 2.6 && o.arrive > t) { const [x, y] = lat(o, t), dx = x - cx || 0.01, dl = Math.hypot(dx, y - cy) || 1, v = dx / dl * 1.4; o.x = x - v * (t - o.arrive); o.vx = v; }   // (it keeps its place now, and veers off)
       }
-      shockwaves.push({ x: cx + ox, y: cy + oy, r: G.U, alpha: 1, speed: 1300, width: 9, color: coreCol });
-      createBurst(cx + ox, cy + oy, coreCol, 50, 1.9);
+      shockwaves.push({ x: P0[0], y: P0[1], r: G.U, alpha: 1, speed: 1300, width: 9, color: coreCol });
+      createBurst(P0[0], P0[1], coreCol, 50, 1.9);
       showToast((cfg && cfg.name) || 'CORE BURST', coreCol, 'FIELD CLEARED');
       if (save.settings.sfx) { tone(110, 0.5, 'sawtooth', 0.06); [660, 880, 1320].forEach((f, i) => tone(f, 0.12, 'triangle', 0.03, i * 0.05)); }
       buzz([30, 20, 80]);
@@ -9195,17 +9206,18 @@ void main(){
       on = true; t0 = t; dur = d || 30; env = 'asteroids'; flights++; first = !save.flightDone;
       seed = (Math.floor(startTime * 977) ^ Math.floor(t * 131) ^ (flights * 7919)) | 0;
       p1 = hash(seed + 1) * 6.283; p2 = hash(seed + 2) * 6.283;
-      fromX = tgt.x; fromY = tgt.y; cx = gx = fromX; cy = gy = fromY; vx = vy = 0; bank = 0; ox = oy = 0; exitFrom = null;
-      rocks = []; orbs = []; shots = []; pops = []; trail = []; fore = []; aim = null;
+      fromX = tgt.x; fromY = tgt.y; cx = gx = 0; cy = gy = 0; vx = vy = 0; bank = 0; exitFrom = null; P0 = [fromX, fromY, 1];
+      rocks = []; orbs = []; shots = []; pops = []; aim = null;
       shield = SHIELD; protectUntil = -9; coreT0 = coreUntil = -9; lastHit = -9; steered = false; drag = null; mouse = null;
       keys.l = keys.r = keys.u = keys.d = 0;
       stats = { rings: 0, dodged: 0, crashes: 0, points: 0, blasted: 0 };
       bdur = Conductor.beatDur(); beat0 = Conductor.ready() ? Conductor.getNextBeatTime(t) : t; lastBeat = -1;
-      giantAt = Math.round((18.5 - (beat0 - t)) / bdur); nextFore = t + IN + 2;
+      giantAt = Math.round((14.5 - (beat0 - t)) / bdur);
       const fx = (n) => hash(seed + n * 2654435);
-      dust = []; for (let i = 0; i < T.dust; i++) dust.push({ x: fx(i * 3 + 1), y: fx(i * 3 + 2), z: 0.15 + fx(i * 3 + 3) * 1.1 });
-      far = []; for (let i = 0; i < T.far; i++) far.push({ x: fx(900 + i * 5), y: fx(901 + i * 5), z: 0.3 + fx(902 + i * 5) * 0.3, r: 0.25 + fx(903 + i * 5) * 0.5, ty: i, th: fx(904 + i * 5) * 6.283, spin: (fx(905 + i * 5) - 0.5) * 0.8 });
-      haze = []; for (let i = 0; i < (Q >= 3 ? 5 : Q >= 2 ? 4 : 3); i++) haze.push({ x: fx(700 + i * 4), y: fx(701 + i * 4), s: 0.7 + fx(702 + i * 4) * 0.7, rot: fx(703 + i * 4) * 6.283, i });
+      dust = []; for (let i = 0; i < T.dust; i++) dust.push({ x: (fx(i * 3 + 1) * 2 - 1) * 9, y: -6 + fx(i * 3 + 2) * 10, z: fx(i * 3 + 3) });
+      haze = []; for (let i = 0; i < (Q >= 3 ? 5 : Q >= 2 ? 4 : 3); i++) haze.push({ x: (fx(700 + i * 4) - 0.5) * 1.2, y: (fx(701 + i * 4) - 0.6) * 0.8, s: 0.7 + fx(702 + i * 4) * 0.7, rot: fx(703 + i * 4) * 6.283, i });
+      // the way in: one huge rock sweeps past, close on one side (not under reduced motion)
+      if (!RM) addRock('L', (fx(5) < 0.5 ? -1 : 1) * (G.X + 1.5), -0.6, 2.3, t + 2.1, 9001, t + 0.35, G, { deco: true, born: t + 0.35 });
       prewarm();
       return TITLES[env];
     }
@@ -9215,189 +9227,167 @@ void main(){
     function update(dt, t) {
       if (!on) return;
       const G = geo(), a = t - t0, live = a >= STEER_AT && a < dur - OUT;
-      if (a < STEER_AT) {
-        const k = ease((a - 0.15) / (STEER_AT - 0.15));
-        cx = gx = fromX + (G.hx - fromX) * k; cy = gy = fromY + (G.hy - fromY) * k; vx = vy = 0;
-      } else if (live) {
-        const sp = Math.min(W, H) * 1.25 * dt, kx = keys.r - keys.l, ky = keys.d - keys.u;
+      if (a < STEER_AT) { cx = gx = 0; cy = gy = 0; vx = vy = 0; }
+      else if (live) {
+        const sp = 4.4 * dt, kx = keys.r - keys.l, ky = keys.d - keys.u;
         if (kx || ky) { const n = Math.hypot(kx, ky); gx += kx / n * sp; gy += ky / n * sp; steered = true; mouse = null; }
-        else if (mouse && !drag) { gx = mouse.x; gy = mouse.y; }
-        gx = lim(gx, G.x0, G.x1); gy = lim(gy, G.y0, G.y1);
+        else if (mouse && !drag) { gx = (mouse.x - W / 2) / G.k; gy = (mouse.y - G.hy) / G.k; }
+        gx = lim(gx, -G.X, G.X); gy = lim(gy, -G.Yu, G.Yd);
         const n = Math.max(1, Math.ceil(dt / 0.008)), hh = dt / n;
         for (let i = 0; i < n; i++) { vx += ((gx - cx) * 260 - vx * 30) * hh; vy += ((gy - cy) * 260 - vy * 30) * hh; cx += vx * hh; cy += vy * hh; }
       } else {
         if (!exitFrom) { exitFrom = [cx, cy]; drag = null; }
-        const k = ease((a - (dur - OUT) - 0.3) / (OUT - 0.5));
-        cx = exitFrom[0] + (tgt.x - exitFrom[0]) * k; cy = exitFrom[1] + (tgt.y - exitFrom[1]) * k; vx = vy = 0;
+        const k = ease((a - (dur - OUT)) / (OUT * 0.6));
+        cx = exitFrom[0] * (1 - k); cy = exitFrom[1] * (1 - k); vx = vy = 0;
       }
-      const bt = lim(vx / (Math.min(W, H) * 1.1), -1, 1) * 0.5;
+      const bt = lim(vx / 4, -1, 1) * 0.5;
       bank += (bt - bank) * Math.min(1, dt * 12);
-      ox = RM ? 0 : -(cx - G.hx) * 0.06; oy = RM ? 0 : -(cy - G.hy) * 0.04;
-      trail.push({ x: cx, y: cy, t }); while (trail.length && t - trail[0].t > 0.4) trail.shift();
       // the beat: spawns and shots
       const nb = Math.floor((t - beat0) / bdur);
       if (nb > lastBeat) { for (let i = Math.max(lastBeat + 1, nb - 2); i <= nb; i++) if (i >= 0) onBeat(i, beat0 + i * bdur, G); lastBeat = nb; }
-      // rocks
+      // rocks: each one meets the craft's plane at its moment, and is judged there
       const safe = t < protectUntil || t < coreUntil || !live;
       for (const o of rocks) {
-        if (o.born > t || o.dead) continue;
-        o.x += o.vx * dt; o.y += o.vy * dt; o.th += o.spin * dt;
-        const d = Math.hypot(o.x - cx, o.y - cy);
-        if (o.k === 'L') {
-          if (!safe && d < o.hr + G.hr) hit(o, t, G);
-          if (!o.passed && o.y - o.hr > cy + G.hr) { o.passed = true; if (live && d < (o.hr + G.hr) * 1.9 && t - lastHit > 1) { stats.dodged++; gain(150, cx, cy - G.U * 1.6, 'CLOSE', '#ffffff'); } }
-        } else if (live && d < o.hr + G.hr) { o.dead = true; createBurst(o.x + ox, o.y + oy, '#9fb6cc', 10, 0.9); if (save.settings.sfx) tone(220, 0.04, 'triangle', 0.012); }   // debris breaks on the hull: no harm
+        if (o.dead) continue;
+        o.th += o.spin * dt;
+        if (o.deco || o.passed || t < o.arrive - WIN) continue;
+        const [x, y] = lat(o, t), d = Math.hypot(x - cx, y - cy);
+        if (o.k === 'L') { if (!safe && d < o.hr + CHR) { o.passed = true; hit(o, t, G, x, y); continue; } }
+        else if (live && d < o.hr + CHR) { o.dead = true; createBurst(P0[0], P0[1] - G.U, '#9fb6cc', 10, 0.9); if (save.settings.sfx) tone(220, 0.04, 'triangle', 0.012); continue; }   // debris breaks on the hull: no harm
+        if (t > o.arrive + WIN) { o.passed = true; if (o.k === 'L' && live && d < (o.hr + CHR) * 1.7 && t - lastHit > 1) { stats.dodged++; gain(150, P0[0], P0[1] - targetR * G.cs * 1.3, 'CLOSE', '#ffffff'); } }
       }
-      rocks = rocks.filter((o) => !o.dead && o.y - o.r / 0.6 < H + 60 && o.x > -W * 0.6 && o.x < W * 1.6);
+      rocks = rocks.filter((o) => !o.dead && zOf(o, t) > ZNEAR);
       // bolts land
-      for (const s of shots) if (!s.done && t >= s.th) { s.done = true; if (s.o && !s.o.dead) { s.o.hp--; s.o.inc--; s.o.hitT = t; if (s.o.hp <= 0) breakRock(s.o, t, G); else createBurst(s.o.x + ox, s.o.y + oy, '#7df9ff', 6, 0.8); } }
+      for (const s of shots) if (!s.done && t >= s.th) { s.done = true; if (s.o && !s.o.dead) { s.o.hp--; s.o.inc--; s.o.hitT = t; if (s.o.hp <= 0) breakRock(s.o, t, G); } }
       shots = shots.filter((s) => t - s.th < 0.16);
-      // light
+      // lights
       for (const b of orbs) {
-        if (b.got) continue;
-        b.y += b.vy * dt;
-        const dx = cx - b.x, dy = cy - b.y, d = Math.hypot(dx, dy);
-        if (live && d < G.U * 3.2) { b.x += dx / d * G.U * 7 * dt; b.y += dy / d * G.U * 7 * dt; }        // it leans to the craft
-        if (live && d < G.U * 1.3) { b.got = true; b.t0 = t; stats.rings++; gain(250, b.x, b.y - G.U); energy = Math.min(100, energy + 1.5); energyBar.style.width = energy + '%'; if (save.settings.sfx) { tone(1320, 0.07, 'sine', 0.028); tone(1760, 0.06, 'sine', 0.02, 0.04); } }
+        if (b.got || Math.abs(t - b.arrive) > 0.1 || !live) continue;
+        if (Math.hypot(b.x - cx, b.y - cy) < 0.85) { b.got = true; b.t0 = t; stats.rings++; gain(250, P0[0], P0[1] - targetR * G.cs); energy = Math.min(100, energy + 1.5); energyBar.style.width = energy + '%'; if (save.settings.sfx) { tone(1320, 0.07, 'sine', 0.028); tone(1760, 0.06, 'sine', 0.02, 0.04); } }
       }
-      orbs = orbs.filter((b) => (b.got ? t - b.t0 < 0.3 : b.y < H + 40));
+      orbs = orbs.filter((b) => (b.got ? t - b.t0 < 0.3 : zOf(b, t) > ZNEAR));
       pops = pops.filter((p) => t - p.t0 < 0.8);
-      // a near silhouette down one edge, now and then (never over the middle)
-      if (!RM && TIERS[q()].far > 6 && live && t > nextFore && a < dur - OUT - 3) { nextFore = t + 4 + hash(seed + Math.floor(t * 10)) * 4; const side = hash(seed + Math.floor(t * 7)) < 0.5 ? -1 : 1; fore.push({ side, t0: t, r: Math.min(W, H) * (0.26 + hash(seed + Math.floor(t * 3)) * 0.12), ty: fore.length % 2 }); }
-      fore = fore.filter((f) => t - f.t0 < 2.4);
     }
 
     // ---------- drawing ----------
     function sprite(sh, x, y, half, th, alpha) {
-      if (alpha <= 0) return;
+      if (alpha <= 0.01 || half < 1) return;
       if (sh.n === 1) { ctx.save(); ctx.translate(x, y); ctx.rotate(th); ctx.globalAlpha = alpha; ctx.drawImage(sh.cv, -half, -half, half * 2, half * 2); ctx.restore(); return; }
       const step = Math.PI * 2 / sh.n, f = ((th / step) % sh.n + sh.n) % sh.n, i0 = Math.floor(f), fr = f - i0;
       const put = (i, res, al) => { ctx.save(); ctx.translate(x, y); ctx.rotate(res); ctx.globalAlpha = al; ctx.drawImage(sh.cv, (i % sh.cols) * sh.tile, Math.floor(i / sh.cols) * sh.tile, sh.tile, sh.tile, -half, -half, half * 2, half * 2); ctx.restore(); };
       // a baked frame per step of the turn (lit from the upper left in each); the two nearest are
       // turned the last few degrees and blended, so the light stays put while the rock spins
-      if (sh.x) { put(i0, fr * step, alpha); if (fr > 0.03) put((i0 + 1) % sh.n, (fr - 1) * step, alpha * fr); }
+      if (sh.x && half > 14) { put(i0, fr * step, alpha); if (fr > 0.03) put((i0 + 1) % sh.n, (fr - 1) * step, alpha * fr); }
       else put(fr < 0.5 ? i0 : (i0 + 1) % sh.n, (fr < 0.5 ? fr : fr - 1) * step, alpha);
+    }
+    function drawThing(G, A, o, t, fa, Q, beatK) {
+      const z = zOf(o, t);
+      if (z >= ZFAR || z <= ZNEAR) return;
+      const farK = clamp01((ZFAR - z) / (ZFAR * 0.16)), nearK = z < ZU ? Math.pow(clamp01((z - ZNEAR) / (ZU - ZNEAR)), 0.7) : 1;
+      if (o.k === undefined) {                               // a light
+        const [sx, sy, s] = proj(G, o.x, o.y, Math.max(z, ZNEAR + 0.01)), k = o.got ? clamp01(1 - (t - o.t0) / 0.3) : 1, rr = Math.max(1.5, 0.2 * s * (1 + 0.25 * beatK * beatK) * (o.got ? 1 + (1 - k) * 2 : 1));
+        if (o.got) return;
+        const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, rr * 2.4);
+        g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.3, hexToRgba(theme.c3, 0.85)); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = fa * farK * nearK; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, rr * 2.4, 0, Math.PI * 2); ctx.fill(); ctx.globalCompositeOperation = 'source-over';
+        return;
+      }
+      const [x, y] = lat(o, t), [sx, sy, s] = proj(G, x, y, z), half = o.r / 0.6 * s;
+      if (sx + half < -40 || sx - half > W + 40 || sy + half < -40 || sy - half > H + 40) return;
+      const sh = A[o.k][o.ty % A[o.k].length], al = fa * farK * nearK;
+      if (o.k !== 'L' && Q >= 1 && half > 5) {                // what the guns can break glows cyan
+        ctx.globalCompositeOperation = 'lighter';
+        const rr = o.r * s * 1.9, g = ctx.createRadialGradient(sx, sy, rr * 0.16, sx, sy, rr);
+        g.addColorStop(0, 'rgba(90,230,255,0.32)'); g.addColorStop(1, 'rgba(90,230,255,0)');
+        ctx.globalAlpha = al; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sx, sy, rr, 0, Math.PI * 2); ctx.fill();
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      sprite(sh, sx, sy, half, o.th, al);
+      if (t - o.hitT < 0.12) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.7 * (1 - (t - o.hitT) / 0.12); ctx.fillStyle = '#bff6ff'; ctx.beginPath(); ctx.arc(sx, sy, o.r * s, 0, Math.PI * 2); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; }
     }
     function draw(t) {
       if (!on) return;
-      const G = geo(), a = t - t0, Q = q(), A = art(), U = G.U, big = Math.max(W, H), scroll = a * G.V;
-      const kout = clamp01((dur - a - 0.2) / 1.1);
-      const pass = !RM && a > 0.3 && a < 2.3 ? (a - 0.3) / 2.0 : -1, M = big * 1.15, py = -M * 0.62 + (H + M * 1.24) * Math.max(0, pass);
-      const fa = RM ? Math.min(clamp01(a / 0.9), kout) : (a < 0.3 ? 0 : kout);
-      const live = a >= STEER_AT && a < dur - OUT;
+      const G = geo(), a = t - t0, Q = q(), A = art(), big = Math.max(W, H), small = Math.min(W, H);
+      const kout = clamp01((dur - a - 0.2) / 1.1), fa = Math.min(ease((a - 0.25) / 1.0), kout), live = a >= STEER_AT && a < dur - OUT;
+      const kin = ease((a - 0.15) / (STEER_AT - 0.15)), kex = exitFrom ? ease((a - (dur - OUT) - 0.3) / (OUT - 0.5)) : 0, kw = exitFrom ? clamp01((a - (dur - OUT)) / OUT) : 0;
+      const beatK = 1 - (((t - beat0) / bdur) % 1 + 1) % 1;
+      // where the craft is on the glass: out of the ring on the way in, back to it on the way out
+      const Pc = proj(G, cx, cy, ZU), sc = 1 + (G.cs - 1) * kin * (1 - kex);
+      const X = (fromX + (Pc[0] - fromX) * kin) * (1 - kex) + tgt.x * kex, Y = (fromY + (Pc[1] - fromY) * kin) * (1 - kex) + tgt.y * kex;
+      P0 = [X, Y, sc];
       ctx.save();
-      if (pass >= 0) { ctx.beginPath(); ctx.rect(-80, -80, W + 160, py + 80); ctx.clip(); }       // the field is revealed behind the rock that passes
       if (fa > 0) {
-        // deep space
-        ctx.globalAlpha = 0.82 * fa; ctx.fillStyle = '#050818'; ctx.fillRect(-80, -80, W + 160, H + 160);
+        // deep space, far ahead: it barely moves, and leans a little against the way you fly
+        ctx.globalAlpha = 0.84 * fa; ctx.fillStyle = '#050818'; ctx.fillRect(-80, -80, W + 160, H + 160);
         ctx.globalCompositeOperation = 'lighter';
         if (A.cloud && A.cloud.length) for (const hz of haze) {
-          const s = big * hz.s, yy = ((hz.y * (H + s) + scroll * 0.05) % (H + s)) - s / 2;
-          ctx.save(); ctx.translate(hz.x * W + ox * 0.2, yy + oy * 0.2); ctx.rotate(hz.rot); ctx.globalAlpha = 0.5 * fa; ctx.drawImage(A.cloud[hz.i % A.cloud.length], -s / 2, -s / 2, s, s); ctx.restore();
+          const s = big * hz.s * (1 + 0.14 * a / dur);
+          ctx.save(); ctx.translate(G.vx + hz.x * big - cx * 10, G.vy + hz.y * big - cy * 7); ctx.rotate(hz.rot); ctx.globalAlpha = 0.5 * fa; ctx.drawImage(A.cloud[hz.i % A.cloud.length], -s / 2, -s / 2, s, s); ctx.restore();
         } else {
-          const hg = ctx.createRadialGradient(W * 0.3, H * 0.35, 0, W * 0.3, H * 0.35, big * 0.7);
+          const hg = ctx.createRadialGradient(G.vx - big * 0.15, G.vy, 0, G.vx - big * 0.15, G.vy, big * 0.7);
           hg.addColorStop(0, 'rgba(96,52,190,0.26)'); hg.addColorStop(0.6, 'rgba(20,90,130,0.1)'); hg.addColorStop(1, 'rgba(0,0,0,0)');
           ctx.globalAlpha = fa; ctx.fillStyle = hg; ctx.fillRect(0, 0, W, H);
         }
         ctx.globalCompositeOperation = 'source-over';
-        if (A.planet) { const ps = Math.min(W, H) * (W > H ? 0.95 : 1.05); ctx.globalAlpha = fa; ctx.drawImage(A.planet, W * 0.9 - ps * 0.42 + ox * 0.3, G.si.top + H * 0.04 - ps * 0.42 + scroll * 0.004 + oy * 0.3, ps, ps); }
-        // dust, streaming past at every depth
-        ctx.fillStyle = '#cfe3ff';
+        if (A.planet) { const ps = small * 0.66 * (1 + 0.1 * a / dur); ctx.globalAlpha = fa; ctx.drawImage(A.planet, G.vx + small * 0.3 - ps / 2 - cx * 14, G.vy - small * 0.12 - ps / 2 - cy * 10, ps, ps); }
+        // dust rushing past: every speck has a depth, so it streams out from the point you fly toward
+        const R = ZFAR - ZNEAR, run = a * 6 + kw * kw * 40, len = RM ? 0.04 : 0.32 + kw * 2.2;
+        ctx.strokeStyle = '#cfe3ff'; ctx.lineCap = 'round';
         for (const d of dust) {
-          const yy = ((d.y * (H + 40) + scroll * d.z) % (H + 40)) - 20, len = RM ? 1.5 : 1.5 + d.z * G.V * 0.022;
-          ctx.globalAlpha = (0.2 + 0.5 * Math.min(1, d.z)) * fa; ctx.fillRect(d.x * W + ox * d.z, yy, d.z > 0.9 ? 1.6 : 1, len);
+          const z = ZNEAR + (((d.z * R - run) % R) + R) % R, p = proj(G, d.x, d.y, z), p2 = proj(G, d.x, d.y, z + len);
+          if (p[0] < -20 || p[0] > W + 20 || p[1] < -20 || p[1] > H + 20) continue;
+          ctx.globalAlpha = (0.15 + 0.75 * (1 - z / ZFAR)) * fa * Math.min(1, (z - ZNEAR) * 3); ctx.lineWidth = lim(p[2] / 90, 0.8, 2.6);
+          ctx.beginPath(); ctx.moveTo(p2[0], p2[1]); ctx.lineTo(p[0], p[1]); ctx.stroke();
         }
-        if (A.far) for (const f of far) {
-          const sh = A.far[f.ty % A.far.length], r = U * f.r, yy = ((f.y * (H + 200) + scroll * f.z) % (H + 200)) - 100;
-          sprite(sh, f.x * W + ox * f.z, yy + oy * f.z, r / 0.6, f.th + f.spin * a, 0.9 * fa);
-        }
-        // ---- the plane you fly in ----
-        ctx.save(); ctx.translate(ox, oy);
-        const beatK = 1 - (((t - beat0) / bdur) % 1 + 1) % 1;
-        ctx.globalCompositeOperation = 'lighter';
-        for (const b of orbs) {
-          const k = b.got ? clamp01(1 - (t - b.t0) / 0.3) : 1, rr = b.r * (1 + 0.25 * beatK * beatK) * (b.got ? 1 + (1 - k) * 2 : 1);
-          const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, rr * 2.4);
-          g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.3, hexToRgba(theme.c3, 0.85)); g.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.globalAlpha = fa * k; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(b.x, b.y, rr * 2.4, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.globalCompositeOperation = 'source-over';
-        const order = rocks.filter((o) => o.born <= t).sort((u, v) => u.r - v.r);
-        for (const o of order) {
-          const R = o.r / 0.6, sh = A[o.k][o.ty % A[o.k].length];
-          if (o.k !== 'L' && Q >= 1) {                         // what the guns can break glows cyan
-            ctx.globalCompositeOperation = 'lighter';
-            const g = ctx.createRadialGradient(o.x, o.y, o.r * 0.3, o.x, o.y, o.r * 1.9);
-            g.addColorStop(0, 'rgba(90,230,255,0.3)'); g.addColorStop(1, 'rgba(90,230,255,0)');
-            ctx.globalAlpha = fa; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(o.x, o.y, o.r * 1.9, 0, Math.PI * 2); ctx.fill();
-            ctx.globalCompositeOperation = 'source-over';
+        // everything with a depth, far to near; what has passed the craft is drawn over it
+        const things = rocks.filter((o) => o.born <= t).concat(orbs).map((o) => [zOf(o, t), o]).sort((u, v) => v[0] - u[0]);
+        for (const [z, o] of things) if (z >= ZU) drawThing(G, A, o, t, fa, Q, beatK);
+        // where each large rock will pass: a ring on your plane for its last 1.25 s (the same at every quality)
+        if (live) {
+          const dp = 0.5 + 0.5 * Math.sin(t * 14);
+          for (const o of rocks) {
+            if (o.k !== 'L' || o.deco || o.passed || o.arrive - t > 1.25 || o.arrive < t) continue;
+            const [ax, ay] = lat(o, o.arrive), p = proj(G, ax, ay, ZU), rr = o.hr * G.ppu, near = 1 - (o.arrive - t) / 1.25;
+            const course = Math.hypot(ax - cx, ay - cy) < o.hr + CHR + 0.2;
+            ctx.strokeStyle = DODGE.danger;
+            if (course) { ctx.globalAlpha = (0.55 + 0.45 * dp) * fa; ctx.lineWidth = 3.5; ctx.setLineDash([12, 9]); ctx.lineDashOffset = -t * 60; }
+            else { ctx.globalAlpha = (0.14 + 0.3 * near) * fa; ctx.lineWidth = 1.5; }
+            ctx.beginPath(); ctx.arc(p[0], p[1], rr * (1.6 - 0.6 * near), 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
           }
-          sprite(sh, o.x, o.y, R, o.th, fa);
-          if (t - o.hitT < 0.12) { ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 0.7 * (1 - (t - o.hitT) / 0.12); ctx.fillStyle = '#bff6ff'; ctx.beginPath(); ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2); ctx.fill(); ctx.globalCompositeOperation = 'source-over'; }
         }
         // the lock: brackets on what the guns will take next
-        if (aim && !aim.dead && live) {
-          const rr = aim.r * 1.35, bl = rr * 0.45;
+        if (aim && !aim.dead && live && zOf(aim, t) > ZU) {
+          const [x, y] = lat(aim, t), [sx, sy, s] = proj(G, x, y, zOf(aim, t)), rr = Math.max(9, aim.r * s * 1.4), bl = rr * 0.45;
           ctx.globalAlpha = 0.85 * fa; ctx.strokeStyle = '#7df9ff'; ctx.lineWidth = 2;
-          for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.beginPath(); ctx.moveTo(aim.x + sx * rr, aim.y + sy * (rr - bl)); ctx.lineTo(aim.x + sx * rr, aim.y + sy * rr); ctx.lineTo(aim.x + sx * (rr - bl), aim.y + sy * rr); ctx.stroke(); }
+          for (const [qx, qy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) { ctx.beginPath(); ctx.moveTo(sx + qx * rr, sy + qy * (rr - bl)); ctx.lineTo(sx + qx * rr, sy + qy * rr); ctx.lineTo(sx + qx * (rr - bl), sy + qy * rr); ctx.stroke(); }
         }
-        // bolts
+        // bolts: from the craft out to what they hit, into the distance
         ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
         for (const s of shots) {
-          const tx = s.o ? s.o.x : s.tx, ty = s.o ? s.o.y : s.ty, k = clamp01((t - s.t0) / (s.th - s.t0));
+          let tx = G.vx + (X - G.vx) * 0.15, ty = G.vy + (Y - G.vy) * 0.15;
+          if (s.o) { const [x, y] = lat(s.o, t), p = proj(G, x, y, Math.max(ZNEAR + 0.1, zOf(s.o, t))); tx = p[0]; ty = p[1]; }
+          const k = clamp01((t - s.t0) / (s.th - s.t0)), x0 = X + s.off, y0 = Y - targetR * sc * 0.2;
           if (k < 1) {
-            const k0 = Math.max(0, k - 0.3), x1 = s.x + (tx - s.x) * k, y1 = s.y + (ty - s.y) * k, x0 = s.x + (tx - s.x) * k0, y0 = s.y + (ty - s.y) * k0;
-            ctx.globalAlpha = fa; ctx.strokeStyle = 'rgba(64,224,255,0.45)'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
-            ctx.strokeStyle = '#eaffff'; ctx.lineWidth = 2.5; ctx.stroke();
-          } else if (s.o) { const kk = (t - s.th) / 0.16; ctx.globalAlpha = (1 - kk) * fa; ctx.fillStyle = '#eaffff'; ctx.beginPath(); ctx.arc(tx, ty, 5 + kk * 22, 0, Math.PI * 2); ctx.fill(); }
+            const k0 = Math.max(0, k - 0.35), wd = 1 - 0.7 * k;
+            ctx.globalAlpha = fa; ctx.strokeStyle = 'rgba(64,224,255,0.45)'; ctx.lineWidth = 9 * wd + 1; ctx.beginPath(); ctx.moveTo(x0 + (tx - x0) * k0, y0 + (ty - y0) * k0); ctx.lineTo(x0 + (tx - x0) * k, y0 + (ty - y0) * k); ctx.stroke();
+            ctx.strokeStyle = '#eaffff'; ctx.lineWidth = 3 * wd + 0.5; ctx.stroke();
+          } else if (s.o) { const kk = (t - s.th) / 0.16; ctx.globalAlpha = (1 - kk) * fa; ctx.fillStyle = '#eaffff'; ctx.beginPath(); ctx.arc(tx, ty, 4 + kk * 16, 0, Math.PI * 2); ctx.fill(); }
         }
         ctx.globalCompositeOperation = 'source-over';
-        // warnings: the same at every quality. A large rock that will reach you is ringed; one coming from the side is announced
-        const dp = 0.5 + 0.5 * Math.sin(t * 14);
-        for (const o of rocks) {
-          if (o.k !== 'L' || !live) continue;
-          if (o.born > t) {
-            const ex = o.side < 0 ? G.si.left + 16 : W - G.si.right - 16, d = -o.side;
-            ctx.globalAlpha = 0.55 + 0.45 * dp; ctx.strokeStyle = DODGE.danger; ctx.lineWidth = 4; ctx.lineJoin = 'round';
-            for (let j = 0; j < 3; j++) { const x = ex + d * j * 12 - ox; ctx.beginPath(); ctx.moveTo(x, o.y - 13); ctx.lineTo(x + d * 10, o.y); ctx.lineTo(x, o.y + 13); ctx.stroke(); }
-            continue;
-          }
-          const rx = o.x - cx, ry = o.y - cy, vv = o.vx * o.vx + o.vy * o.vy, tc = vv ? -(rx * o.vx + ry * o.vy) / vv : -1;
-          if (tc > 0 && tc < 1.15 && Math.hypot(rx + o.vx * tc, ry + o.vy * tc) < o.hr + G.hr + U * 0.35) {
-            ctx.globalAlpha = (0.5 + 0.5 * dp) * fa; ctx.strokeStyle = DODGE.danger; ctx.lineWidth = 3.5; ctx.setLineDash([12, 9]); ctx.lineDashOffset = -t * 60;
-            ctx.beginPath(); ctx.arc(o.x, o.y, o.hr * 1.08, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
-          }
-        }
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '800 ' + Math.max(12, Math.round(U * 0.42)) + 'px Inter, system-ui, sans-serif';
-        for (const p of pops) { const k = (t - p.t0) / 0.8; ctx.globalAlpha = (1 - k) * fa; ctx.fillStyle = p.col; ctx.fillText(p.txt, p.x, p.y - k * 26); }
-        ctx.restore();
       }
       ctx.restore();
       ctx.globalAlpha = 1;
-      // the rock that passes close, and the ring you came out of
-      if (pass >= 0) {
-        const sh = (A.dark && A.dark[0]) || A.L[0];
-        sprite(sh, W * 0.5 + (pass - 0.5) * W * 0.2, py, M, 0.5 + pass * 0.7, 0.97);
-      }
-      if (a < 0.8) { const k = a / 0.8; ctx.globalAlpha = (1 - k) * 0.9; ctx.strokeStyle = theme.c1; ctx.lineWidth = 6 * (1 - k) + 1; ctx.beginPath(); ctx.arc(fromX, fromY, targetR * (1 + k * 7), 0, Math.PI * 2); ctx.stroke(); }
-      // ---- the craft: the same UFO, smaller, banking into its turns ----
-      const kin = ease((a - 0.15) / (STEER_AT - 0.15)), kex = exitFrom ? ease((a - (dur - OUT) - 0.3) / (OUT - 0.5)) : 0;
-      const sc = 1 - 0.42 * kin + 0.42 * kex, X = cx + ox, Y = cy + oy, spd = Math.hypot(vx, vy) / (Math.min(W, H) * 1.2);
-      ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
-      if (Q >= 1 && trail.length > 2 && kex < 0.5) {            // the wake: it streams back, and swings wide in a turn
-        for (let i = 1; i < trail.length; i++) {
-          const p0 = trail[i - 1], p1t = trail[i], k = i / trail.length, back0 = Math.max(0, t - p0.t) * G.V * 1.5, back1 = Math.max(0, t - p1t.t) * G.V * 1.5;
-          ctx.globalAlpha = k * k * (0.16 + 0.4 * Math.min(1, spd * 2)) * (1 - kex * 2);
-          ctx.strokeStyle = hexToRgba(theme.c1, 1); ctx.lineWidth = U * 0.3 * k;
-          ctx.beginPath(); ctx.moveTo(p0.x + ox, p0.y + oy + U * 0.3 + back0); ctx.lineTo(p1t.x + ox, p1t.y + oy + U * 0.3 + back1); ctx.stroke();
-        }
-      }
-      const thr = 0.8 + 0.2 * Math.sin(t * 31) * Math.sin(t * 17) + Math.min(0.6, spd), ey = Y + targetR * 0.34 * sc, len = targetR * 1.3 * sc * thr, wd = targetR * 0.24 * sc;
+      // the ring you came out of
+      if (a < 0.8) { const k = a / 0.8; ctx.globalAlpha = (1 - k) * 0.9; ctx.strokeStyle = theme.c1; ctx.lineWidth = 6 * (1 - k) + 1; ctx.beginPath(); ctx.arc(fromX, fromY, targetR * (1 + k * 7), 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
+      // ---- the craft: the same UFO, seen from behind, banking into its turns ----
+      const spd = Math.hypot(vx, vy) / 4;
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      const thr = 0.8 + 0.2 * Math.sin(t * 31) * Math.sin(t * 17) + Math.min(0.5, spd) + kw * 1.5, ey = Y + targetR * 0.34 * sc, len = targetR * 1.5 * sc * thr, wd = targetR * 0.26 * sc;
       const wg = ctx.createLinearGradient(X, ey, X, ey + len);
       wg.addColorStop(0, 'rgba(255,255,255,0.5)'); wg.addColorStop(0.3, hexToRgba(theme.c1, 0.32)); wg.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.globalAlpha = 1; ctx.fillStyle = wg; ctx.beginPath(); ctx.moveTo(X - wd, ey); ctx.lineTo(X + wd, ey); ctx.lineTo(X - bank * wd * 5, ey + len); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = wg; ctx.beginPath(); ctx.moveTo(X - wd, ey); ctx.lineTo(X + wd, ey); ctx.lineTo(X - bank * wd * 5, ey + len); ctx.closePath(); ctx.fill();
       ctx.restore();
-      ctx.save(); ctx.translate(X, Y); ctx.rotate(bank * 0.55); ctx.scale(sc * (1 - 0.14 * Math.abs(bank)), sc); ctx.translate(-X, -Y);
+      ctx.save(); ctx.translate(X, Y); ctx.rotate(bank * 0.62); ctx.scale(sc * (1 - 0.12 * Math.abs(bank)), sc * (1 + lim(vy / 4, -1, 1) * 0.06)); ctx.translate(-X, -Y);
       drawPlayerCraft(t, X, Y, pulse + beatBreath());
       ctx.restore();
       // the flight shield: three arcs under the craft; the bubble shows while you are protected
@@ -9416,17 +9406,16 @@ void main(){
         }
         ctx.restore();
       }
-      // near silhouettes, at the very edge only
-      if (A.dark) for (const f of fore) {
-        const k = (t - f.t0) / 2.4, sh = A.dark[f.ty % A.dark.length], R = f.r / 0.6;
-        sprite(sh, f.side < 0 ? -R * 0.52 : W + R * 0.52, -R + (H + 2 * R) * k, R, f.t0 + k * 1.2, 0.9 * fa);
+      // what has passed the craft sweeps by the camera, in front of it
+      if (fa > 0) {
+        const near = rocks.filter((o) => o.born <= t && zOf(o, t) < ZU).sort((u, v) => zOf(v, t) - zOf(u, t));
+        for (const o of near) drawThing(G, A, o, t, fa, Q, beatK);
+        ctx.globalAlpha = 1;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.font = '800 ' + Math.max(12, Math.round(G.U * 0.42)) + 'px Inter, system-ui, sans-serif';
+        for (const p of pops) { const k = (t - p.t0) / 0.8; ctx.globalAlpha = (1 - k) * fa; ctx.fillStyle = p.col; ctx.fillText(p.txt, p.x, p.y - k * 26); }
       }
       // the way home: the ring closes on the craft
-      if (exitFrom) {
-        const k = clamp01((a - (dur - OUT)) / OUT);
-        ctx.globalAlpha = k * 0.9; ctx.strokeStyle = theme.c1; ctx.lineWidth = 2 + 4 * k; ctx.beginPath(); ctx.arc(tgt.x, tgt.y, targetR * (1 + (1 - k) * 7), 0, Math.PI * 2); ctx.stroke();
-        if (!RM) { ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = '#cfe3ff'; ctx.lineWidth = 1.5; for (const d of dust) { const yy = ((d.y * (H + 40) + scroll * d.z * (1 + k * 3)) % (H + 40)) - 20; ctx.globalAlpha = 0.5 * k * (1 - k) * 2; ctx.beginPath(); ctx.moveTo(d.x * W, yy); ctx.lineTo(d.x * W, yy + 30 + 120 * k * d.z); ctx.stroke(); } ctx.globalCompositeOperation = 'source-over'; }
-      }
+      if (exitFrom) { ctx.globalAlpha = kw * 0.9; ctx.strokeStyle = theme.c1; ctx.lineWidth = 2 + 4 * kw; ctx.beginPath(); ctx.arc(tgt.x, tgt.y, targetR * (1 + (1 - kw) * 7), 0, Math.PI * 2); ctx.stroke(); }
       ctx.globalAlpha = 1;
     }
     function hud(t) {
@@ -9436,15 +9425,15 @@ void main(){
       if (a > 0.9 && a < 3.6) {                                // where you are
         const f = Math.min(clamp01((a - 0.9) / 0.4), clamp01((3.6 - a) / 0.5)), fs = Math.round(Math.min(W * 0.07, 40));
         ctx.globalAlpha = f; ctx.shadowColor = 'rgba(90,200,255,0.9)'; ctx.shadowBlur = 18;
-        ctx.fillStyle = '#eaf6ff'; ctx.font = '900 ' + fs + 'px Inter, system-ui, sans-serif'; ctx.fillText(TITLES[env], cxm, G.y0 + fs * 1.1);
-        ctx.shadowBlur = 0; ctx.fillStyle = '#9fd8ff'; ctx.font = '700 ' + Math.round(fs * 0.34) + 'px Inter, system-ui, sans-serif'; ctx.fillText('H Y P E R D R I V E', cxm, G.y0 + fs * 1.85);
+        ctx.fillStyle = '#eaf6ff'; ctx.font = '900 ' + fs + 'px Inter, system-ui, sans-serif'; ctx.fillText(TITLES[env], cxm, G.top + fs * 1.1);
+        ctx.shadowBlur = 0; ctx.fillStyle = '#9fd8ff'; ctx.font = '700 ' + Math.round(fs * 0.34) + 'px Inter, system-ui, sans-serif'; ctx.fillText('H Y P E R D R I V E', cxm, G.top + fs * 1.85);
       }
       if (!steered && a > STEER_AT && a < dur - OUT) {         // how, until you have done it
-        const touch = usesTouch(), l1 = touch ? 'DRAG ANYWHERE TO FLY' : inputKind === 'mouse' ? 'MOVE THE MOUSE TO FLY' : 'WASD / ARROWS TO FLY';
+        const touch = usesTouch(), l1 = touch ? 'DRAG ANYWHERE TO FLY' : inputKind === 'mouse' ? 'MOVE THE MOUSE TO FLY' : 'WASD / ARROWS TO FLY', y = G.hy - targetR * G.cs * 2.3;
         ctx.globalAlpha = 0.75 + 0.25 * Math.sin(t * 5); ctx.fillStyle = '#eaf6ff'; ctx.font = '800 ' + Math.max(13, Math.round(G.U * 0.44)) + 'px Inter, system-ui, sans-serif';
-        ctx.fillText(l1, cxm, G.hy - targetR * 1.5);
+        ctx.fillText(l1, cxm, y);
         ctx.globalAlpha = 0.7; ctx.fillStyle = '#7df9ff'; ctx.font = '700 ' + Math.max(11, Math.round(G.U * 0.34)) + 'px Inter, system-ui, sans-serif';
-        ctx.fillText('YOUR GUNS FIRE ON THE BEAT', cxm, G.hy - targetR * 1.5 + Math.max(18, G.U * 0.6));
+        ctx.fillText('YOUR GUNS FIRE ON THE BEAT', cxm, y + Math.max(18, G.U * 0.6));
       }
       // time left: a thin line over the energy bar
       const k = clamp01((dur - a) / dur), w = Math.min(160, W * 0.36), y = H - G.si.bottom - 46;
@@ -9466,7 +9455,8 @@ void main(){
       if (!on || state !== 'playing') return;
       if (e.pointerType === 'mouse') { if (flying()) { mouse = pt(e); steered = true; } return; }
       if (!drag || drag.id !== e.pointerId) return;
-      if (flying()) { const G = geo(), r = canvas.getBoundingClientRect(), s = W / (r.width || W); gx = lim(gx + (e.clientX - drag.x) * s * 1.3, G.x0, G.x1); gy = lim(gy + (e.clientY - drag.y) * s * 1.3, G.y0, G.y1); steered = true; }
+      // the craft moves on the glass by the drag (x1.3), wherever the finger is
+      if (flying()) { const G = geo(), r = canvas.getBoundingClientRect(), s = W / (r.width || W) * 1.3 / G.k; gx = lim(gx + (e.clientX - drag.x) * s, -G.X, G.X); gy = lim(gy + (e.clientY - drag.y) * s, -G.Yu, G.Yd); steered = true; }
       drag.x = e.clientX; drag.y = e.clientY;
     }, { passive: true });
     const pu = (e) => { if (drag && drag.id === e.pointerId) drag = null; };
@@ -9483,12 +9473,13 @@ void main(){
       get stats() { return stats; },
       get shield() { return shield; },
       get title() { return TITLES[env]; },
-      // (read-only, for the tests and the performance probe)
-      _s: () => ({ cx, cy, gx, gy, vx, vy, bank, cam: [ox, oy], rm: RM, shield, protectUntil, env, age: age(), steered, rocks, orbs, shots, G: geo(), q: q(), art: art().how, bakeMs, bakeHow, bakedQ }),
-      _safe: (t) => { const G = geo(); return [safeX(t, G), G.hy]; },
-      _clear: (o) => clear(o, geo()),
+      // (read-only, for the tests and the performance probe; cx, cy are world units on the craft's plane, sx, sy its place on the glass)
+      _s: () => ({ cx, cy, gx, gy, vx, vy, bank, sx: P0[0], sy: P0[1], rm: RM, shield, protectUntil, env, age: age(), steered, rocks, orbs, shots, G: geo(), chr: CHR, win: WIN, q: q(), art: art().how, bakeMs, bakeHow, bakedQ }),
+      _safe: (t) => safeAt(t, geo()),
+      _lat: (o, t) => lat(o, t),
+      _z: (o, t) => zOf(o, t),
       _set: (o) => { if ('gx' in o) gx = o.gx; if ('gy' in o) gy = o.gy; if (o.snap) { cx = gx; cy = gy; vx = vy = 0; } if ('shield' in o) shield = o.shield; },
-      _seed: (n) => { seed = n | 0; p1 = hash(seed + 1) * 6.283; p2 = hash(seed + 2) * 6.283; beat0 = t0; lastBeat = -1; giantAt = Math.round(18.5 / bdur); },   // (a fixed field, on a beat grid from the start)
+      _seed: (n) => { seed = n | 0; p1 = hash(seed + 1) * 6.283; p2 = hash(seed + 2) * 6.283; beat0 = t0; lastBeat = -1; giantAt = Math.round(14.5 / bdur); rocks = []; orbs = []; },   // (a fixed field, on a beat grid from the start)
       _art: () => art()
     };
   })();
