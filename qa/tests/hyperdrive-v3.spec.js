@@ -22,6 +22,7 @@ async function startRun(page, tap) {
 test('first flight: the controls card freezes time and the music until Continue, shows once, and Reset Tutorial brings it back', async ({ page }) => {
   test.setTimeout(90000);
   const errors = await boot(page, { save: { level: 60 } });
+  await page.evaluate(() => Hyper._classic(true));   // these fly the old tunnel (kept one release); the new encounters: flight.spec.js
   expect(await page.evaluate(() => save.hyperTutDone)).toBe(false);
   await startRun(page, false);
   await page.evaluate(() => Hyper.request());
@@ -64,6 +65,7 @@ test('touch: a slide steers (one long slide crosses two lanes), a tap fires, a v
   const ctx = await browser.newContext({ viewport: { width: 412, height: 915 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
   const page = await ctx.newPage();
   const errors = await boot(page, { save: { level: 60 } });
+  await page.evaluate(() => Hyper._classic(true));   // these fly the old tunnel (kept one release); the new encounters: flight.spec.js
   const cdp = await ctx.newCDPSession(page);
   const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
   const slide = async (x0, y0, dx, dy, steps = 8) => {
@@ -108,6 +110,7 @@ for (const low of [false, true]) {
   test(`30-second flight through the space-time tunnel toward a growing black hole (${low ? 'Low' : 'High'} graphics)`, async ({ page }) => {
     test.setTimeout(120000);
     const errors = await boot(page, { save: { level: 60, hyperTutDone: true, settings: { lowGraphics: low, spaceQuality: 'high' } } });
+  await page.evaluate(() => Hyper._classic(true));   // these fly the old tunnel (kept one release); the new encounters: flight.spec.js
     await startRun(page, false);
     await page.evaluate(() => Hyper.request());
     await page.waitForFunction(() => Hyper.active, null, { timeout: 5000 });
