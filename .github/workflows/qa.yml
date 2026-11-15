@@ -20,7 +20,7 @@ jobs:
   fast:
     name: static + smoke (PR gate, ~2 min)
     runs-on: ubuntu-latest
-    timeout-minutes: 35      # the gate has grown with each feature (about 22 min with Hyperdrive v3 and the boss-dodge suites)
+    timeout-minutes: 45      # the gate has grown with each feature (about 27 min with Hyperdrive v3 and the boss suites, ~5 more with the secret legends)
     defaults: { run: { working-directory: qa } }
     steps:
       - uses: actions/checkout@v4
@@ -85,6 +85,9 @@ jobs:
       - name: The Mothership (Alien Fleet boss; Broadside, Tractor Beam, Main Cannon)
         if: ${{ !cancelled() }}
         run: npx playwright test tests/mothership-boss.spec.js --project=desktop-chrome
+      - name: The secret realms' legends (Voraxis, The Visitor, Archon)
+        if: ${{ !cancelled() }}
+        run: npx playwright test tests/secret-legends.spec.js --project=desktop-chrome
       - uses: actions/upload-artifact@v4
         if: always()
         with: { name: fast-results, path: qa/results, retention-days: 14 }
