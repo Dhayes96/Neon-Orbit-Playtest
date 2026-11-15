@@ -11925,9 +11925,9 @@
     ufo:              { pools: [['probe', 'fold'], ['fold', 'probe', 'fold', 'probe']], finale: 'contact', hit: 16 },
     archon:           { pools: [['verdict', 'measure'], ['measure', 'verdict', 'measure', 'verdict']], finale: 'judgement', hit: 18 }
   };
-  // The secret realms play at 140-180 BPM, too quick to step on every beat, so their attacks count
-  // in half-time there (`counts`: every k, lockB, span, linger and lead below is in counts).
-  const dodgeCU = (b) => b < 0.43 ? 2 : 1;
+  // The secret realms' bosses come at ~131 (the Abyss), 152 and 176 BPM: above ~133 BPM a step on
+  // every beat is too quick, so their attacks count in half-time there (`counts`: every k, lockB, span, linger and lead below is in counts).
+  const dodgeCU = (b) => b < 0.45 ? 2 : 1;                   // (above ~133 BPM)
   // VORAXIS, THE STAR-EATER (the Abyss): fire that stays. A scorched spot burns on for a few counts
   //   and stepping into it hurts, so the way back is closed behind you.
   //   breath     INFERNO BREATH: the fire rakes along the row toward you, a spot a count.
@@ -20167,7 +20167,8 @@
     function startSecret(key, toBoss) {
       scr.classList.add('hidden'); hideScreens();
       startSecretGauntlet(key); flagRun();
-      if (toBoss) requestAnimationFrame(() => { if (state === 'playing') startDragonEncounter(); });
+      // the boss at the tempo the realm has reached by then (its attacks count in half-time there)
+      if (toBoss) requestAnimationFrame(() => { if (state === 'playing') { stage = doomStagesTotal() + 1; stageNumEl.textContent = stage; bpm = stageBpmTarget(); startDragonEncounter(); } });
     }
     function nextBossStage() { return BOSS_STAGES.find(s => s > stage && !bossDefeatedStagesThisRun.has(s)) || 0; }
 
