@@ -9080,7 +9080,7 @@ void main(){
       const cs = short ? 0.8 : W < 520 ? 0.95 : 1.12, k = (1 - FOLLOW) * ppu;           // k: screen px the craft moves per world unit
       const vy = si.top + H * (short ? 0.3 : 0.34), hy = H - si.bottom - Math.max(targetR * cs * 1.9, H * 0.2);
       const X = lim((W / 2 - Math.max(si.left, si.right) - targetR * cs * 1.25) / k, 1.2, 3.2);
-      const Yu = lim((hy - (si.top + H * 0.27)) / k, 0.5, 1.5), Yd = lim((H - si.bottom - targetR * cs * 1.2 - hy) / k, 0.2, 0.9);
+      const Yu = lim((hy - (si.top + H * 0.27)) / k, 0.5, 1.5), Yd = lim((H - si.bottom - 32 - targetR * cs * 0.62 - hy) / k, 0.2, 0.9);   // (its underside stays above the energy bar)
       return { si, F, ppu, cs, k, vx: W / 2, vy, hy, X, Yu, Yd, CH: (hy - vy) * ZU / F, top: si.top + Math.max(H * 0.15, 96), U: targetR * 0.5 };
     }
     // the camera sits behind and above the craft and follows it part of the way

@@ -31,6 +31,7 @@ for (const [W, H, short] of [[844, 390, true], [800, 450, true], [907, 510, true
     test.setTimeout(60000);
     await page.setViewportSize({ width: W, height: H });
     const errors = await boot(page, { save: { level: 20, hyperTutDone: true } });
+    await page.evaluate(() => Hyper._classic(true));   // the old tunnel's layout (kept one release); the flight's layout: flight.spec.js
     await page.evaluate(() => startGame(false));
     await page.waitForFunction(() => state === 'playing');
     await page.evaluate(() => { combo = 149; comboTier = COMBO_MILESTONES.findIndex((m) => m.hyper); window.__bot = setInterval(() => { const t = clockNow() - startTime; if (Hyper.active) return; for (const n of notes) if (!n.hit && !n.missed && Math.abs(t - (n.hitTime + audioOffset())) < 0.03) { handleTap(null, true); break; } }, 8); });

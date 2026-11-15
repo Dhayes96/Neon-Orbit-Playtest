@@ -196,3 +196,24 @@ test('reduced motion: no close pass on the way in, no shake; the flight plays th
   expect(r).toEqual({ rm: true, moved: true, shield: 2, shake: 0 });
   expect(real(errors)).toEqual([]);
 });
+
+for (const [W, H] of [[844, 390], [800, 450], [907, 510], [390, 844], [1280, 720]]) {
+  test(`layout at ${W}x${H}: the craft stays on the glass and clear of the header, everywhere it can fly`, async ({ page }) => {
+    test.setTimeout(60000);
+    await page.setViewportSize({ width: W, height: H });
+    const errors = await fly(page);
+    await page.waitForFunction(() => Flight.main);
+    const r = await page.evaluate(async () => {
+      const wait = (ms) => new Promise((r) => setTimeout(r, ms)), G = Flight._s().G, out = [];
+      const hud = Math.max(...[...document.querySelectorAll('.hud .stat, #stagePill, #pauseBtn')].map((e) => e.getBoundingClientRect()).filter((b) => b.width).map((b) => b.bottom));
+      for (const [gx, gy] of [[0, 0], [-G.X, -G.Yu], [G.X, -G.Yu], [-G.X, G.Yd], [G.X, G.Yd]]) { Flight._set({ gx, gy, snap: true }); await wait(60); const s = Flight._s(); out.push([s.sx, s.sy]); }
+      return { out, hud, half: targetR * G.cs, W, H, room: [G.X * 2, G.Yu + G.Yd], bar: document.getElementById('energyBar').getBoundingClientRect().top };
+    });
+    for (const [x, y] of r.out) {
+      expect(x - r.half * 0.9, 'inside the left edge').toBeGreaterThanOrEqual(0); expect(x + r.half * 0.9, 'inside the right edge').toBeLessThanOrEqual(r.W);
+      expect(y - r.half * 0.5, 'below the header').toBeGreaterThanOrEqual(r.hud); expect(y + r.half * 0.6, 'above the energy bar').toBeLessThanOrEqual(r.bar);
+    }
+    expect(r.room[0], 'room to fly, side to side').toBeGreaterThanOrEqual(2.4); expect(r.room[1], 'and up and down').toBeGreaterThanOrEqual(0.9);
+    expect(real(errors)).toEqual([]);
+  });
+}
