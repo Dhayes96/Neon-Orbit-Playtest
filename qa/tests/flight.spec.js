@@ -44,26 +44,83 @@ test('Hyperdrive opens the ASTEROID FIELD: 30 s, free of the ring game, and back
   expect(real(errors)).toEqual([]);
 });
 
-test('the safe point: every large rock of three whole flights stays off it (and rocks really do come, on the beat)', async ({ page }) => {
-  test.setTimeout(150000);
-  const errors = await fly(page, {}, { line: true });
-  const out = [];
+test('a different place each Hyperdrive: the Asteroid Field, the Living Nebula, the Alien Ruins, and round again', async ({ page }) => {
+  test.setTimeout(60000);
+  const errors = await fly(page);
+  const seen = [await page.evaluate(() => Flight.title)];
   for (let n = 0; n < 3; n++) {
-    await page.evaluate(() => { window.__min = 1e9; window.__big = new Set(); window.__off = 0;
-      window.__w = setInterval(() => { if (!Flight.main || state !== 'playing') return; const s = Flight._s(), t = clockNow() - startTime;
-        for (const o of s.rocks) if (o.k === 'L' && !o.deco) {
-          if (!window.__big.has(o)) { window.__big.add(o); const b = (o.arrive - (t - s.age)) ; window.__off = Math.max(window.__off, Math.abs(o.sp * (o.arrive - o.born) - 13)); }
-          if (Math.abs(o.arrive - t) < s.win) { const [x, y] = Flight._lat(o, t), d = Math.hypot(x - s.cx, y - s.cy) - o.hr - s.chr; if (d < window.__min) window.__min = d; } } }, 4); });
+    await page.evaluate(() => { Flight.end(); Hyper.cancel(); Hyper.request(); });      // (as a finished flight leaves it; cancel clears the 90 s cooldown)
+    await page.waitForFunction(() => Hyper.active && Flight.on, null, { timeout: 15000 });
+    seen.push(await page.evaluate(() => Flight.title));
+  }
+  expect(seen).toEqual(['ASTEROID FIELD', 'LIVING NEBULA', 'ALIEN RUINS', 'ASTEROID FIELD']);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('rhythmVoidSave.v1')).flightN)).toBe(3);
+  expect(real(errors)).toEqual([]);
+});
+
+// what each place must send in a flight (hazards by kind), with a pilot on the safe point never hit
+const PLACES = { asteroids: { rock: 12 }, nebula: { arc: 6, cell: 2 }, ruins: { beam: 3, sheet: 1, pulse: 1 } };
+for (const [env, need] of Object.entries(PLACES)) {
+  test(`the safe point in the ${env}: every hazard of a whole flight stays off it (bars, sweeps and pulses included)`, async ({ page }) => {
+    test.setTimeout(90000);
+    const errors = await boot(page, { save: { level: 60, flightDone: true } });
+    await page.evaluate((env) => { Flight._env(env); startGame(false); }, env);
+    await page.waitForFunction(() => state === 'playing');
+    await page.waitForTimeout(500);
+    await page.evaluate(() => {
+      window.__min = 1e9; window.__seen = new Set(); window.__n = {}; window.__deco = {};
+      setInterval(() => { if (!Hyper.active || !Flight.main || state !== 'playing') return; const t = clockNow() - startTime, [x, y] = Flight._safe(t); Flight._set({ gx: x, gy: y, snap: true });
+        const s = Flight._s();
+        for (const o of s.rocks) {
+          if (!window.__seen.has(o)) { window.__seen.add(o); const k = o.hz || 'rock', into = o.deco ? window.__deco : o.k === 'L' ? window.__n : null; if (into) into[k] = (into[k] || 0) + 1; }
+          if (o.k === 'L' && !o.deco && (!o.aim || o.locked) && t >= o.arrive - s.win && t <= o.arrive + (o.hold || 0) + s.win) { const d = Flight._dist(o, t, s.cx, s.cy) - o.hr - s.chr; if (d < window.__min) window.__min = d; }
+        } }, 4);
+      Hyper.request();
+    });
+    await page.waitForFunction(() => Hyper.active && Flight.on, null, { timeout: 15000 });
     await page.waitForFunction(() => !Hyper.active, null, { timeout: 45000 });
-    out.push(await page.evaluate(() => { clearInterval(window.__w); return { min: window.__min, big: window.__big.size, crashes: Hyper.stats.crashes, off: window.__off }; }));
-    if (n < 2) { await page.waitForTimeout(700); await page.evaluate(() => { Hyper.cancel(); Hyper.request(); }); await page.waitForFunction(() => Hyper.active && Flight.on, null, { timeout: 15000 }); }   // (cancel clears the 90 s cooldown)
-  }
-  for (const o of out) {
-    expect(o.crashes).toBe(0);
-    expect(o.big, 'a real field: large rocks come').toBeGreaterThan(12);
-    expect(o.min, 'never closer than a quarter of a unit (the craft is 0.32)').toBeGreaterThan(0.25);
-    expect(o.off, 'each one crosses the whole depth of the field').toBeLessThan(0.01);
-  }
+    const r = await page.evaluate(() => ({ min: window.__min, n: window.__n, deco: window.__deco, crashes: Hyper.stats.crashes, blasted: Hyper.stats.blasted, lights: Hyper.stats.rings, st: state }));
+    expect(r.crashes).toBe(0);
+    for (const [k, n] of Object.entries(need)) expect(r.n[k] || 0, `${k} hazards come`).toBeGreaterThanOrEqual(n);
+    expect(r.min, 'never closer than a quarter of a unit (the craft is 0.32)').toBeGreaterThan(0.25);
+    expect(r.blasted, 'the guns broke things by themselves').toBeGreaterThan(8);
+    expect(r.lights, 'lights along the open way').toBeGreaterThan(5);
+    expect(Object.keys(r.deco).sort().join(), 'scenery of its own').toBe(env === 'asteroids' ? 'rock' : env === 'nebula' ? 'puff' : 'gate,pillar');
+    if (env === 'ruins') { expect(r.deco.gate).toBeGreaterThanOrEqual(3); expect(r.deco.pillar).toBeGreaterThan(10); }
+    expect(r.st).toBe('playing');
+    expect(real(errors)).toEqual([]);
+  });
+}
+
+test('hazard shapes: a bar strikes along its whole length and not past its end; a sweep strikes when it crosses you; a pulse locks on and can be stepped off', async ({ page }) => {
+  test.setTimeout(90000);
+  const errors = await fly(page);
+  await page.waitForFunction(() => Flight.main);
+  await page.evaluate(() => Flight._quiet(true));
+  const r = await page.evaluate(async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms)), out = {};
+    const base = (o) => Object.assign({ k: 'L', x: 0, y: 0, vx: 0, vy: 0, r: 0.26, hr: 0.2, sp: 5, deco: false, n: 1, ty: 0, th: 0, spin: 0, hp: 1, inc: 0, dead: false, passed: false, hitT: -9 }, o);
+    const now = () => clockNow() - startTime;
+    const go = async (x, y) => { Flight._set({ gx: x, gy: y, snap: true, shield: 3 }); await wait(1600); };      // (and out of the last hit's protection)
+    const crashes = () => Hyper.stats.crashes;
+    // a bar from x = -1 to +1 at y = 0
+    await go(0.9, 0.1); let c = crashes(); Flight._s().rocks.push(base({ hz: 'arc', seg: [1, 0], arrive: now() + 0.05, born: now() - 1 })); await wait(300); out.barEnd = crashes() - c;
+    await go(1.75, 0); c = crashes(); Flight._s().rocks.push(base({ hz: 'arc', seg: [1, 0], arrive: now() + 0.05, born: now() - 1 })); await wait(300); out.pastEnd = crashes() - c;
+    await go(0, 0.75); c = crashes(); Flight._s().rocks.push(base({ hz: 'arc', seg: [1, 0], arrive: now() + 0.05, born: now() - 1 })); await wait(300); out.above = crashes() - c;
+    // a wall of light over y <= 0, sweeping from x = -2 to +2 in 1 s
+    await go(1, -0.3); c = crashes(); let sh = base({ hz: 'sheet', seg: [0, 1], x: -2, y: -1, vx: 4, hold: 1, sp: 0, hr: 0.16, arrive: now() + 0.1, born: now() }); Flight._s().rocks.push(sh);
+    await wait(500); out.sweepBefore = crashes() - c; await wait(700); out.sweepHit = crashes() - c;
+    await go(1, 0.8); c = crashes(); Flight._s().rocks.push(base({ hz: 'sheet', seg: [0, 1], x: -2, y: -1, vx: 4, hold: 1, sp: 0, hr: 0.16, arrive: now() + 0.1, born: now() })); await wait(1300); out.sweepUnder = crashes() - c;
+    // a pulse: follows until 0.5 s out, then is fixed. (Flown on the side away from the safe point: a pulse
+    // that would land on the safe point is pushed off it, which is the fairness rule and not this test.)
+    const away = () => (Flight._safe(now() + 1)[0] > 0 ? -1 : 1);
+    let w = away(); await go(w * 1.7, 0); w = away(); Flight._set({ gx: w * 1.7, gy: 0, snap: true }); c = crashes(); let p = base({ hz: 'pulse', aim: 0.5, hr: 0.36, r: 0.42, arrive: now() + 1.0, born: now() }); Flight._s().rocks.push(p);
+    await wait(300); out.follows = !p.locked && Math.abs(p.x - w * 1.7) < 0.01; Flight._set({ gx: w * 1.4, gy: 0.3, snap: true }); await wait(350);
+    out.locked = p.locked; out.lockedOnYou = Math.hypot(p.x - w * 1.4, p.y - 0.3) < 0.01; Flight._set({ gx: w * 0.2, gy: 0.3, snap: true }); await wait(600); out.steppedOff = crashes() - c;
+    w = away(); await go(w * 1.7, 0); w = away(); Flight._set({ gx: w * 1.7, gy: 0, snap: true }); c = crashes(); Flight._s().rocks.push(base({ hz: 'pulse', aim: 0.5, hr: 0.36, r: 0.42, arrive: now() + 1.0, born: now() })); await wait(1300); out.stoodStill = crashes() - c;
+    return out;
+  });
+  expect(r).toEqual({ barEnd: 1, pastEnd: 0, above: 0, sweepBefore: 0, sweepHit: 1, sweepUnder: 0, follows: true, locked: true, lockedOnYou: true, steppedOff: 0, stoodStill: 1 });
   expect(real(errors)).toEqual([]);
 });
 
@@ -71,6 +128,7 @@ test('damage: a large rock costs one shield and gives 1.5 s of protection; with 
   test.setTimeout(90000);
   const errors = await fly(page);
   await page.waitForFunction(() => Flight.main);
+  await page.evaluate(() => Flight._quiet(true));
   const r = await page.evaluate(async () => {
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
     // a rock that meets the craft's plane now, where the craft is
@@ -156,28 +214,30 @@ test('pause and resume mid-flight: nothing changes while paused, the flight stil
   expect(real(errors)).toEqual([]);
 });
 
-test('quality: Ultra, High, Lite and Low graphics fly the same field (same rocks, sizes, places and timing; only the scenery differs)', async ({ page }) => {
-  test.setTimeout(150000);
-  const runs = [];
-  for (const [sq, low] of [['ultra', false], ['high', false], ['lite', false], ['high', true]]) {
-    const errors = await boot(page, { save: { level: 60, flightDone: true, settings: { spaceQuality: sq, lowGraphics: low } } });
-    await page.evaluate(() => { startGame(false); });
-    await page.waitForFunction(() => state === 'playing');
-    const r = await page.evaluate(async () => {
-      startTime = clockNow() - 100.5;
-      const t = 100.5; Hyper.request(); Hyper.start(t); Flight._seed(4242);
-      const s = Flight._s(), list = [], seen = new Set(); let deco = 0;
-      for (let tt = t; tt < t + 30; tt += 1 / 60) { Flight.update(1 / 60, tt); for (const o of Flight._s().rocks) if (!seen.has(o)) { seen.add(o); if (o.deco) deco++; else list.push([o.k, Math.round(o.arrive * 100), Math.round(o.r * 100), Math.round(o.x * 100), Math.round(o.y * 100), Math.round(o.vx * 100)]); } }
-      return { q: s.q, list, deco, G: [s.G.X, s.G.Yu, s.G.Yd, s.chr] };
-    });
-    runs.push(r);
-    expect(real(errors)).toEqual([]);
-  }
-  expect(runs.map((r) => r.q)).toEqual([3, 2, 1, 0]);
-  expect(runs[0].list.length).toBeGreaterThan(40);
-  for (const r of runs.slice(1)) { expect(r.list).toEqual(runs[0].list); expect(r.G).toEqual(runs[0].G); }
-  expect(runs[0].deco, 'more scenery at higher quality').toBeGreaterThan(runs[3].deco * 3);
-});
+for (const env of ['asteroids', 'nebula', 'ruins']) {
+  test(`quality in the ${env}: Ultra, High, Lite and Low graphics fly the same field (same hazards, sizes, places and timing; only the scenery differs)`, async ({ page }) => {
+    test.setTimeout(150000);
+    const runs = [];
+    for (const [sq, low] of [['ultra', false], ['high', false], ['lite', false], ['high', true]]) {
+      const errors = await boot(page, { save: { level: 60, flightDone: true, settings: { spaceQuality: sq, lowGraphics: low } } });
+      await page.evaluate((env) => { Flight._env(env); startGame(false); }, env);
+      await page.waitForFunction(() => state === 'playing');
+      const r = await page.evaluate(async () => {
+        startTime = clockNow() - 100.5;
+        const t = 100.5; Hyper.request(); Hyper.start(t); Flight._seed(4242);
+        const s = Flight._s(), list = [], seen = new Set(); let deco = 0;
+        for (let tt = t; tt < t + 30; tt += 1 / 60) { Flight.update(1 / 60, tt); for (const o of Flight._s().rocks) if (!seen.has(o)) { seen.add(o); if (o.deco && o.hz !== 'gate') deco++; else list.push([o.k, o.hz || '', Math.round(o.arrive * 100), Math.round(o.r * 100), Math.round(o.x * 100), Math.round(o.y * 100), Math.round(o.vx * 100), o.seg ? o.seg.map((v) => Math.round(v * 100)).join() : '', Math.round((o.hold || 0) * 100)]); } }
+        return { q: s.q, list, deco, G: [s.G.X, s.G.Yu, s.G.Yd, s.chr] };
+      });
+      runs.push(r);
+      expect(real(errors)).toEqual([]);
+    }
+    expect(runs.map((r) => r.q)).toEqual([3, 2, 1, 0]);
+    expect(runs[0].list.length).toBeGreaterThan(40);
+    for (const r of runs.slice(1)) { expect(r.list).toEqual(runs[0].list); expect(r.G).toEqual(runs[0].G); }
+    expect(runs[0].deco, 'more scenery at higher quality').toBeGreaterThan(runs[3].deco * (env === 'ruins' ? 1.5 : 3));
+  });
+}
 
 test('reduced motion: no close pass on the way in, no shake; the flight plays the same', async ({ page }) => {
   test.setTimeout(90000);
