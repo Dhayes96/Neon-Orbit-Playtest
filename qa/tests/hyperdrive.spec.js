@@ -16,6 +16,7 @@ const lit = (page) => page.evaluate(() => {
 });
 async function fly(page, save) {
   const errors = await boot(page, { save: Object.assign({ level: 60, hyperTutDone: true }, save || {}) });
+  await page.evaluate(() => Hyper._classic(true));   // these fly the old tunnel (kept one release); the new encounters: flight.spec.js
   await page.evaluate(() => startGame(false));
   await page.waitForFunction(() => state === 'playing');
   await page.evaluate(() => {
@@ -71,6 +72,7 @@ test('Hyperdrive with Zero Form equipped: the orb flies the tunnel', async ({ pa
 
 test('an effect that throws half-way does not blank the play field for the rest of the run', async ({ page }) => {
   const errors = await boot(page, { save: { level: 20 } });
+  await page.evaluate(() => Hyper._classic(true));   // these fly the old tunnel (kept one release); the new encounters: flight.spec.js
   await page.evaluate(() => startGame(false));
   await page.waitForFunction(() => state === 'playing');
   await page.waitForTimeout(800);
