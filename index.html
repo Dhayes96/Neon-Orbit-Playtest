@@ -1772,21 +1772,30 @@
             <path d="M-6 12 Q-3 9 0 11.5 Q3 9 6 12" fill="none" stroke="#ffd23d" stroke-width="1.8" stroke-linecap="round"/>
           </symbol>
           <symbol id="cxPrism" viewBox="-50 -50 100 100">
-            <path d="M-46 -4 L-20 -2" stroke="#ff2e4d" stroke-width="3"/><path d="M-46 0 L-20 1" stroke="#ffd23d" stroke-width="3"/><path d="M-46 4 L-20 4" stroke="#5ef2ff" stroke-width="3"/>
-            <polygon points="-18,-26 0,-36 18,-26 0,-16" fill="#6a3ab0" stroke="#7dff68" stroke-width="2" stroke-linejoin="round"/>
-            <polygon points="-18,-26 0,-16 0,34 -18,24" fill="#2a1250" stroke="#7dff68" stroke-width="2" stroke-linejoin="round"/>
-            <polygon points="18,-26 0,-16 0,34 18,24" fill="#3a1866" stroke="#7dff68" stroke-width="2" stroke-linejoin="round"/>
-            <circle cx="-8" cy="2" r="2.4" fill="#fff"/><circle cx="8" cy="2" r="2.4" fill="#fff"/>
-            <path d="M-4 11 L4 11" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+            <g stroke-width="2.2" stroke-linecap="round"><path d="M-48 -9 L-12 -5" stroke="#ff2e4d"/><path d="M-48 -6.6 L-12 -3.6" stroke="#ff9a3d"/><path d="M-48 -4.2 L-12 -2.2" stroke="#ffd23d"/><path d="M-48 -1.8 L-12 -0.8" stroke="#7dff68"/><path d="M-48 0.6 L-12 0.6" stroke="#5ef2ff"/><path d="M-48 3 L-12 2" stroke="#b06bff"/></g>
+            <path d="M-22 -1 A22 5 0 0 1 22 -1" fill="none" stroke="#eafff0" stroke-width="1.3" stroke-linecap="round" opacity="0.5"/>
+            <g stroke="#c39bff" stroke-width="2" stroke-linejoin="round">
+            <polygon points="0,-46 -17,-3 -3,3" fill="#4a2386"/><polygon points="0,-46 -3,3 17,-3" fill="#32176a"/>
+            <polygon points="-17,-3 -3,3 0,46" fill="#241050"/><polygon points="-3,3 17,-3 0,46" fill="#1a0b3c"/>
+            </g>
+            <path d="M-22 -1 A22 5 0 0 0 22 -1" fill="none" stroke="#eafff0" stroke-width="1.3" stroke-linecap="round" opacity="0.8"/>
+            <circle cx="-4.5" cy="-8" r="2.5" fill="#fff"/><circle cx="6.5" cy="-8" r="2.5" fill="#fff"/>
+            <g fill="#32176a" stroke="#c39bff" stroke-width="1.5" stroke-linejoin="round"><polygon points="-33,-22 -29,-13 -33,-6 -37,-14"/><polygon points="30,-28 34,-19 30,-12 26,-20"/><polygon points="35,10 39,19 35,27 31,18"/><polygon points="-27,16 -23,24 -27,31 -31,23"/></g>
           </symbol>
+          <radialGradient id="cxCorona" cx="0.5" cy="0.5" r="0.5"><stop offset="0.5" stop-color="#ffe9a8" stop-opacity="0.75"/><stop offset="0.72" stop-color="#b026ff" stop-opacity="0.28"/><stop offset="1" stop-color="#b026ff" stop-opacity="0"/></radialGradient>
           <symbol id="cxEclipse" viewBox="-52 -52 104 104">
-            <g fill="#ffd23d"><polygon points="0,-50 5,-34 -5,-34"/><polygon points="0,50 5,34 -5,34"/><polygon points="-50,0 -34,5 -34,-5"/><polygon points="50,0 34,5 34,-5"/>
-              <polygon points="-35,-35 -21,-27 -27,-21"/><polygon points="35,35 21,27 27,21"/><polygon points="35,-35 27,-21 21,-27"/><polygon points="-35,35 -27,21 -21,27"/></g>
-            <circle cx="0" cy="0" r="31" fill="none" stroke="#ff2e4d" stroke-width="3"/>
-            <circle cx="0" cy="0" r="26" fill="#060009" stroke="#b026ff" stroke-width="2"/>
-            <path d="M-15 -8 Q-9 -14 -3 -8 Q-9 -10 -15 -8 Z M15 -8 Q9 -14 3 -8 Q9 -10 15 -8 Z" fill="#ffd23d" stroke="#ffd23d" stroke-width="1.6" stroke-linejoin="round"/>
-            <path d="M-16 4 Q0 22 16 4 Z" fill="#170012" stroke="#ffd23d" stroke-width="1.8"/>
-            <g fill="#ffffff"><polygon points="-12.6,4.9 -9.4,4.9 -11.0,8.6"/> <polygon points="-8.6,4.9 -5.4,4.9 -7.0,7.4"/> <polygon points="-4.6,4.9 -1.4,4.9 -3.0,7.4"/> <polygon points="-0.6,4.9 2.6,4.9 1.0,7.4"/> <polygon points="3.4,4.9 6.6,4.9 5.0,7.4"/> <polygon points="7.4,4.9 10.6,4.9 9.0,8.6"/> <polygon points="-10.3,8.9 -7.7,8.9 -9.0,5.9"/> <polygon points="-6.3,11.2 -3.7,11.2 -5.0,8.2"/> <polygon points="-2.3,12.4 0.3,12.4 -1.0,9.4"/> <polygon points="1.7,11.9 4.3,11.9 3.0,8.9"/> <polygon points="5.7,10.2 8.3,10.2 7.0,7.2"/></g>
+            <circle cx="0" cy="0" r="50" fill="url(#cxCorona)"/>
+            <g fill="none" stroke-linecap="round" stroke-width="3.2">
+            <path d="M-46 0 A46 21 0 0 1 46 0" transform="rotate(-20)" stroke="#ffd23d" stroke-dasharray="22 9 36 9 14 9"/>
+            <path d="M-43 0 A43 24 0 0 1 43 0" transform="rotate(24)" stroke="#b026ff" stroke-dasharray="30 10 16 8 28 10"/>
+            </g>
+            <circle cx="0" cy="0" r="26" fill="#060009" stroke="#ffd23d" stroke-width="2.6"/>
+            <path d="M-18 0 Q0 -15 18 0 Q0 14 -18 0 Z" fill="#ffd23d" stroke="#fff3b0" stroke-width="1.4" stroke-linejoin="round"/>
+            <ellipse cx="0" cy="0" rx="3.2" ry="9.4" fill="#060009"/>
+            <g fill="none" stroke-linecap="round" stroke-width="3.2">
+            <path d="M-46 0 A46 21 0 0 0 46 0" transform="rotate(-20)" stroke="#ffd23d" stroke-dasharray="14 10 30 9 24 10 18 9"/>
+            <path d="M-43 0 A43 24 0 0 0 43 0" transform="rotate(24)" stroke="#b026ff" stroke-dasharray="26 9 12 9 34 10"/>
+            </g>
           </symbol>
           <symbol id="cxPlanet" viewBox="-30 -30 60 60">
             <circle r="24" fill="#3b7fb0" stroke="#bff3ff" stroke-width="1.6"/>
@@ -1882,7 +1891,7 @@
           <p class="wd">Bends light until it isn't there. Doesn't say much.</p>
         </div>
         <div class="cp half wanted">
-          <div class="art"><svg viewBox="0 0 160 112" role="img" aria-label="Eclipse Sovereign, a black sun with a golden grin"><rect width="160" height="112" fill="url(#cxDots)"/><use href="#cxEclipse" x="28" y="4" width="104" height="104"/></svg><span class="bub bub-s" style="left:4%;bottom:4%">I AM THE END OF THE SONG.</span></div>
+          <div class="art"><svg viewBox="0 0 160 112" role="img" aria-label="Eclipse Sovereign, a black sun with one golden eye inside its broken rings"><rect width="160" height="112" fill="url(#cxDots)"/><use href="#cxEclipse" x="28" y="4" width="104" height="104"/></svg><span class="bub bub-s" style="left:4%;bottom:4%">I AM THE END OF THE SONG.</span></div>
           <p class="wn">ECLIPSE SOVEREIGN</p><p class="ws">The Last Orbit · Stage 50</p>
           <p class="wd">Wants to swallow the last light in the sky. Rude.</p>
         </div>
