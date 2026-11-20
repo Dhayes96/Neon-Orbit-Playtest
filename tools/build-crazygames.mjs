@@ -61,6 +61,9 @@ editRe('strip web-domain comment (header)', /     One thing to check per portal:
 editRe('strip web-domain comment (SHARE_URL note)', /  \/\/ NOTE: this must match the host your site actually settles on\. If your\n  \/\/ GitHub Pages CNAME is www\.playrhythmvoid\.com,[^\n]*\n/,
   '  // NOTE (CrazyGames build): no web link is shared from this build.\n');
 
+// 2b. The web page's canonical link names the web domain; CrazyGames hosts its own copy.
+edit('remove web canonical link', '  <link rel="canonical" href="https://playrhythmvoid.com/play/" />\n', '');
+
 // 3. Results-screen feedback mailto.
 editRe('remove results feedback mailto link', /\n\s*<a class="feedback-link" id="feedbackLink" href="mailto:[^"]*">[^<]*<\/a>/, '');
 
