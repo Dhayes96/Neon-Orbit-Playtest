@@ -7,8 +7,8 @@
 // glide, impact), so it knows each sound's exact audio time, kind and
 // loudness. Then it checks each ring's hit time against those sounds.
 //
-//   beat   a kick, clap/snare, bass, impact or chug sounds within 10 ms
-//   thin   only a hat tick or a melody note sounds there
+//   beat   a kick, clap/snare, bass, impact, chug or open hat within 10 ms
+//   thin   only a closed-hat tick or a melody note sounds there
 //   silent nothing audible starts there
 //
 // A sine under 55 Hz counts as 'sub': phone and laptop speakers can't play it,
@@ -28,7 +28,7 @@ const { boot, writeResult } = require('./harness');
 
 const SECONDS = Number(process.env.BEAT_SYNC_SECONDS || 22);
 const WIN = 0.010;                 // a ring and a hit within 10 ms are together
-const STRONG = new Set(['kick', 'clap', 'bass', 'impact', 'riff']);
+const STRONG = new Set(['kick', 'clap', 'bass', 'impact', 'riff', 'openhat']);
 const UNLOCKS = { cubex: true, hexatron: true, triarch: true, vantaPrism: true, eclipseSovereign: true };
 
 const VIBES = ['cyberBounce', 'bluePulse', 'toxicBreaks', 'goldGroove', 'darkWave', 'crimsonDrive', 'hellfire', 'voidMetal', 'cybermetal', 'ascension'];
@@ -58,7 +58,7 @@ function installEars() {
   wrap('impactVoice', (a) => ({ t: a[0], k: 'impact', g: 0.2 * (a[1] == null ? 1 : a[1]) }));
   wrap('noiseVoice', (a) => {
     const [t, dur, g, ft, f, , bg = 1] = a;
-    const k = ft === 'highpass' ? 'hat' : (f <= 3200 && dur >= 0.06 ? 'clap' : 'noise');
+    const k = ft === 'highpass' ? (dur >= 0.15 ? 'openhat' : 'hat') : (f <= 3200 && dur >= 0.06 ? 'clap' : 'noise');
     return { t, k, g: g * bg, f, dur };
   });
   wrap('synthVoice', (a) => {
