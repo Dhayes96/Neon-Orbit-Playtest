@@ -11,6 +11,9 @@
 //   thin   only a hat tick or a melody note sounds there
 //   silent nothing audible starts there
 //
+// A sine under 55 Hz counts as 'sub': phone and laptop speakers can't play it,
+// so a ring that only has a sub under it is thin, not on the beat.
+//
 // Dennel's rule (Nov 24 2026): "if the tap doesn't go along with the music,
 // it's a fail". thin and silent both fail. Results per scenario go to
 // results/beat-sync-<name>.json and a table in the log.
@@ -61,7 +64,7 @@ function installEars() {
   wrap('synthVoice', (a) => {
     const [t, f, dur, o = {}] = a;
     if ((o.attack == null ? 0.005 : o.attack) >= 0.12) return null;            // pads swell in: not an onset
-    return { t, k: f <= 200 ? 'bass' : 'tone', g: (o.gain == null ? 0.05 : o.gain) * (o.busGain == null ? 1 : o.busGain), f, dur };
+    return { t, k: f < 55 ? 'sub' : f <= 200 ? 'bass' : 'tone', g: (o.gain == null ? 0.05 : o.gain) * (o.busGain == null ? 1 : o.busGain), f, dur };
   });
   wrap('guitarVoice', (a) => {
     const [t, f, , o = {}] = a;
@@ -70,7 +73,7 @@ function installEars() {
   wrap('glideVoice', (a) => {
     const [t, f0, , , o = {}] = a;
     if ((o.attack == null ? 0.02 : o.attack) >= 0.12) return null;
-    return { t, k: f0 <= 200 ? 'bass' : 'tone', g: (o.gain == null ? 0.03 : o.gain) * (o.busGain == null ? 1 : o.busGain), f: f0 };
+    return { t, k: f0 < 55 ? 'sub' : f0 <= 200 ? 'bass' : 'tone', g: (o.gain == null ? 0.03 : o.gain) * (o.busGain == null ? 1 : o.busGain), f: f0 };
   });
   const oc = window.chooseRhythmPattern;
   window.chooseRhythmPattern = function () { const p = oc.apply(this, arguments); E.pat = (p && p.name) || '?'; E.offsets = p && p.offsets; return p; };
