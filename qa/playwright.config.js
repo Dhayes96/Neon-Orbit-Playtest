@@ -17,7 +17,7 @@ module.exports = defineConfig({
   webServer: { command: 'node server.js', url: 'http://127.0.0.1:4173/index.html', reuseExistingServer: false }, // T0: never reuse a stale server from another checkout
   projects: [
     { name: 'stress-chrome', use: { ...devices['Desktop Chrome'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testMatch: /stress\.spec/ },
-    { name: 'desktop-chrome', use: { ...devices['Desktop Chrome'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testIgnore: /mobile\.spec|stress\.spec|ear-bot\.spec/ },
+    { name: 'desktop-chrome', use: { ...devices['Desktop Chrome'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testIgnore: /mobile\.spec|stress\.spec|ear-bot\.spec|beat-sync\.spec/ },
     // retries: 1 — Firefox audio start-up on CI runners is intermittently slow; a pass on retry is
     // reported as "flaky" (never silent). See qa/KNOWN-FAILURES.md.
     { name: 'firefox-smoke', retries: 1, use: { ...devices['Desktop Firefox'], launchOptions: { firefoxUserPrefs: { 'media.autoplay.default': 0, 'media.autoplay.blocking_policy': 0, 'media.autoplay.block-webaudio': false } } }, testMatch: /smoke\.spec/ },
@@ -28,6 +28,8 @@ module.exports = defineConfig({
     // Ear-bot (rhythm bot step 1, test-only): ~6 min per browser, so it has its own projects
     // and is not part of desktop-chrome or the CI gate.
     { name: 'chrome-ear', use: { ...devices['Desktop Chrome'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testMatch: /ear-bot\.spec/ },
+    // Beat sync: every ring against the sounds the song plays (see tests/beat-sync.spec.js).
+    { name: 'beat-sync', use: { ...devices['Desktop Chrome'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testMatch: /beat-sync\.spec/ },
     { name: 'webkit-ear', use: { ...devices['Desktop Safari'] }, testMatch: /ear-bot\.spec/ },
     { name: 'mobile-pixel7', use: { ...devices['Pixel 7'], launchOptions: { executablePath: CHROME, args: audioArgs } }, testMatch: /mobile\.spec/ },
   ],

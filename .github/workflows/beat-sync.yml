@@ -1,0 +1,39 @@
+# Beat sync: every ring against the sounds the song actually plays (qa/tests/beat-sync.spec.js).
+# Runs on rhythm/* branches, on demand, and nightly next to the timing suite.
+name: Beat sync
+
+on:
+  push:
+    branches: ['rhythm/**']
+  schedule:
+    - cron: '47 9 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: beat-sync-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GAME_DIR: ${{ github.workspace }}
+
+jobs:
+  beat-sync:
+    name: beat sync (every song, stage band, difficulty and boss)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults: { run: { working-directory: qa } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: qa/package-lock.json }
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Beat sync
+        run: npx playwright test tests/beat-sync.spec.js --project=beat-sync --workers=3
+      - name: Summary table
+        if: always()
+        run: |
+          node -e "const fs=require('fs');const fsx=fs.readdirSync('results').filter(f=>f.startsWith('beat-sync-')).sort();let t='| scenario | rings | beat | thin | silent | fail % |\n|---|---|---|---|---|---|\n';for(const f of fsx){const r=JSON.parse(fs.readFileSync('results/'+f));t+='| '+f.slice(10,-5)+' | '+r.notes+' | '+r.beat+' | '+r.thin+' | '+r.silent+' | '+r.failRate+' |\n'}console.log(t)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: beat-sync-results, path: qa/results, retention-days: 30 }
