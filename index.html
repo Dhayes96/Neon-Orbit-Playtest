@@ -4355,20 +4355,39 @@
     const res = music.active;
     const ph = res && res.phase;
     if (!ph) return null;
-    const key = (music.phaseIndex || 0) + ':' + (ph.name || '') + ':' + (bossActive ? 'b' : 'n');
+    /* v0.4 BEAT SYNC: a ring may only ask for a tap where the song really
+       hits. The map used to read the phase's written arrays alone, so it
+       also offered steps the mix never plays there: Chill drops every other
+       bass note, the boss "sub pulse" is a 25-40 Hz sine a phone speaker
+       can't play, and the snare, guitar chugs, Chaos kicks and the boss
+       kicks and stabs were never offered at all. It now mirrors
+       renderPhaseStep() and renderBossLayer() for what is sounding. */
+    const prof = musicDifficultyProfile();
+    const bm = bossActive ? (bossMusicMod || {}) : null;
+    const late = bm && bossPhase >= 3;
+    const key = (music.phaseIndex || 0) + ':' + (ph.name || '') + ':' + (bm ? 'b' + (bm.scratch ? 's' : '') + (bm.stab ? 't' : '') + (late ? '3' : '') : 'n') +
+      ':' + (prof.bassSimplify ? 'c' : '') + (prof.extraKick ? 'x' : '') + (prof.syncopate ? 'y' : '') + (fever ? 'f' : '');
     if (_accentCache.key === key && _accentCache.w) return _accentCache.w;
 
+    let bassSteps = ph.bass || [];
+    if (prof.bassSimplify) bassSteps = bassSteps.filter((_, i) => i % 2 === 0);   // as renderPhaseStep plays it
+    const openHats = (fever ? (ph.openHat || []).concat([4, 12]) : (ph.openHat || []));
     const w = new Array(16).fill(0);
     for (let s = 0; s < 16; s++) {
-      const k = (ph.kick && ph.kick[s]) ? 1 : 0;
-      const c = (ph.clap && ph.clap[s]) ? 1 : 0;
+      const k = (ph.kick && ph.kick[s]) || (prof.extraKick && (s === 7 || s === 15))
+        || (bm && s % 4 === 0) || (late && (s === 2 || s === 10)) ? 1 : 0;      // boss metal kick, final-phase heartbeat
+      const c = (ph.clap && ph.clap[s]) || (ph.snare && ph.snare[s]) ? 1 : 0;
       if (k && c) w[s] = 5;
       else if (c) w[s] = 4;
       else if (k) w[s] = 3;
-      if (ph.bass && ph.bass.indexOf(s) !== -1) w[s] = Math.max(w[s], 2);
-      if (ph.openHat && ph.openHat.indexOf(s) !== -1) w[s] = Math.max(w[s], 2);
+      if (ph.gtr && ph.gtr.chug && ph.gtr.chug[s]) w[s] = Math.max(w[s], 3);       // palm-muted chug
+      if (ph.impacts && ph.impacts.includes(s)) w[s] = Math.max(w[s], 3);
+      if (bassSteps.indexOf(s) !== -1) w[s] = Math.max(w[s], 2);
+      if (prof.syncopate && (s === 5 || s === 13)) w[s] = Math.max(w[s], 2);       // Chaos ghost bass
+      if (openHats.indexOf(s) !== -1) w[s] = Math.max(w[s], 2);
+      if (bm && !bm.scratch && (s === 4 || s === 12)) w[s] = Math.max(w[s], 2);    // boss tritone stab
+      if (bm && bm.scratch && (s === 7 || s === 15)) w[s] = Math.max(w[s], 2);    // record scratch (its ~55 Hz funk bass is too low for a phone)
       if (s === 0) w[s] += 2;                       // downbeat is always strong
-      if (bossActive && s % 2 === 0) w[s] = Math.max(w[s], 2); // boss sub pulse
     }
     _accentCache = { key, w };
     return w;
@@ -15408,9 +15427,14 @@ void main(){
         if (BeatMap.active()) {
           const bm = BeatMap.nearestHit(noteT);
           if (bm !== null) noteT = bm;
-        } else {
+        } else if (Conductor.ready()) {
+          /* v0.4 BEAT SYNC: no hit within half a beat means the song is
+             quiet there (a halftime bar, a sparse Chill bass line). The
+             ring used to keep its raw pattern time and ask for a tap on
+             nothing, or on a triplet the music never plays. Skip it. */
           const acc = snapToAccent(noteT, accentThreshold(stage));
-          if (acc !== null) noteT = acc;
+          if (acc === null) continue;
+          noteT = acc;
         }
 
         /* If the active track swings its 16ths, the notes must swing with it

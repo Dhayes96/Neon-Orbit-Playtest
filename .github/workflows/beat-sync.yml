@@ -18,8 +18,13 @@ env:
 
 jobs:
   beat-sync:
-    name: beat sync (every song, stage band, difficulty and boss)
+    name: beat sync, ${{ matrix.game }} (every song, stage band, difficulty and boss)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 'this' is the commit under test; 'main' measures the live game with the same check, for a before/after
+        game: ${{ github.ref == 'refs/heads/main' && fromJSON('["this"]') || fromJSON('["this", "main"]') }}
     timeout-minutes: 45
     defaults: { run: { working-directory: qa } }
     steps:
@@ -28,7 +33,12 @@ jobs:
         with: { node-version: 22, cache: npm, cache-dependency-path: qa/package-lock.json }
       - run: npm ci
       - run: npx playwright install --with-deps chromium
+      - name: Use the live game from main (before/after comparison)
+        if: matrix.game == 'main'
+        working-directory: .
+        run: git fetch --depth=1 origin main && git show FETCH_HEAD:index.html > index.html
       - name: Beat sync
+        env: { BEAT_SYNC_LABEL: '${{ matrix.game }}' }
         run: npx playwright test tests/beat-sync.spec.js --project=beat-sync --workers=3
       - name: Summary table
         if: always()
@@ -36,4 +46,4 @@ jobs:
           node -e "const fs=require('fs');const fsx=fs.readdirSync('results').filter(f=>f.startsWith('beat-sync-')).sort();let t='| scenario | rings | beat | thin | silent | fail % |\n|---|---|---|---|---|---|\n';for(const f of fsx){const r=JSON.parse(fs.readFileSync('results/'+f));t+='| '+f.slice(10,-5)+' | '+r.notes+' | '+r.beat+' | '+r.thin+' | '+r.silent+' | '+r.failRate+' |\n'}console.log(t)" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: beat-sync-results, path: qa/results, retention-days: 30 }
+        with: { name: 'beat-sync-results-${{ matrix.game }}', path: qa/results, retention-days: 30 }

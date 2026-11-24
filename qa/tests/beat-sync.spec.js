@@ -7,12 +7,10 @@
 // glide, impact), so it knows each sound's exact audio time, kind and
 // loudness. Then it checks each ring's hit time against those sounds.
 //
-//   beat   a kick, clap/snare, bass, impact, chug or open hat within 10 ms
-//   thin   only a closed-hat tick or a melody note sounds there
+//   beat   a kick, clap/snare, bass, impact, chug, stab or open hat within
+//          10 ms, at 6% of the song's kick level or louder
+//   thin   only a closed-hat tick, a melody note or a sub-bass sounds there
 //   silent nothing audible starts there
-//
-// A sine under 55 Hz counts as 'sub': phone and laptop speakers can't play it,
-// so a ring that only has a sub under it is thin, not on the beat.
 //
 // Dennel's rule (Nov 24 2026): "if the tap doesn't go along with the music,
 // it's a fail". thin and silent both fail. Results per scenario go to
@@ -28,7 +26,8 @@ const { boot, writeResult } = require('./harness');
 
 const SECONDS = Number(process.env.BEAT_SYNC_SECONDS || 22);
 const WIN = 0.010;                 // a ring and a hit within 10 ms are together
-const STRONG = new Set(['kick', 'clap', 'bass', 'impact', 'riff', 'openhat']);
+const STRONG = new Set(['kick', 'clap', 'bass', 'impact', 'riff', 'openhat', 'stab']);
+const LOUD = 0.06;                 // a hit at 6% of the song's kick level or more is one you hear
 const UNLOCKS = { cubex: true, hexatron: true, triarch: true, vantaPrism: true, eclipseSovereign: true };
 
 const VIBES = ['cyberBounce', 'bluePulse', 'toxicBreaks', 'goldGroove', 'darkWave', 'crimsonDrive', 'hellfire', 'voidMetal', 'cybermetal', 'ascension'];
@@ -41,6 +40,7 @@ for (const vibe of ['cyberBounce', 'voidMetal']) for (const st of [10, 20, 30, 4
 for (const key of ['abyss', 'planet', 'architect']) SCENARIOS.push({ name: `secret-${key}`, vibe: 'cyberBounce', secret: key });
 
 const ONLY = process.env.BEAT_SYNC_ONLY;
+const LABEL = process.env.BEAT_SYNC_LABEL ? process.env.BEAT_SYNC_LABEL + ' ' : '';
 
 function installEars() {
   const E = window.__ears = { on: [], notes: [], inStep: 0, pat: '' };
@@ -61,19 +61,28 @@ function installEars() {
     const k = ft === 'highpass' ? (dur >= 0.15 ? 'openhat' : 'hat') : (f <= 3200 && dur >= 0.06 ? 'clap' : 'noise');
     return { t, k, g: g * bg, f, dur };
   });
+  // A sine or triangle under 70 Hz is 'sub': phone and laptop speakers can't
+  // play it. A saw or square that low still sounds through its overtones.
+  const toneKind = (f, type, dur) => {
+    const soft = type === 'sine' || type === 'triangle';
+    if (soft && f < 70) return 'sub';
+    if (f <= 200) return 'bass';
+    if (!soft && f <= 400 && dur <= 0.5) return 'stab';
+    return 'tone';
+  };
   wrap('synthVoice', (a) => {
     const [t, f, dur, o = {}] = a;
     if ((o.attack == null ? 0.005 : o.attack) >= 0.12) return null;            // pads swell in: not an onset
-    return { t, k: f < 55 ? 'sub' : f <= 200 ? 'bass' : 'tone', g: (o.gain == null ? 0.05 : o.gain) * (o.busGain == null ? 1 : o.busGain), f, dur };
+    return { t, k: toneKind(f, o.type || 'sawtooth', dur), g: (o.gain == null ? 0.05 : o.gain) * (o.busGain == null ? 1 : o.busGain), f, dur, type: o.type || 'sawtooth' };
   });
   wrap('guitarVoice', (a) => {
     const [t, f, , o = {}] = a;
     return { t, k: f <= 260 ? 'riff' : 'lead', g: (o.gain == null ? 0.05 : o.gain) * (o.busGain == null ? 1 : o.busGain), f };
   });
   wrap('glideVoice', (a) => {
-    const [t, f0, , , o = {}] = a;
+    const [t, f0, , dur, o = {}] = a;
     if ((o.attack == null ? 0.02 : o.attack) >= 0.12) return null;
-    return { t, k: f0 < 55 ? 'sub' : f0 <= 200 ? 'bass' : 'tone', g: (o.gain == null ? 0.03 : o.gain) * (o.busGain == null ? 1 : o.busGain), f: f0 };
+    return { t, k: toneKind(f0, o.type || 'square', dur), g: (o.gain == null ? 0.03 : o.gain) * (o.busGain == null ? 1 : o.busGain), f: f0, type: o.type || 'square' };
   });
   const oc = window.chooseRhythmPattern;
   window.chooseRhythmPattern = function () { const p = oc.apply(this, arguments); E.pat = (p && p.name) || '?'; E.offsets = p && p.offsets; return p; };
@@ -133,7 +142,7 @@ function judge(r) {
     if (n.a < r.t0 + 0.05 || n.a > lastSound - 0.05) continue;   // only rings whose moment the recording covers
     out.notes++;
     const near = on.filter((o) => Math.abs(o.t - n.a) <= WIN);
-    const strong = near.filter((o) => STRONG.has(o.k) && o.g >= ref * 0.12);
+    const strong = near.filter((o) => STRONG.has(o.k) && o.g >= ref * LOUD);
     const audible = near.filter((o) => o.g >= ref * 0.02);
     const v = strong.length ? 'beat' : audible.length ? 'thin' : 'silent';
     out[v]++;
@@ -143,9 +152,9 @@ function judge(r) {
     if (v !== 'beat') {
       p.fail++;
       const s16 = n.step, frac = s16 - Math.round(s16);
-      const nearest = on.reduce((b, o) => (STRONG.has(o.k) && o.g >= ref * 0.12 && (!b || Math.abs(o.t - n.a) < Math.abs(b.t - n.a))) ? o : b, null);
+      const nearest = on.reduce((b, o) => (STRONG.has(o.k) && o.g >= ref * LOUD && (!b || Math.abs(o.t - n.a) < Math.abs(b.t - n.a))) ? o : b, null);
       if (out.fails.length < 40) out.fails.push({ v, pat: key, stage: n.stage, step16: Math.round(((s16 % 16) + 16) % 16 * 100) / 100,
-        offGridMs: Math.round(frac * n.sd * 1000), heard: near.map((o) => o.k + '@' + Math.round((o.t - n.a) * 1000) + 'ms'),
+        offGridMs: Math.round(frac * n.sd * 1000), heard: near.map((o) => o.k + '@' + Math.round((o.t - n.a) * 1000) + 'ms/' + Math.round(o.g / ref * 100) + '%'),
         nearestBeatMs: nearest ? Math.round((nearest.t - n.a) * 1000) : null, bpm: Math.round(n.bpm) });
     }
   }
@@ -161,9 +170,9 @@ for (const sc of SCENARIOS) {
     const r = await drive(page, sc);
     const j = judge(r);
     writeResult(`beat-sync-${sc.name}`, { scenario: sc, endState: r.state, ...j });
-    const line = `BEATSYNC ${sc.name.padEnd(24)} rings ${String(j.notes).padStart(3)}  beat ${String(j.beat).padStart(3)}  thin ${String(j.thin).padStart(3)}  silent ${String(j.silent).padStart(3)}  fail ${j.failRate}%`;
+    const line = `BEATSYNC ${LABEL}${sc.name.padEnd(24)} rings ${String(j.notes).padStart(3)}  beat ${String(j.beat).padStart(3)}  thin ${String(j.thin).padStart(3)}  silent ${String(j.silent).padStart(3)}  fail ${j.failRate}%`;
     console.log(line);
-    for (const f of j.fails.slice(0, 12)) console.log('BEATSYNC   ' + JSON.stringify(f));
+    for (const f of j.fails.slice(0, 12)) console.log('BEATSYNC ' + LABEL + '  ' + JSON.stringify(f));
     rows.push(line);
     expect.soft(j.notes, 'rings were measured').toBeGreaterThan(4);
     expect.soft(j.thin + j.silent, `${sc.name}: every ring lands on a beat you can hear`).toBe(0);
