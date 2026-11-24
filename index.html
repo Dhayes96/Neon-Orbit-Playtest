@@ -4371,7 +4371,8 @@
 
     let bassSteps = ph.bass || [];
     if (prof.bassSimplify) bassSteps = bassSteps.filter((_, i) => i % 2 === 0);   // as renderPhaseStep plays it
-    const openHats = (fever ? (ph.openHat || []).concat([4, 12]) : (ph.openHat || []));
+    // Chill plays its hats at 60%: an open hat there is too faint to tap to.
+    const openHats = prof.hatGain < 0.8 ? [] : (fever ? (ph.openHat || []).concat([4, 12]) : (ph.openHat || []));
     const w = new Array(16).fill(0);
     for (let s = 0; s < 16; s++) {
       const k = (ph.kick && ph.kick[s]) || (prof.extraKick && (s === 7 || s === 15))
@@ -15432,7 +15433,11 @@ void main(){
              quiet there (a halftime bar, a sparse Chill bass line). The
              ring used to keep its raw pattern time and ask for a tap on
              nothing, or on a triplet the music never plays. Skip it. */
-          const acc = snapToAccent(noteT, accentThreshold(stage));
+          // Early stages prefer the biggest hits; when none is near, a kick
+          // or a bass note is still a real hit, and better than no ring.
+          const th = accentThreshold(stage);
+          let acc = snapToAccent(noteT, th);
+          for (let lo = th - 1; acc === null && lo >= 2; lo--) acc = snapToAccent(noteT, lo);
           if (acc === null) continue;
           noteT = acc;
         }
