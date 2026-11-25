@@ -4351,6 +4351,19 @@
      =================================================================== */
   let _accentCache = { key: null, w: null };
 
+  // Open hat level relative to the phase's kick, the way renderPhaseStep()
+  // and personalityProfile() mix them (vibe hat/kick character, theme hat
+  // tilt, difficulty hat/drum gain, Fever). Static per phase, no boss/realm
+  // ducking, so it can sit in the accent cache key.
+  function openHatAudible(prof, ph) {
+    if ((prof.hatGain || 1) < 0.8) return false;   // Chill: hats at 60%, too faint to tap to
+    const vc = currentVibeChar();
+    const th = themeMusicProfile(save.theme);
+    const hat = (fever ? 0.024 : 0.017) * (prof.hatGain || 1) * (vc.hat || 1) * (0.85 + 0.15 * (th.hat || 1));
+    const kick = (ph.kickGain || 0.2) * (prof.drumGain || 1) * (vc.kickBoost || 1) * (fever ? 1.15 : 1);
+    return hat / kick >= 0.065;
+  }
+
   function accentWeights() {
     const res = music.active;
     const ph = res && res.phase;
@@ -4366,13 +4379,15 @@
     const bm = bossActive ? (bossMusicMod || {}) : null;
     const late = bm && bossPhase >= 3;
     const key = (music.phaseIndex || 0) + ':' + (ph.name || '') + ':' + (bm ? 'b' + (bm.scratch ? 's' : '') + (bm.stab ? 't' : '') + (late ? '3' : '') : 'n') +
-      ':' + (prof.bassSimplify ? 'c' : '') + (prof.extraKick ? 'x' : '') + (prof.syncopate ? 'y' : '') + (fever ? 'f' : '');
+      ':' + (prof.bassSimplify ? 'c' : '') + (prof.extraKick ? 'x' : '') + (prof.syncopate ? 'y' : '') + (fever ? 'f' : '') + (openHatAudible(prof, ph) ? 'o' : '');
     if (_accentCache.key === key && _accentCache.w) return _accentCache.w;
 
     let bassSteps = ph.bass || [];
     if (prof.bassSimplify) bassSteps = bassSteps.filter((_, i) => i % 2 === 0);   // as renderPhaseStep plays it
-    // Chill plays its hats at 60%: an open hat there is too faint to tap to.
-    const openHats = prof.hatGain < 0.8 ? [] : (fever ? (ph.openHat || []).concat([4, 12]) : (ph.openHat || []));
+    // An open hat only counts when it is loud enough next to the kick to tap
+    // to. Quiet-hat songs (Chill, Dark Wave, the heavy Hellfire/Void Metal
+    // phases where the kick is huge) play it under ~6.5% of the kick.
+    const openHats = openHatAudible(prof, ph) ? (fever ? (ph.openHat || []).concat([4, 12]) : (ph.openHat || [])) : [];
     const w = new Array(16).fill(0);
     for (let s = 0; s < 16; s++) {
       const k = (ph.kick && ph.kick[s]) || (prof.extraKick && (s === 7 || s === 15))
